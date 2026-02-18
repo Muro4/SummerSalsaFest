@@ -4,7 +4,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import Link from 'next/link';
-import { User, Ticket, LogOut, ChevronDown, ShieldAlert, ShoppingCart, Settings } from "lucide-react";
+import { User, Ticket, LogOut, ChevronDown, ShieldAlert, ShoppingCart, Camera, Settings } from "lucide-react";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -13,7 +13,8 @@ export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let unsubCart = () => {};
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         const docRef = doc(db, "users", currentUser.uid);
@@ -21,11 +22,14 @@ export default function Navbar() {
         if (docSnap.exists()) setUserData(docSnap.data());
 
         const q = query(collection(db, "tickets"), where("userId", "==", currentUser.uid), where("status", "==", "pending"));
-        const unsubCart = onSnapshot(q, (snap) => setCartCount(snap.docs.length));
-        return () => unsubCart();
+        unsubCart = onSnapshot(q, (snap) => setCartCount(snap.docs.length));
+      } else {
+        setUserData(null);
+        setCartCount(0);
+        unsubCart();
       }
     });
-    return () => unsubscribe();
+    return () => { unsubscribeAuth(); unsubCart(); };
   }, []);
 
   return (
@@ -38,7 +42,6 @@ export default function Navbar() {
         </div>
       </Link>
 
-      {/* RESTORED NAVIGATION LINKS */}
       <div className="hidden lg:flex items-center gap-8 text-[10px] font-black text-gray-700 tracking-[0.2em] uppercase">
         <Link href="/" className="hover:text-salsa-pink transition">Home</Link>
         <Link href="/#prices" className="hover:text-salsa-pink transition">Prices</Link>
@@ -63,13 +66,20 @@ export default function Navbar() {
             </button>
             {isDropdownOpen && (
               <div className="absolute top-12 right-0 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl py-3 z-50 animate-in fade-in slide-in-from-top-2">
+                {(userData?.role === 'superadmin' || userData?.role === 'admin') && (
+                  <Link href="/admin/scanner" className="flex items-center gap-3 px-4 py-3 text-xs font-black text-emerald-600 hover:bg-emerald-50 transition border-b border-gray-50 mb-1">
+                    <Camera size={16} /> SCANNER
+                  </Link>
+                )}
                 {userData?.role === 'superadmin' && (
-                  <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-xs font-black text-salsa-pink hover:bg-salsa-pink/5 border-b border-gray-50"><ShieldAlert size={16} /> ADMIN PANEL</Link>
+                  <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-xs font-black text-salsa-pink hover:bg-salsa-pink/5 border-b border-gray-50 mb-1">
+                    <ShieldAlert size={16} /> ADMIN PANEL
+                  </Link>
                 )}
                 <Link href="/account" className="flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-salsa-white transition">
                   <User size={16} /> MY ACCOUNT
                 </Link>
-                <button onClick={() => signOut(auth)} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 border-t border-gray-50 transition">
+                <button onClick={() => signOut(auth)} className="w-full mt-2 flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 border-t border-gray-50 transition">
                   <LogOut size={16} /> LOGOUT
                 </button>
               </div>

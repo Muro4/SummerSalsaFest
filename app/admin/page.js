@@ -26,24 +26,40 @@ export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState("week");
 
   useEffect(() => {
-    const unsubAuth = auth.onAuthStateChanged(async (user) => {
-      if (!user) { router.push("/login"); return; }
-      const d = await getDoc(doc(db, "users", user.uid));
-      if (d.exists() && d.data().role === "superadmin") {
+  let unsubUsers = () => {};
+  let unsubTickets = () => {};
+
+  const unsubAuth = auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // FIRST: Check role via getDoc (allowed for everyone to read their own doc)
+      const myDoc = await getDoc(doc(db, "users", user.uid));
+      
+      if (myDoc.exists() && myDoc.data().role === "superadmin") {
         setIsAdmin(true);
-        const unsubUsers = onSnapshot(collection(db, "users"), (uS) => {
-          const unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => {
-            setData({
-              users: uS.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-              tickets: tS.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            });
-            setLoading(false);
-          });
+        
+        // SECOND: Only start global listeners after role is confirmed
+        unsubUsers = onSnapshot(collection(db, "users"), (uS) => {
+          setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) }));
         });
-      } else { router.push("/"); }
-    });
-    return () => unsubAuth();
-  }, [router]);
+
+        unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => {
+          setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) }));
+          setLoading(false);
+        });
+      } else {
+        router.push("/");
+      }
+    } else {
+      router.push("/login");
+    }
+  });
+
+  return () => {
+    unsubAuth();
+    unsubUsers();
+    unsubTickets();
+  };
+}, [router]);
 
   // --- ACTIONS ---
   const seedDatabase = async () => {
