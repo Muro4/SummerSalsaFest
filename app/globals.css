@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-salsa-pink: #e84b8a;
+  --color-salsa-mint: #7dd3c0;
+  --color-salsa-dark-mint: #5fb8a4; /* A deeper green for the footer */
+  --color-salsa-white: #f0ffff;
+  
+  --font-bebas: var(--font-bebas);
+  --font-montserrat: var(--font-montserrat);
+}
+
+/* Fix the no-scrollbar for Tailwind v4 */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  body {
+    @apply font-montserrat text-slate-900 bg-white antialiased;
+  }
+}
