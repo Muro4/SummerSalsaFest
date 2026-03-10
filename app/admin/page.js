@@ -62,24 +62,8 @@ export default function AdminDashboard() {
 }, [router]);
 
   // --- ACTIONS ---
-  const seedDatabase = async () => {
-    const names = ["MARIA S.", "IVAN K.", "ELENA V.", "LUCA M.", "SOFIA R."];
-    const passes = ["Full Pass", "Party Pass", "Day Pass"];
-    for (let i = 0; i < 10; i++) {
-      const name = names[Math.floor(Math.random()*names.length)];
-      const uid = "gen_" + Math.random().toString(36).substr(2, 6);
-      await setDoc(doc(db, "users", uid), { uid, displayName: name, email: name.toLowerCase().replace(" ", "") + "@test.com", role: "user", createdAt: new Date().toISOString() });
-      await addDoc(collection(db, "tickets"), { userId: uid, userName: name, passType: passes[Math.floor(Math.random()*3)], price: 115, status: "active", purchaseDate: new Date().toISOString(), ticketID: "SLS" + Math.random().toString(36).substr(2,4).toUpperCase() });
-    }
-    alert("Data Injected!");
-  };
+  
 
-  const exportCSV = () => {
-    const csv = "ID,Name,Type,Price,Status\n" + data.tickets.map(t => `${t.ticketID},${t.userName},${t.passType},${t.price},${t.status}`).join("\n");
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'GuestList.csv'; a.click();
-  };
 
   // --- CHART LOGIC (SUM AGGREGATION) ---
   const getChartData = () => {
@@ -119,10 +103,7 @@ export default function AdminDashboard() {
               <h1 className="font-bebas text-7xl tracking-tighter">Event Overview</h1>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">Summer Salsa Fest 2025</p>
            </div>
-           <div className="flex gap-3">
-              <button onClick={seedDatabase} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase"><Database size={14}/></button>
-              <button onClick={exportCSV} className="border-2 border-salsa-pink text-salsa-pink px-6 py-2 rounded-xl font-black text-[10px] uppercase hover:bg-salsa-pink hover:text-white transition tracking-widest">Export Guest List</button>
-           </div>
+           
         </div>
 
         {/* TABS */}
