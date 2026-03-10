@@ -1,5 +1,7 @@
-import { Bebas_Neue, Montserrat } from "next/font/google";
+import { Modak, Bebas_Neue, Montserrat } from "next/font/google";
 import "./globals.css";
+
+
 
 // 1. Configure Bebas Neue (for headings)
 const bebas = Bebas_Neue({ 
@@ -13,6 +15,10 @@ const montserrat = Montserrat({
   subsets: ["latin"], 
   variable: '--font-montserrat' 
 });
+const modak = Modak({
+  weight: '400',
+  subsets: ["latin"],
+  variable: '--font-modak' });
 
 export const metadata = {
   title: "Summer Salsa Varna 2026",
@@ -21,9 +27,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      {/* 3. Apply the font variables to the body */}
-      <body className={`${bebas.variable} ${montserrat.variable} antialiased`}>
+    <html lang="en" className="scroll-smooth">
+      <body className={`${modak.variable} ${bebas.variable} ${montserrat.variable} antialiased`}>
         {children}
       </body>
     </html>

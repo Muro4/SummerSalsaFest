@@ -3,20 +3,34 @@
 @theme {
   --color-salsa-pink: #e84b8a;
   --color-salsa-mint: #7dd3c0;
-  --color-salsa-dark-mint: #5fb8a4; /* A deeper green for the footer */
   --color-salsa-white: #f0ffff;
   
+  --font-modak: var(--font-modak);
   --font-bebas: var(--font-bebas);
   --font-montserrat: var(--font-montserrat);
 }
 
-/* Fix the no-scrollbar for Tailwind v4 */
-@utility no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+/* 1. Simple Fade-In Animation */
+@keyframes simpleFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-fade-in {
+  animation: simpleFadeIn 0.8s ease-out forwards;
+  opacity: 0; /* Keeps it invisible until the delay finishes */
+}
+
+/* Stagger Delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-900 { animation-delay: 900ms; }
+
+/* 2. Normal Salsa Pink Drop Shadow */
+@utility text-shadow-pink {
+  text-shadow: 0px 4px 20px rgba(232, 75, 138, 0.7); /* Smooth, normal pink glow */
 }
 
 @layer base {
