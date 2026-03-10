@@ -10,41 +10,47 @@
   --font-montserrat: var(--font-montserrat);
 }
 
-/* 1. Simple Fade-In Animation */
+/* 1. The Entrance Animation (Fade In Drop) */
+@keyframes simpleFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-fade-in {
+  animation: simpleFadeIn 0.8s ease-out forwards;
+  opacity: 0; /* Keeps it invisible until animation starts */
+}
+
+/* Stagger Delays for the entrance */
+.delay-100 { animation-delay: 100ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-900 { animation-delay: 900ms; }
+
+/* 2. The Slow Ambient Glow Loop */
 @keyframes ambientWave {
-  /* Rest State: Very faint glow */
   0%, 40%, 100% {
     text-shadow: 
       0px 0px 10px rgba(232, 75, 138, 0.15),
       0px 0px 20px rgba(125, 211, 192, 0.05);
     color: white;
   }
-  
-  /* Peak State: The wave crests smoothly and holds slightly */
   15%, 20% {
     text-shadow: 
-      0px 0px 20px rgba(232, 75, 138, 0.8),   /* Bright Salsa Pink */
-      0px 0px 50px rgba(255, 246, 220, 0.4),    /* Warm Gold/Yellow spread */
-      0px 0px 90px rgba(232, 75, 138, 0.7);   /* Deep, wide Pink aura */
-    color: #fff5f7; /* Very subtle pink tint to the text */
+      0px 0px 20px rgba(232, 75, 138, 0.8),
+      0px 0px 50px rgba(255, 242, 202, 0.4),
+      0px 0px 90px rgba(232, 75, 138, 0.7);
+    color: #fff5f7;
   }
 }
 
 .ambient-wave-word {
   display: inline-block;
-  /* 
-    Increased to 8 seconds for a much slower, relaxed feel.
-    'ease-in-out' ensures the fade in and fade out are extremely smooth.
-  */
   animation: ambientWave 8s infinite ease-in-out;
 }
 
-/* 
-  Staggered Delays:
-  By using 0.8s intervals, the peak of the wave on 'SUMMER' 
-  will begin fading just as 'SALSA' is reaching its peak, 
-  creating a fluid, overlapping handoff.
-*/
+/* Delays for the continuous loop (Separate from the entrance delays) */
 .wave-1 { animation-delay: 0s; }
 .wave-2 { animation-delay: 0.8s; }
 .wave-3 { animation-delay: 1.6s; }

@@ -37,25 +37,27 @@ export default function Home() {
             backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url('/images/background.jpg')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: 'fixed'
           }}
         />
 
+        {/* Content Wrapper */}
         <div className="relative z-10 text-salsa-white max-w-6xl mt-12 flex flex-col items-center">
           
-          {/* Badge: Fades in first */}
+          {/* Badge: Fades in first (100ms) */}
           <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 inline-block">
             15th Edition
           </span>
 
-          {/* Main Title: Modak Font with Ambient Wave Animation */}
+          {/* Main Title: Fades in second (300ms). Contains the continuous wave. */}
           <h1 className="animate-fade-in delay-300 font-modak text-7xl md:text-[7rem] leading-none mb-8 uppercase flex flex-wrap justify-center gap-4">
             <span className="ambient-wave-word wave-1">SUMMER</span>
             <span className="ambient-wave-word wave-2">SALSA</span>
             <span className="ambient-wave-word wave-3">FEST</span>
           </h1>
 
-          {/* Sub-section: Date & Location, fades in third */}
+          {/* Sub-section: Date & Location, fades in third (500ms) */}
           <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center gap-12 mt-12 mb-16">
             <div className="text-center md:text-right">
                <p className="font-bebas text-5xl">1-3 AUG</p>
@@ -70,7 +72,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero Buttons: fades in fourth */}
+          {/* Hero Buttons: Fades in fourth (700ms) */}
           <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-6">
             <Link href="/tickets">
               <button className="bg-salsa-pink text-white font-black px-12 py-5 rounded-xl hover:scale-105 transition-all w-72 tracking-[0.2em] text-xs shadow-xl shadow-salsa-pink/20 uppercase">
@@ -83,7 +85,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ANIMATED SCROLL INDICATOR: Fades in last */}
+        {/* ANIMATED SCROLL INDICATOR: Fades in last (900ms) */}
         <div className="animate-fade-in delay-900 absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
             <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
             <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">

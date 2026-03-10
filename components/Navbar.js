@@ -34,14 +34,19 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b-2 border-salsa-mint px-6 py-3 flex items-center justify-between font-montserrat">
-      <Link href="/" className="flex items-center gap-2">
-        <div className="w-10 h-10 bg-salsa-pink rounded-lg flex items-center justify-center text-white font-bold text-xl font-bebas">S</div>
-        <div className="hidden sm:block">
-          <h1 className="font-bold text-salsa-pink leading-none text-lg">SUMMER SALSA</h1>
-          <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Varna 2025</p>
-        </div>
+      
+      {/* 1. CUSTOM LOGO SECTION */}
+      <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+        <img 
+          // CHANGE THIS PATH TO MATCH YOUR EXACT FILE NAME IN THE PUBLIC FOLDER
+          src="/images/logo.png" 
+          
+          // Adjust 'h-10' (40px) or 'h-12' (48px) to make your logo bigger or smaller
+          className="h-10 w-auto object-contain" 
+        />
       </Link>
 
+      {/* 2. NAVIGATION LINKS */}
       <div className="hidden lg:flex items-center gap-8 text-[10px] font-black text-gray-700 tracking-[0.2em] uppercase">
         <Link href="/" className="hover:text-salsa-pink transition">Home</Link>
         <Link href="/#prices" className="hover:text-salsa-pink transition">Prices</Link>
@@ -50,6 +55,7 @@ export default function Navbar() {
         <Link href="/#about" className="hover:text-salsa-pink transition">About Us</Link>
       </div>
 
+      {/* 3. CART & PROFILE SECTION */}
       <div className="flex items-center gap-4 relative">
         {user && (
           <Link href="/cart" className="relative p-2 text-gray-600 hover:text-salsa-pink transition">
