@@ -11,48 +11,43 @@
 }
 
 /* 1. Simple Fade-In Animation */
-@keyframes simpleFadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@utility animate-fade-in {
-  animation: simpleFadeIn 0.8s ease-out forwards;
-  opacity: 0;
-}
-
-.delay-100 { animation-delay: 100ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-500 { animation-delay: 500ms; }
-.delay-700 { animation-delay: 700ms; }
-.delay-900 { animation-delay: 900ms; }
-
-/* 2. Moving Ambient Gradient Glow */
-@keyframes ambientGlowShift {
-  0%, 100% {
-    /* Base State: Very subtle pink/mint ambient glow */
+@keyframes ambientWave {
+  /* Rest State: Very faint glow */
+  0%, 40%, 100% {
     text-shadow: 
-      0px 0px 10px rgba(232, 75, 138, 0.2),  /* Salsa Pink */
-      0px 0px 20px rgba(125, 211, 192, 0.1); /* Salsa Mint */
+      0px 0px 10px rgba(232, 75, 138, 0.15),
+      0px 0px 20px rgba(125, 211, 192, 0.05);
+    color: white;
   }
-  50% {
-    /* Highlight State: Brighter, wider, shifting slightly yellow/pink */
+  
+  /* Peak State: The wave crests smoothly and holds slightly */
+  15%, 20% {
     text-shadow: 
-      0px 0px 15px rgba(255, 46, 185, 0.6),  /* Brighter Salsa Pink */
-      0px 0px 30px rgba(255, 238, 188, 0.3),   /* Subtle Yellow/Gold spread */
-      0px 0px 50px rgba(232, 75, 138, 0.4);  /* Deep ambient pink base */
+      0px 0px 20px rgba(232, 75, 138, 0.8),   /* Bright Salsa Pink */
+      0px 0px 50px rgba(255, 246, 220, 0.4),    /* Warm Gold/Yellow spread */
+      0px 0px 90px rgba(232, 75, 138, 0.7);   /* Deep, wide Pink aura */
+    color: #fff5f7; /* Very subtle pink tint to the text */
   }
 }
 
-.ambient-word {
+.ambient-wave-word {
   display: inline-block;
-  animation: ambientGlowShift 4s infinite ease-in-out;
+  /* 
+    Increased to 8 seconds for a much slower, relaxed feel.
+    'ease-in-out' ensures the fade in and fade out are extremely smooth.
+  */
+  animation: ambientWave 8s infinite ease-in-out;
 }
 
-/* 3. Stagger the glow so it "moves" across the words */
-.glow-seq-1 { animation-delay: 0s; }
-.glow-seq-2 { animation-delay: 1.3s; }
-.glow-seq-3 { animation-delay: 2.6s; }
+/* 
+  Staggered Delays:
+  By using 0.8s intervals, the peak of the wave on 'SUMMER' 
+  will begin fading just as 'SALSA' is reaching its peak, 
+  creating a fluid, overlapping handoff.
+*/
+.wave-1 { animation-delay: 0s; }
+.wave-2 { animation-delay: 0.8s; }
+.wave-3 { animation-delay: 1.6s; }
 
 @layer base {
   body {

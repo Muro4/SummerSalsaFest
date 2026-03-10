@@ -27,6 +27,7 @@ export default function Home() {
       <Navbar />
       
       {/* 1. HERO SECTION */}
+     {/* HERO SECTION */}
       <section className="relative h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
         
         {/* Background Image */}
@@ -40,7 +41,6 @@ export default function Home() {
           }}
         />
 
-        {/* User's Exact Layout Block */}
         <div className="relative z-10 text-salsa-white max-w-6xl mt-12 flex flex-col items-center">
           
           {/* Badge: Fades in first */}
@@ -48,11 +48,11 @@ export default function Home() {
             15th Edition
           </span>
 
-          {/* Main Title: Modak Font, Fade-in, and the Moving Ambient Glow */}
+          {/* Main Title: Modak Font with Ambient Wave Animation */}
           <h1 className="animate-fade-in delay-300 font-modak text-7xl md:text-[7rem] leading-none mb-8 uppercase flex flex-wrap justify-center gap-4">
-            <span className="ambient-word glow-seq-1">SUMMER</span>
-            <span className="ambient-word glow-seq-2">SALSA</span>
-            <span className="ambient-word glow-seq-3">FEST</span>
+            <span className="ambient-wave-word wave-1">SUMMER</span>
+            <span className="ambient-wave-word wave-2">SALSA</span>
+            <span className="ambient-wave-word wave-3">FEST</span>
           </h1>
 
           {/* Sub-section: Date & Location, fades in third */}
