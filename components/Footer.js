@@ -5,12 +5,16 @@ export default function Footer() {
   return (
     <footer className="bg-white pt-20 pb-10 px-6 border-t border-salsa-mint">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+        
         {/* 1. Logo */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-salsa-pink rounded flex items-center justify-center text-white font-bold">S</div>
-            <span className="font-bold text-gray-900 tracking-tighter">SUMMER SALSA</span>
-          </div>
+          <Link href="/" className="inline-block">
+            <img 
+              src="/images/logo.png" 
+              alt="Summer Salsa Fest Logo" 
+              className="h-20 w-auto object-contain [filter:drop-shadow(1px_1px_1px_#2e0d1d)]" 
+            />
+          </Link>
           <p className="text-sm text-gray-800 leading-relaxed">
             The biggest salsa event in the Balkans, celebrating 14 years of dance, sun, and friendship.
           </p>

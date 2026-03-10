@@ -21,6 +21,24 @@
   opacity: 0; /* Keeps it invisible until animation starts */
 }
 
+@layer utilities {
+  /* Beautiful custom scrollbar to match your theme */
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 8px; /* Makes the horizontal scrollbar thin and elegant */
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f3f4f6; /* A subtle gray track matching your background */
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-salsa-pink); /* Themed thumb */
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d03a78; /* Slightly darker pink on hover */
+  }
+}
+
 /* Stagger Delays for the entrance */
 .delay-100 { animation-delay: 100ms; }
 .delay-300 { animation-delay: 300ms; }
@@ -38,9 +56,9 @@
   }
   15%, 20% {
     text-shadow: 
-      0px 0px 20px rgba(232, 75, 138, 0.8),
-      0px 0px 50px rgba(255, 242, 202, 0.4),
-      0px 0px 90px rgba(232, 75, 138, 0.7);
+      0px 0px 20px rgba(255, 57, 136, 0.8),
+      0px 0px 50px rgba(255, 254, 252, 0.4),
+      0px 0px 90px rgba(255, 59, 137, 0.7);
     color: #fff5f7;
   }
 }
