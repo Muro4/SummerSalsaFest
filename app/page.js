@@ -44,13 +44,15 @@ export default function Home() {
         <div className="relative z-10 text-salsa-white max-w-6xl mt-12 flex flex-col items-center">
           
           {/* Badge: Fades in first */}
-          <span className="animate-fade-in delay-100 bg-salsa-pink/30 text-salsa-pink border border-salsa-pink/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 inline-block text-shadow-white">
+          <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 inline-block">
             15th Edition
           </span>
 
-          {/* Main Title: Modak Font applied, simple pink shadow, fades in second */}
-          <h1 className="animate-fade-in delay-300 font-modak text-7xl md:text-[7rem] leading-none mb-8 uppercase text-shadow-pink">
-            SUMMER SALSA FEST
+          {/* Main Title: Modak Font, Fade-in, and the Moving Ambient Glow */}
+          <h1 className="animate-fade-in delay-300 font-modak text-7xl md:text-[7rem] leading-none mb-8 uppercase flex flex-wrap justify-center gap-4">
+            <span className="ambient-word glow-seq-1">SUMMER</span>
+            <span className="ambient-word glow-seq-2">SALSA</span>
+            <span className="ambient-word glow-seq-3">FEST</span>
           </h1>
 
           {/* Sub-section: Date & Location, fades in third */}
