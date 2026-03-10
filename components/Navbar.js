@@ -37,14 +37,14 @@ export default function Navbar() {
       
       {/* 1. CUSTOM LOGO SECTION */}
       <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-        <img 
-          // CHANGE THIS PATH TO MATCH YOUR EXACT FILE NAME IN THE PUBLIC FOLDER
-          src="/images/logo.png" 
-          
-          // Adjust 'h-10' (40px) or 'h-12' (48px) to make your logo bigger or smaller
-          className="h-10 w-auto object-contain" 
-        />
-      </Link>
+  <img 
+    // CHANGE THIS PATH TO MATCH YOUR EXACT FILE NAME IN THE PUBLIC FOLDER
+    src="/images/logo.png" 
+    
+    // Added 'drop-shadow-md' to the end
+    className="h-10 w-auto object-contain [filter:drop-shadow(1px_1px_1px_#2e0d1d)]" 
+  />
+</Link>
 
       {/* 2. NAVIGATION LINKS */}
       <div className="hidden lg:flex items-center gap-8 text-[10px] font-black text-gray-700 tracking-[0.2em] uppercase">
