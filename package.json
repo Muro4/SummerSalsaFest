@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@stripe/stripe-js": "^8.8.0",
     "firebase": "^11.10.0",
     "html5-qrcode": "^2.3.8",

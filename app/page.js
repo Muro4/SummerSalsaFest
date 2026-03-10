@@ -272,9 +272,13 @@ export default function Home() {
               BUY PASS
             </button>
           </Link>
+          <Link href="/contact">
           <button className="border-2 border-gray-900 font-black px-12 py-5 rounded-xl hover:bg-gray-900 hover:text-white transition-all w-72 tracking-widest text-xs uppercase">
-            CONTACT US
+            
+              CONTACT US
+            
           </button>
+          </Link>
         </div>
       </section>
 
