@@ -1,5 +1,6 @@
 import { Modak, Bebas_Neue, Montserrat } from "next/font/google";
 import "./globals.css";
+import { PopupProvider } from '@/components/PopupProvider'; 
 
 
 
@@ -29,7 +30,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${modak.variable} ${bebas.variable} ${montserrat.variable} antialiased`}>
-        {children}
+        <PopupProvider>
+          {children}
+        </PopupProvider>
       </body>
     </html>
   );

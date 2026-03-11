@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // <-- Don't forget this import!
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { 
   Ticket, QrCode, Settings, Plus, Trash2, Users, 
-  Loader2, Search, Calendar, Clock, X, Maximize2, History, CheckCircle, CreditCard
-} from "lucide-react";
+  Loader2, Search, Calendar, Clock, X, Maximize2, History, CheckCircle, CreditCard, ShoppingBag
+} from "lucide-react"; // <-- Added ShoppingBag here
 import { QRCodeSVG } from "qrcode.react";
 
 export default function AccountPage() {
@@ -16,7 +17,9 @@ export default function AccountPage() {
   const [userData, setUserData] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState("2025");
+  
+  // Updated default to 2026
+  const [selectedYear, setSelectedYear] = useState("2026");
   
   // Search States
   const [ticketSearch, setTicketSearch] = useState("");
@@ -89,7 +92,7 @@ export default function AccountPage() {
           passType: person.type,
           price: prices[person.type],
           status: "pending",
-          festivalYear: 2025,
+          festivalYear: 2026, // Updated to 2026
           purchaseDate: new Date().toISOString(),
           purchaseFormatted: `${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`,
           ticketID: "GRP" + Math.random().toString(36).substring(2, 7).toUpperCase()
@@ -149,7 +152,9 @@ export default function AccountPage() {
               <div className="flex flex-col items-end">
                 <label className="text-[9px] font-black text-gray-500 uppercase mb-2 tracking-widest">Event Archive</label>
                 <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-white border-2 border-salsa-mint/30 p-2.5 px-6 rounded-xl text-xs font-black uppercase outline-none shadow-sm cursor-pointer hover:border-salsa-pink transition-all">
-                    <option value="2025">Varna 2025</option>
+                    {/* ADDED 2026 ARCHIVE OPTION */}
+                    <option value="2026">Varna 2026</option>
+                    <option value="2025">Archive 2025</option>
                     <option value="2024">Archive 2024</option>
                 </select>
               </div>
@@ -170,32 +175,52 @@ export default function AccountPage() {
 
         {/* TAB 1: TICKETS GRID */}
         {activeTab === "tickets" && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-             <div className="relative max-w-sm mb-4">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                <input type="text" placeholder="SEARCH PASSES..." className="w-full p-3.5 pl-12 bg-white border-2 border-salsa-mint/20 rounded-xl outline-none focus:border-salsa-pink font-bold text-[10px] uppercase" onChange={e => setTicketSearch(e.target.value)} />
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredTickets.map(t => (
-                  <div key={t.id} className="bg-white rounded-[2.5rem] border-2 border-salsa-mint/10 flex flex-col sm:flex-row shadow-xl overflow-hidden hover:border-salsa-pink/40 transition-all group h-full">
-                     <div className="p-8 flex-grow">
-                        <div className="flex justify-between items-start mb-4">
-                           <span className="bg-salsa-pink/10 text-salsa-pink text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{t.passType}</span>
-                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Pass 2025</span>
-                        </div>
-                        <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-8 leading-none">{t.userName}</h3>
-                        <div className="flex gap-6 pt-6 border-t border-gray-50">
-                           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Calendar size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[0] || "Valid"}</div>
-                           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Clock size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[1] || "Pass"}</div>
-                        </div>
-                     </div>
-                     <div onClick={() => setFullScreenTicket(t)} className="bg-slate-900 sm:w-44 w-full p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black transition-colors border-l border-dashed border-white/10">
-                        <div className="bg-white p-1.5 rounded-xl shadow-2xl group-hover:scale-105 transition-transform"><QRCodeSVG value={t.ticketID} size={65} level="H" /></div>
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] text-center">Tap to expand</span>
-                     </div>
-                  </div>
-                ))}
-             </div>
+          <div className="animate-in fade-in duration-500">
+             
+             {/* THE NEW EMPTY STATE LOGIC */}
+             {filteredTickets.length > 0 ? (
+               <div className="space-y-6">
+                 <div className="relative max-w-sm mb-4">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                    <input type="text" placeholder="SEARCH PASSES..." className="w-full p-3.5 pl-12 bg-white border-2 border-salsa-mint/20 rounded-xl outline-none focus:border-salsa-pink font-bold text-[10px] uppercase" onChange={e => setTicketSearch(e.target.value)} />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredTickets.map(t => (
+                      <div key={t.id} className="bg-white rounded-[2.5rem] border-2 border-salsa-mint/10 flex flex-col sm:flex-row shadow-xl overflow-hidden hover:border-salsa-pink/40 transition-all group h-full">
+                         <div className="p-8 flex-grow">
+                            <div className="flex justify-between items-start mb-4">
+                               <span className="bg-salsa-pink/10 text-salsa-pink text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{t.passType}</span>
+                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Pass {t.festivalYear}</span>
+                            </div>
+                            <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-8 leading-none">{t.userName}</h3>
+                            <div className="flex gap-6 pt-6 border-t border-gray-50">
+                               <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Calendar size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[0] || "Valid"}</div>
+                               <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Clock size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[1] || "Pass"}</div>
+                            </div>
+                         </div>
+                         <div onClick={() => setFullScreenTicket(t)} className="bg-slate-900 sm:w-44 w-full p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black transition-colors border-l border-dashed border-white/10">
+                            <div className="bg-white p-1.5 rounded-xl shadow-2xl group-hover:scale-105 transition-transform"><QRCodeSVG value={t.ticketID} size={65} level="H" /></div>
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] text-center">Tap to expand</span>
+                         </div>
+                      </div>
+                    ))}
+                 </div>
+               </div>
+             ) : (
+               // EMPTY STATE UI
+               <div className="w-full border-2 border-dashed border-gray-200 bg-white/50 rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm">
+                 <div className="w-24 h-24 bg-gray-50 border border-gray-100 rounded-[2rem] flex items-center justify-center mb-6 shadow-sm">
+                   <ShoppingBag size={40} className="text-gray-300 stroke-[1.5]" />
+                 </div>
+                 <h3 className="font-bebas text-4xl text-gray-400 tracking-wide uppercase mb-2">No Active Passes</h3>
+                 <p className="text-gray-400 text-xs font-medium mb-6 max-w-sm">
+                   It looks like you haven't secured any passes for {selectedYear} yet.
+                 </p>
+                 <Link href="/tickets" className="text-salsa-pink text-[11px] font-black uppercase tracking-[0.2em] hover:underline transition-all">
+                   Browse Tickets
+                 </Link>
+               </div>
+             )}
           </div>
         )}
 
