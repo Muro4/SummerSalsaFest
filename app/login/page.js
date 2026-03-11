@@ -92,7 +92,7 @@ export default function Login() {
         const snap = await getDocs(q);
 
         if (snap.empty) {
-          throw new Error("No account found with that name.");
+          throw new Error(`No account found with the name "${loginEmail}". (Check exact spelling & capital letters!)`);
         }
         
         // Grab the email associated with that Name
@@ -104,8 +104,15 @@ export default function Login() {
       router.push("/"); 
       
     } catch (err) {
-      // Show custom message if name wasn't found, otherwise show standard invalid credentials
-      setError(err.message === "No account found with that name." ? err.message : "Invalid credentials.");
+      console.error("Login Error details:", err); // <-- This will show the real error in your browser console (F12)
+      
+      // Check if Firebase Security Rules are blocking the read
+      if (err.code === "permission-denied" || err.message.includes("Missing or insufficient permissions")) {
+        setError("Database blocked the search. Please update your Firestore Security Rules.");
+      } else {
+        // Show our custom message, otherwise generic invalid
+        setError(err.message.includes("No account found") ? err.message : "Invalid email or password.");
+      }
     } finally {
       setLoading(false);
     }
