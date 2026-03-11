@@ -14,7 +14,7 @@ export default function AuthModal({ isOpen, onClose, onGuestContinue }) {
             <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3">Choose your checkout method</p>
         </div>
         <div className="space-y-4">
-            <Link href="/signup" className="flex items-center gap-6 p-6 rounded-[2rem] border-2 border-gray-50 hover:border-salsa-pink hover:bg-salsa-pink/5 transition-all group">
+            <Link href="/login" className="flex items-center gap-6 p-6 rounded-[2rem] border-2 border-gray-50 hover:border-salsa-pink hover:bg-salsa-pink/5 transition-all group">
                 <div className="w-12 h-12 bg-salsa-pink/10 rounded-2xl flex items-center justify-center text-salsa-pink group-hover:bg-salsa-pink group-hover:text-white transition-colors"><UserPlus size={24} /></div>
                 <div className="text-left">
                     <p className="font-black text-xs uppercase tracking-widest text-gray-900">Create Account</p>

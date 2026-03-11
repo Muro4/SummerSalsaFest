@@ -1,107 +1,178 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
-import Link from 'next/link';
-import { User, Ticket, LogOut, ChevronDown, ShieldAlert, ShoppingCart, Camera, Settings } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { usePathname, useRouter } from "next/navigation";
+import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [cartCount, setCartCount] = useState(0);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  
+  const dropdownRef = useRef(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  // Check if we are on the landing page
+  const isHome = pathname === "/";
 
+  // Handle scroll effect for background blur (Only needed for Home)
   useEffect(() => {
-    let unsubCart = () => {};
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        const docRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) setUserData(docSnap.data());
-
-        const q = query(collection(db, "tickets"), where("userId", "==", currentUser.uid), where("status", "==", "pending"));
-        unsubCart = onSnapshot(q, (snap) => setCartCount(snap.docs.length));
-      } else {
-        setUserData(null);
-        setCartCount(0);
-        unsubCart();
-      }
-    });
-    return () => { unsubscribeAuth(); unsubCart(); };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  return (
-    <nav className="fixed top-0 w-full z-50 bg-white/100 backdrop-blur-md border-b-2 border-salsa-mint font-montserrat">
-      {/* NEW: The Container Wrapper 
-        max-w-7xl caps the width to a standard professional size (72rem / 1152px)
-        mx-auto centers it on the screen
-        w-full ensures it takes up available space on smaller screens
-        px-6 adds padding so it doesn't touch the edges on mobile
-      */}
-      <div className="max-w-7xl mx-auto w-full px-6 py-3 flex items-center justify-between">
-        
-        {/* 1. CUSTOM LOGO SECTION */}
-        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-          <img 
-            src="/images/logo.png" 
-            className="h-10 w-auto object-contain [filter:drop-shadow(1px_1px_1px_#2e0d1d)]" 
-            alt="Logo"
-          />
-        </Link>
+  // Fetch Auth & Role
+  useEffect(() => {
+    const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        const uDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (uDoc.exists()) {
+          setUserData(uDoc.data());
+        }
+      } else {
+        setUserData(null);
+      }
+    });
+    return () => unsubAuth();
+  }, []);
 
-        {/* 2. NAVIGATION LINKS */}
-        <div className="hidden lg:flex items-center gap-8 text-[10px] font-black text-gray-700 tracking-[0.2em] uppercase">
-          <Link href="/" className="hover:text-salsa-pink transition">Home</Link>
-          <Link href="/tickets" className="hover:text-salsa-pink transition">Prices</Link>
-          <Link href="/info" className="hover:text-salsa-pink transition">Info</Link>
-          <Link href="/gallery" className="hover:text-salsa-pink transition">Gallery</Link>
-          <Link href="/about" className="hover:text-salsa-pink transition">About Us</Link>
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setDropdownOpen(false);
+    router.push("/login");
+  };
+
+  // Determine Nav Background Style
+  const navBackgroundClass = isHome 
+    ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6') 
+    : 'bg-white shadow-sm py-4 border-b border-gray-200'; // 100% Opacity + Contrast border on other pages
+
+  return (
+    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 font-montserrat ${navBackgroundClass}`}>
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        
+        {/* LEFT: LOGO (flex-1 forces equal width as right side for perfect centering) */}
+        <div className="flex-1 flex justify-start items-center">
+          <Link href="/" className="hover:opacity-80 transition-opacity">
+            <img src="/images/logo.png" alt="Salsa Fest Logo" className="h-10 w-auto object-contain" />
+          </Link>
         </div>
 
-        {/* 3. CART & PROFILE SECTION */}
-        <div className="flex items-center gap-4 relative">
+        {/* CENTER: DESKTOP LINKS (Increased contrast to slate-800) */}
+        <div className="hidden md:flex justify-center items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-800">
+          <Link href="/" className="hover:text-salsa-pink transition-colors">Home</Link>
+          <Link href="/tickets" className="hover:text-salsa-pink transition-colors">Prices</Link>
+          <Link href="/info" className="hover:text-salsa-pink transition-colors">Info</Link>
+          <Link href="/gallery" className="hover:text-salsa-pink transition-colors">Gallery</Link>
+          <Link href="/about" className="hover:text-salsa-pink transition-colors">About Us</Link>
+        </div>
+
+        {/* RIGHT: ACTIONS & ICONS */}
+        <div className="flex-1 flex justify-end items-center gap-4">
+          
+          {/* CART ICON - Swapped to ShoppingCart & Only shows if logged in */}
           {user && (
-            <Link href="/cart" className="relative p-2 text-gray-600 hover:text-salsa-pink transition">
-              <ShoppingCart size={22} />
-              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-salsa-pink text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">{cartCount}</span>}
+            <Link href="/cart" className="relative p-2 text-slate-800 hover:text-salsa-pink transition-colors">
+              <ShoppingCart size={20} />
             </Link>
           )}
 
           {user ? (
-            <div className="relative">
-              <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 bg-salsa-white border border-salsa-mint/30 p-1 pr-3 rounded-full hover:bg-white transition shadow-sm">
-                <div className="w-8 h-8 bg-salsa-pink rounded-full flex items-center justify-center text-white font-bold text-xs uppercase">{user.displayName?.[0] || 'U'}</div>
-                <ChevronDown size={14} className={isDropdownOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setDropdownOpen(!dropdownOpen)} 
+                className="w-10 h-10 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-slate-800 hover:bg-salsa-pink hover:text-white hover:border-salsa-pink transition-all shadow-sm cursor-pointer"
+              >
+                <UserIcon size={18} />
               </button>
-              {isDropdownOpen && (
-                <div className="absolute top-12 right-0 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl py-3 z-50 animate-in fade-in slide-in-from-top-2">
-                  {(userData?.role === 'superadmin' || userData?.role === 'admin') && (
-                    <Link href="/admin/scanner" className="flex items-center gap-3 px-4 py-3 text-xs font-black text-emerald-600 hover:bg-emerald-50 transition border-b border-gray-50 mb-1">
-                      <Camera size={16} /> SCANNER
-                    </Link>
-                  )}
-                  {userData?.role === 'superadmin' && (
-                    <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-xs font-black text-salsa-pink hover:bg-salsa-pink/5 border-b border-gray-50 mb-1">
-                      <ShieldAlert size={16} /> ADMIN PANEL
-                    </Link>
-                  )}
-                  <Link href="/account" className="flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-salsa-white transition">
-                    <User size={16} /> MY ACCOUNT
+
+              {/* DROPDOWN MENU */}
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl py-2 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                  
+                  {/* User Info Header */}
+                  <div className="px-5 py-3 border-b border-gray-50 mb-2">
+                    <p className="text-xs font-bold text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">{user.email}</p>
+                  </div>
+                  
+                  {/* COMMON TO ALL USERS */}
+                  <Link href="/account" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-salsa-pink hover:bg-gray-50 transition-colors flex items-center gap-2">
+                    <UserIcon size={20} /> My Account
                   </Link>
-                  <button onClick={() => signOut(auth)} className="w-full mt-2 flex items-center gap-3 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 border-t border-gray-50 transition">
-                    <LogOut size={16} /> LOGOUT
+
+                  {/* AMBASSADOR SPECIFIC */}
+                  {userData?.role === 'ambassador' && (
+                    <Link href="/ambassador" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-salsa-pink hover:bg-salsa-pink/10 transition-colors flex items-center gap-2">
+                      <Shield size={20} />Dashboard
+                    </Link>
+                  )}
+
+                  {/* ADMIN & SUPERADMIN SPECIFIC */}
+                  {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
+                    <Link href="/admin/scanner" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-2">
+                      <QrCode size={20} /> Scanner
+                    </Link>
+                  )}
+
+                  {/* SUPERADMIN ONLY */}
+                  {userData?.role === 'superadmin' && (
+                    <Link href="/admin" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-salsa-pink hover:bg-salsa-pink/10 transition-colors flex items-center gap-2">
+                      <Shield size={20} /> Admin Dashboard
+                    </Link>
+                  )}
+
+                  {/* LOGOUT (ALL USERS) */}
+                  <button onClick={handleSignOut} className="w-full text-left px-5 py-2.5 mt-2 border-t border-gray-50 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer">
+                    <LogOut size={20} /> Sign Out
                   </button>
+
                 </div>
               )}
             </div>
           ) : (
-            <Link href="/login" className="bg-salsa-pink text-white text-[10px] font-black px-6 py-2.5 rounded-lg tracking-widest uppercase">Login</Link>
+            <Link href="/login" className="hidden md:flex bg-slate-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-salsa-pink transition-colors shadow-md">
+              Login
+            </Link>
           )}
+
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-800">
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
-        
       </div>
+
+      {/* MOBILE MENU DROPDOWN */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex flex-col py-4 px-6 gap-4 animate-in slide-in-from-top-4 duration-300">
+          <Link href="/" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Home</Link>
+          <Link href="/tickets" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Prices</Link>
+          <Link href="/info" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Info</Link>
+          <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Gallery</Link>
+          <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">About Us</Link>
+          {!user && <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-salsa-pink mt-4 pt-4 border-t border-gray-50">Login / Sign Up</Link>}
+        </div>
+      )}
     </nav>
   );
 }

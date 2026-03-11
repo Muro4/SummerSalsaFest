@@ -191,15 +191,9 @@ export default function Login() {
         <div className="hidden md:flex flex-col justify-center w-1/2 p-12 absolute left-0 h-full z-10">
           <h1 className="font-bebas text-6xl text-slate-900 mb-2 uppercase text-center tracking-wide">Login</h1>
           
-          <button type="button" onClick={handleGoogleAuth} className="cursor-pointer w-full flex items-center justify-center gap-3 border-2 border-gray-200 py-3 rounded-2xl hover:scale-105 hover:shadow-md transition-all mb-6 font-black tracking-widest text-[10px] uppercase text-slate-800 mt-4 group">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 bg-white rounded-full group-hover:scale-110 transition-transform" alt="google" />
-            Join with Google
-          </button>
           
-          <div className="relative mb-6 text-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative inline-block bg-white px-4 text-[10px] uppercase font-black text-slate-600 tracking-widest">Or use credentials</div>
-          </div>
+          
+          
           
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1">
@@ -227,6 +221,14 @@ export default function Login() {
             <button type="submit" disabled={loading} className="cursor-pointer w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-salsa-pink transition-all tracking-widest text-xs uppercase shadow-xl mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Authenticating..." : "Login"}
             </button>
+            <div className="relative mb-6 text-center">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+            <div className="relative inline-block bg-white px-4 text-[10px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+          </div>
+            <button type="button" onClick={handleGoogleAuth} className="cursor-pointer w-full flex items-center justify-center gap-3 border-2 border-gray-200 py-3 rounded-2xl hover:scale-105 hover:shadow-md transition-all mb-6 font-black tracking-widest text-[10px] uppercase text-slate-800 mt-4 group">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 bg-white rounded-full group-hover:scale-110 transition-transform" alt="google" />
+            Join with Google
+          </button>
           </form>
         </div>
 
@@ -236,15 +238,7 @@ export default function Login() {
         <div className="hidden md:flex flex-col justify-center w-1/2 p-12 absolute right-0 h-full z-10">
           <h1 className="font-bebas text-6xl text-slate-900 mb-2 uppercase text-center tracking-wide">Create Account</h1>
           
-          <button type="button" onClick={handleGoogleAuth} className="cursor-pointer w-full flex items-center justify-center gap-3 border-2 border-gray-200 py-3 rounded-2xl hover:scale-105 hover:shadow-md transition-all mb-6 font-black tracking-widest text-[10px] uppercase text-slate-800 mt-4 group">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 bg-white rounded-full group-hover:scale-110 transition-transform" alt="google" />
-            Join with Google
-          </button>
           
-          <div className="relative mb-6 text-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative inline-block bg-white px-4 text-[10px] uppercase font-black text-slate-600 tracking-widest">Or use email</div>
-          </div>
           
           <form onSubmit={handleSignUp} className="space-y-4">
             <div className="space-y-1">
@@ -274,6 +268,7 @@ export default function Login() {
                 </button>
               </div>
               {isPasswordInvalid && <p className="text-red-500 text-[10px] font-bold mt-1 ml-2 tracking-widest">Password must meet all requirements.</p>}
+              
 
               <div className={`mt-2 bg-gray-50 rounded-xl overflow-hidden border ${isPasswordInvalid ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                 <button type="button" onClick={() => setShowReqs(!showReqs)} className={`cursor-pointer w-full flex items-center justify-between p-3 text-[10px] font-black uppercase tracking-widest transition-colors ${isPasswordInvalid ? 'text-red-500' : 'text-slate-800 hover:text-slate-900'}`}>
@@ -301,6 +296,14 @@ export default function Login() {
             <button type="submit" disabled={loading || !isPasswordValid} className="cursor-pointer w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-salsa-pink transition-all tracking-widest text-xs uppercase shadow-xl mt-2 disabled:opacity-50 disabled:bg-slate-900 disabled:cursor-not-allowed">
               {loading ? "Creating..." : "Sign Up"}
             </button>
+            <div className="relative mb-6 text-center">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+            <div className="relative inline-block bg-white px-4 text-[10px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+          </div>
+            <button type="button" onClick={handleGoogleAuth} className="cursor-pointer w-full flex items-center justify-center gap-3 border-2 border-gray-200 py-3 rounded-2xl hover:scale-105 hover:shadow-md transition-all mb-6 font-black tracking-widest text-[10px] uppercase text-slate-800 mt-4 group">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 bg-white rounded-full group-hover:scale-110 transition-transform" alt="google" />
+            Join with Google
+          </button>
           </form>
         </div>
 
@@ -318,7 +321,7 @@ export default function Login() {
             <div className={`absolute inset-0 flex flex-col items-center justify-center px-12 transition-all duration-700 ${isLogin ? 'opacity-100 translate-x-0 delay-300 pointer-events-auto' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
               <h2 className="font-bebas text-6xl mb-4 tracking-wide text-slate-900">Welcome Back!</h2>
               <p className="font-bold text-slate-800 leading-relaxed mb-8">
-                Don't have an account yet? Sign up to access your tickets, view the schedule, and join the biggest summer festival in the Balkans.
+                Don't have an account yet? Sign up!
               </p>
               <button onClick={toggleMode} className="cursor-pointer border-2 border-slate-900 text-slate-900 font-black px-10 py-4 rounded-2xl hover:bg-teal-600 hover:border-teal-600 hover:text-white active:bg-teal-700 transition-all tracking-widest text-xs uppercase">
                 Sign Up
@@ -328,7 +331,7 @@ export default function Login() {
             <div className={`absolute inset-0 flex flex-col items-center justify-center px-12 transition-all duration-700 ${!isLogin ? 'opacity-100 translate-x-0 delay-300 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
               <h2 className="font-bebas text-6xl mb-4 tracking-wide text-slate-900">Welcome, Dancer!</h2>
               <p className="font-bold text-slate-800 leading-relaxed mb-8">
-                Already registered? Login to your account to view your passes, update your profile, and get ready for the music.
+                Already registered? Login!
               </p>
               <button onClick={toggleMode} className="cursor-pointer border-2 border-slate-900 text-slate-900 font-black px-10 py-4 rounded-2xl hover:bg-teal-600 hover:border-teal-600 hover:text-white active:bg-teal-700 transition-all tracking-widest text-xs uppercase">
                 Login
