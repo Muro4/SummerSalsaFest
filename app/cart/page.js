@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Trash2, ShoppingBag, Lock, Loader2, ArrowRight, CreditCard } from "lucide-react";
+import { usePopup } from "@/components/PopupProvider"; 
+import { Trash2, ShoppingBag, Lock, Loader2, Ticket, ShieldCheck } from "lucide-react";
 
 export default function Cart() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
   const router = useRouter();
+  
+  const { showPopup } = usePopup(); 
 
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(user => {
@@ -24,7 +27,9 @@ export default function Cart() {
           setLoading(false);
         });
         return () => unsub();
-      } else { setLoading(false); }
+      } else { 
+        setLoading(false); 
+      }
     });
     return () => unsubAuth();
   }, []);
@@ -48,87 +53,155 @@ export default function Cart() {
       }
 
       if (data.url) {
-          // Teleport the user to Stripe's secure page
           window.location.href = data.url; 
       } else {
           throw new Error("No URL returned from Stripe.");
       }
 
     } catch (err) {
-      alert("Checkout Error: " + err.message);
+      showPopup({
+        type: "error",
+        title: "Checkout Error",
+        message: err.message,
+        confirmText: "Close"
+      });
       setIsPaying(false);
     }
   };
 
-  const removeItem = async (id) => {
-    if(confirm("Remove this ticket from your cart?")) {
+  // --- CUSTOM POPUP DELETION ---
+  const confirmRemoveItem = (id, userName) => {
+    showPopup({
+      type: "info",
+      title: "Remove Pass?",
+      message: `Are you sure you want to remove the ticket for ${userName}?`,
+      confirmText: "Yes, Remove",
+      cancelText: "Keep It",
+      onConfirm: async () => {
         await deleteDoc(doc(db, "tickets", id));
-    }
+      }
+    });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bebas text-5xl">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-salsa-white">
+        <Loader2 className="animate-spin text-salsa-pink" size={48} />
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-salsa-white font-montserrat">
+    <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
       <Navbar />
-      <div className="pt-40 pb-40 max-w-7xl mx-auto px-6">
+      
+      <div className="flex-grow max-w-7xl mx-auto px-6 w-full pt-40 pb-24">
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
             <div>
-                <h1 className="font-bebas text-7xl md:text-8xl tracking-tighter leading-none text-gray-900 uppercase">Your Cart</h1>
-                <p className="text-gray-400 text-sm font-bold uppercase tracking-[0.2em] mt-2">Review your selections</p>
+                <h1 className="font-bebas text-6xl md:text-8xl tracking-tight leading-none text-slate-900 uppercase">Your Cart</h1>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3">Review your selections</p>
             </div>
-            <div className="bg-white px-6 py-3 rounded-2xl border border-salsa-mint/30 shadow-sm flex items-center gap-3">
-                <ShoppingBag className="text-salsa-pink" size={20} />
-                <span className="font-black text-[10px] uppercase tracking-widest text-gray-600">{items.length} Items</span>
-            </div>
+            {items.length > 0 && (
+              <div className="bg-white px-6 py-3.5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+                  <ShoppingBag className="text-salsa-pink" size={18} />
+                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-700">{items.length} {items.length === 1 ? 'Item' : 'Items'}</span>
+              </div>
+            )}
         </div>
 
         {items.length > 0 ? (
-          <div className="grid lg:grid-cols-12 gap-16">
-            {/* Items List */}
-            <div className="lg:col-span-8 space-y-6">
+          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
+            
+            {/* LEFT COLUMN: ITEMS LIST */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-5">
               {items.map(item => (
-                <div key={item.id} className="bg-white p-8 rounded-[3rem] border-2 border-salsa-mint/10 flex justify-between items-center shadow-xl group">
-                  <div>
-                    <span className="bg-salsa-pink/10 text-salsa-pink text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{item.passType}</span>
-                    <h3 className="text-2xl font-bold mt-2 uppercase">{item.userName}</h3>
+                <div key={item.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group">
+                  
+                  {/* Item Details */}
+                  <div className="flex items-center gap-6 mb-4 md:mb-0">
+                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-salsa-pink/5 group-hover:border-salsa-pink/20 transition-colors">
+                      <Ticket className="text-gray-400 group-hover:text-salsa-pink transition-colors" size={24} />
+                    </div>
+                    <div>
+                      <span className="bg-salsa-pink/10 text-salsa-pink text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">{item.passType}</span>
+                      <h3 className="text-2xl font-black mt-3 uppercase text-slate-900 leading-none tracking-wide">{item.userName}</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Festival Year: {item.festivalYear}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-8">
-                    <p className="font-bebas text-4xl text-gray-900">€{item.price}</p>
-                    <button onClick={() => removeItem(item.id)} className="p-3 text-gray-300 hover:text-red-500 transition"><Trash2 /></button>
+
+                  {/* Price & Actions */}
+                  <div className="flex items-center justify-between w-full md:w-auto gap-8 pt-4 border-t border-gray-50 md:border-none md:pt-0">
+                    <p className="font-bebas text-4xl text-slate-900">€{item.price}</p>
+                    <button 
+                      onClick={() => confirmRemoveItem(item.id, item.userName)} 
+                      className="cursor-pointer w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      title="Remove Item"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Summary Box */}
-            <div className="lg:col-span-4">
-              <div className="bg-white p-10 rounded-[3rem] border-2 border-salsa-mint/20 shadow-2xl sticky top-32">
-                <h2 className="font-bebas text-5xl mb-6 uppercase">Summary</h2>
-                <div className="flex justify-between items-end border-t pt-6 mb-8">
-                    <span className="font-black text-xs uppercase text-gray-400">Total</span>
-                    <span className="font-bebas text-6xl text-salsa-pink">€{total}</span>
+            {/* RIGHT COLUMN: SUMMARY BOX */}
+            <div className="lg:col-span-5 xl:col-span-4">
+              <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-2xl sticky top-32">
+                <h2 className="font-bebas text-5xl mb-8 uppercase text-slate-900 tracking-wide">Summary</h2>
+                
+                {/* Breakdown */}
+                <div className="space-y-4 mb-8">
+                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Subtotal</span>
+                      <span className="text-slate-900 text-sm">€{total}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Processing Fees</span>
+                      <span className="text-gray-400">Calculated next</span>
+                  </div>
                 </div>
+
+                {/* Total */}
+                <div className="flex justify-between items-end border-t border-gray-100 pt-8 mb-8">
+                    <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2">Total Due</span>
+                    <span className="font-bebas text-6xl text-salsa-pink leading-none">€{total}</span>
+                </div>
+
+                {/* Checkout Button */}
                 <button 
                     onClick={handleCheckout} 
                     disabled={isPaying} 
-                    className="w-full bg-gray-900 text-white font-black py-5 rounded-2xl hover:bg-salsa-pink transition flex items-center justify-center gap-3 text-xs uppercase tracking-widest disabled:opacity-50"
+                    className="cursor-pointer w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest shadow-xl disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 disabled:cursor-not-allowed"
                 >
-                    {isPaying ? <Loader2 className="animate-spin" /> : <><Lock size={18}/> Pay Securely</>}
+                    {isPaying ? <Loader2 className="animate-spin" /> : <><Lock size={16}/> Proceed to Pay</>}
                 </button>
+
+                {/* Secure Checkout Badge */}
+                <div className="mt-6 flex items-center justify-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                  <ShieldCheck size={14} className="text-emerald-500" /> Secure encrypted checkout
+                </div>
               </div>
             </div>
+
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-salsa-mint/20">
-              <ShoppingBag className="mx-auto text-gray-200 mb-4" size={64}/>
-              <p className="font-bebas text-3xl text-gray-400 uppercase">Cart is empty</p>
-              <Link href="/tickets" className="text-salsa-pink font-bold underline mt-4 inline-block tracking-widest uppercase text-xs">Browse Tickets</Link>
+          
+          /* EMPTY STATE */
+          <div className="w-full border-2 border-dashed border-salsa-mint/40 bg-[#f4fdfb] rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm animate-in fade-in duration-500">
+            <div className="mb-6">
+              <ShoppingBag size={56} className="text-slate-300 stroke-[1.5]" />
+            </div>
+            <h3 className="font-bebas text-4xl text-slate-400 tracking-wide uppercase mb-4">Cart is empty</h3>
+            <Link href="/tickets" className="text-salsa-pink text-[11px] font-black uppercase tracking-[0.2em] hover:underline transition-all">
+              Browse Tickets
+            </Link>
           </div>
+
         )}
       </div>
+      
       <Footer />
     </main>
   );

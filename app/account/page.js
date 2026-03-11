@@ -5,7 +5,6 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, setDoc } fro
 import { useRouter } from "next/navigation";
 import Link from "next/link"; // <-- Don't forget this import!
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { 
   Ticket, QrCode, Settings, Plus, Trash2, Users, 
   Loader2, Search, Calendar, Clock, X, Maximize2, History, CheckCircle, CreditCard, ShoppingBag
@@ -289,7 +288,6 @@ export default function AccountPage() {
         )}
 
       </div>
-      <Footer />
     </main>
   );
 }

@@ -4,9 +4,8 @@ import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import AuthModal from "@/components/AuthModal";
-import { usePopup } from "@/components/PopupProvider"; // <-- Added the custom popup hook
+import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2 } from "lucide-react";
 
 const PASSES = [
@@ -26,7 +25,13 @@ export default function TicketPage() {
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
-  const { showPopup } = usePopup(); // <-- Initialized the popup hook
+  const { showPopup } = usePopup();
+
+  // --- NAME VALIDATION ---
+  // Allows letters (including accents), spaces, hyphens, and apostrophes.
+  const isValidNameChars = /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(realName);
+  const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
+  const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -39,13 +44,11 @@ export default function TicketPage() {
   }, [auth.currentUser]);
 
   const handleProceedToDetails = async () => {
-    // 1. Guest Check
     if (!auth.currentUser && !isGuest) { 
       setShowModal(true); 
       return; 
     }
     
-    // 2. Ticket Limit Check (Only 1 per standard user)
     if (auth.currentUser && userData?.role !== 'ambassador') {
       setLoading(true);
       const q = query(
@@ -57,7 +60,6 @@ export default function TicketPage() {
       
       if (!snap.empty) {
         setLoading(false);
-        // Using our gorgeous custom popup instead of the browser alert
         showPopup({
           type: "info",
           title: "Limit Reached",
@@ -67,12 +69,11 @@ export default function TicketPage() {
             router.push("/account"); 
           }
         });
-        return; // Stops them from going to step 2
+        return;
       }
       setLoading(false);
     }
     
-    // 3. Move to Step 2
     setStep(2);
   };
 
@@ -86,8 +87,8 @@ export default function TicketPage() {
       }
       await addDoc(collection(db, "tickets"), {
         userId: currentID,
-        userName: realName.toUpperCase(),
-        guestEmail: isGuest ? guestEmail.toLowerCase() : (auth.currentUser?.email || ""),
+        userName: realName.trim().toUpperCase(),
+        guestEmail: isGuest ? guestEmail.trim().toLowerCase() : (auth.currentUser?.email || ""),
         isGuest, 
         passType: selected.name, 
         price: selected.price, 
@@ -98,7 +99,6 @@ export default function TicketPage() {
       });
       router.push("/cart");
     } catch (e) { 
-      // Replaced the ugly alert here as well!
       showPopup({
         type: "error",
         title: "Purchase Error",
@@ -116,15 +116,20 @@ export default function TicketPage() {
       
       <div className="flex-grow flex flex-col justify-center items-center w-full pt-28 pb-12 px-6">
         
-        {/* PROGRESS BAR */}
+        {/* PROGRESS BAR (Restored with checkpoint dots!) */}
         <div className="w-full max-w-xl mb-8">
-          <div className="flex justify-between mb-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="flex justify-between mb-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">
               <span className={step >= 1 ? "text-salsa-pink transition-colors duration-500" : ""}>Step 1</span>
               <span className={step >= 2 ? "text-salsa-pink transition-colors duration-500" : ""}>Step 2</span>
               <span className={step >= 3 ? "text-salsa-pink transition-colors duration-500" : ""}>Checkout</span>
           </div>
-          <div className="relative h-1.5 bg-gray-200/50 rounded-full overflow-hidden">
+          <div className="relative h-1 bg-gray-200 rounded-full">
             <div className="absolute top-0 left-0 h-full bg-salsa-pink transition-all duration-700 rounded-full" style={{ width: `${step === 1 ? '0%' : step === 2 ? '50%' : '100%'}` }}></div>
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full flex justify-between">
+              {[1, 2, 3].map((num) => (
+                <div key={num} className={`w-3.5 h-3.5 rounded-full border-2 transition-all duration-700 ${step >= num ? 'bg-white border-salsa-pink' : 'bg-white border-gray-200'}`}></div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -169,7 +174,7 @@ export default function TicketPage() {
             <button 
               onClick={handleProceedToDetails} 
               disabled={!selected || loading} 
-              className="group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[10px] uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+              className="cursor-pointer group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[10px] uppercase disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {loading ? <Loader2 className="animate-spin" /> : <>NEXT STEP <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
             </button>
@@ -199,10 +204,27 @@ export default function TicketPage() {
                   
                   <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Full Name (As per ID)</label>
-                      <input type="text" placeholder="E.G. IVAN GEORGIEV" required className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-salsa-pink focus:ring-2 ring-salsa-pink/30 font-bold uppercase text-sm transition-all text-slate-900" onChange={e => setRealName(e.target.value)} />
+                      <input 
+                        type="text" 
+                        placeholder="E.G. IVAN GEORGIEV" 
+                        required 
+                        className={`w-full p-3.5 bg-gray-50 border rounded-2xl outline-none focus:bg-white focus:ring-2 font-bold uppercase text-sm transition-all text-slate-900
+                          ${isNameInvalid ? 'border-red-400 focus:border-red-500 ring-red-500/30' : 'border-gray-200 focus:border-salsa-pink ring-salsa-pink/30'}`} 
+                        onChange={e => setRealName(e.target.value)} 
+                      />
+                      {/* Name Validation Error Message */}
+                      {isNameInvalid && (
+                        <p className="text-red-500 text-[10px] font-bold mt-1 ml-2 tracking-widest">
+                          {!isWithinWordLimit ? "Maximum 5 words allowed." : "Only letters, spaces, hyphens, and apostrophes."}
+                        </p>
+                      )}
                   </div>
                   
-                  <button onClick={handleAddToCart} disabled={!realName || (isGuest && !guestEmail) || loading} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[10px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6">
+                  <button 
+                    onClick={handleAddToCart} 
+                    disabled={!realName || isNameInvalid || (isGuest && !guestEmail) || loading} 
+                    className="cursor-pointer w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[10px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
+                  >
                       {loading ? <Loader2 className="animate-spin" /> : <>Add to Cart</>}
                   </button>
                 </div>
@@ -210,8 +232,6 @@ export default function TicketPage() {
           </div>
         )}
       </div>
-
-      <Footer />
     </main>
   );
 }
