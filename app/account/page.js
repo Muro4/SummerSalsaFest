@@ -1,14 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, setDoc } from "firebase/firestore";
+import { updateProfile, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { doc, getDoc, collection, query, where, onSnapshot, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // <-- Don't forget this import!
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { usePopup } from "@/components/PopupProvider";
 import { 
-  Ticket, QrCode, Settings, Plus, Trash2, Users, 
-  Loader2, Search, Calendar, Clock, X, Maximize2, History, CheckCircle, CreditCard, ShoppingBag
-} from "lucide-react"; // <-- Added ShoppingBag here
+  Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag, 
+  User as UserIcon, Mail, Shield, LogOut, Key, Edit2, Save
+} from "lucide-react"; 
 import { QRCodeSVG } from "qrcode.react";
 
 export default function AccountPage() {
@@ -17,38 +19,41 @@ export default function AccountPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Updated default to 2026
-  const [selectedYear, setSelectedYear] = useState("2026");
+  // Settings State
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [resetCooldown, setResetCooldown] = useState(0); // <-- New state for the 60s timer
   
-  // Search States
+  const [selectedYear, setSelectedYear] = useState("2026");
   const [ticketSearch, setTicketSearch] = useState("");
-  const [rosterSearch, setRosterSearch] = useState("");
-  const [historySearch, setHistorySearch] = useState("");
-
-  // Full Screen Modal State
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
 
-  // Ambassador Group Persistence State
-  const [groupRows, setGroupRows] = useState([{ id: Date.now(), name: "", type: "Full Pass" }]);
   const router = useRouter();
+  const { showPopup } = usePopup();
+
+  // --- COOLDOWN TIMER LOGIC ---
+  useEffect(() => {
+    let timer;
+    if (resetCooldown > 0) {
+      timer = setInterval(() => {
+        setResetCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resetCooldown]);
 
   useEffect(() => {
     let unsubTickets = () => {};
 
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // 1. Fetch User Data
         const uDoc = await getDoc(doc(db, "users", user.uid));
-        const profile = uDoc.data();
-        setUserData(profile);
-        
-        // 2. If Ambassador, fetch persistent roster
-        if (profile?.role === 'ambassador') {
-            const rosterDoc = await getDoc(doc(db, "rosters", user.uid));
-            if (rosterDoc.exists()) setGroupRows(rosterDoc.data().members || []);
+        if (uDoc.exists()) {
+            const profile = uDoc.data();
+            setUserData(profile);
+            setEditNameValue(profile.displayName || "");
         }
-
-        // 3. Listen to Active Tickets
+        
         const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
         unsubTickets = onSnapshot(q, (snap) => {
           setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -64,57 +69,57 @@ export default function AccountPage() {
     return () => { unsubAuth(); unsubTickets(); };
   }, [router]);
 
-  // --- AMBASSADOR LOGIC (ID-BASED) ---
-  const saveRoster = async (newRows) => {
-    setGroupRows(newRows);
-    if (auth.currentUser) {
-        await setDoc(doc(db, "rosters", auth.currentUser.uid), { members: newRows });
+  // --- SETTINGS ACTIONS ---
+  const handleUpdateName = async () => {
+    if (!editNameValue.trim()) return;
+    setLoading(true);
+    try {
+      await updateProfile(auth.currentUser, { displayName: editNameValue });
+      await setDoc(doc(db, "users", auth.currentUser.uid), { displayName: editNameValue }, { merge: true });
+      setUserData(prev => ({ ...prev, displayName: editNameValue }));
+      setIsEditingName(false);
+      showPopup({ type: "success", title: "Saved!", message: "Your profile name has been updated.", confirmText: "Awesome" });
+    } catch (e) {
+      showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
+    }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      await sendPasswordResetEmail(auth, userData.email);
+      setResetCooldown(60); // Start the 60-second countdown
+      showPopup({ 
+        type: "success", 
+        title: "Email Sent", 
+        message: "Check your inbox (and your Spam/Junk folder) for a secure link to reset your password. If you didn't receive it, you can request a new one in 60 seconds.", 
+        confirmText: "Got It" 
+      });
+    } catch (e) {
+      showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
     }
   };
 
-  const addRow = () => saveRoster([...groupRows, { id: Date.now(), name: "", type: "Full Pass" }]);
-  const removeRow = (id) => saveRoster(groupRows.filter(row => row.id !== id));
-  const updateRow = (id, field, value) => {
-    const updatedRows = groupRows.map(row => row.id === id ? { ...row, [field]: value } : row);
-    saveRoster(updatedRows);
-  };
-
-  const submitGroupToCart = async () => {
-    setLoading(true);
-    const prices = { "Full Pass": 150, "Party Pass": 80, "Day Pass": 60 };
-    try {
-      for (const person of groupRows) {
-        if (!person.name) continue;
-        await addDoc(collection(db, "tickets"), {
-          userId: auth.currentUser.uid,
-          userName: person.name.toUpperCase(),
-          passType: person.type,
-          price: prices[person.type],
-          status: "pending",
-          festivalYear: 2026, // Updated to 2026
-          purchaseDate: new Date().toISOString(),
-          purchaseFormatted: `${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`,
-          ticketID: "GRP" + Math.random().toString(36).substring(2, 7).toUpperCase()
-        });
+  const handleSignOut = () => {
+    showPopup({
+      type: "info",
+      title: "Sign Out?",
+      message: "Are you sure you want to log out of your account?",
+      confirmText: "Yes, Sign Out",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        await signOut(auth);
+        router.push("/");
       }
-      router.push("/cart");
-    } catch (e) { alert(e.message); setLoading(false); }
+    });
   };
 
-  // --- FILTERING ---
   const filteredTickets = tickets.filter(t => 
     t.festivalYear?.toString() === selectedYear && 
     (t.userName?.toLowerCase().includes(ticketSearch.toLowerCase()) || t.ticketID?.toLowerCase().includes(ticketSearch.toLowerCase()))
   );
 
-  const filteredHistory = tickets.filter(t => 
-    t.festivalYear?.toString() === selectedYear &&
-    (t.userName?.toLowerCase().includes(historySearch.toLowerCase()) || t.ticketID?.toLowerCase().includes(historySearch.toLowerCase()))
-  );
-
-  const filteredGroupRows = groupRows.filter(r => r.name?.toLowerCase().includes(rosterSearch.toLowerCase()));
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-salsa-pink" size={48}/></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48}/></div>;
 
   return (
     <main className="min-h-screen bg-salsa-white pt-32 pb-20 font-montserrat">
@@ -125,7 +130,7 @@ export default function AccountPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setFullScreenTicket(null)}></div>
           <div className="relative bg-white w-full max-w-sm rounded-[3rem] p-10 flex flex-col items-center text-center shadow-2xl animate-in zoom-in duration-300">
-            <button onClick={() => setFullScreenTicket(null)} className="absolute -top-14 right-0 text-white hover:text-salsa-pink transition"><X size={32} /></button>
+            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-14 right-0 text-white hover:text-salsa-pink transition"><X size={32} /></button>
             <div className="bg-salsa-white p-6 rounded-[2rem] mb-8 shadow-inner border border-gray-100">
                <QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" />
             </div>
@@ -144,14 +149,13 @@ export default function AccountPage() {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
            <div>
-              <h1 className="font-bebas text-7xl uppercase tracking-tighter leading-none text-gray-900">My Account</h1>
-              <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and group</p>
+              <h1 className="font-bebas text-7xl uppercase tracking-tighter leading-none text-slate-900">My Account</h1>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p>
            </div>
-           {activeTab !== 'settings' && (
+           {activeTab === 'tickets' && (
               <div className="flex flex-col items-end">
-                <label className="text-[9px] font-black text-gray-500 uppercase mb-2 tracking-widest">Event Archive</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
                 <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-white border-2 border-salsa-mint/30 p-2.5 px-6 rounded-xl text-xs font-black uppercase outline-none shadow-sm cursor-pointer hover:border-salsa-pink transition-all">
-                    {/* ADDED 2026 ARCHIVE OPTION */}
                     <option value="2026">Varna 2026</option>
                     <option value="2025">Archive 2025</option>
                     <option value="2024">Archive 2024</option>
@@ -162,21 +166,13 @@ export default function AccountPage() {
 
         {/* TABS */}
         <div className="flex gap-3 mb-12 bg-white p-2 rounded-2xl w-fit border border-gray-100 shadow-sm overflow-x-auto no-scrollbar">
-           <button onClick={() => setActiveTab("tickets")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'tickets' ? 'bg-salsa-pink text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}><Ticket size={14}/> Active Passes</button>
-           {userData?.role === 'ambassador' && (
-             <>
-               <button onClick={() => setActiveTab("group")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'group' ? 'bg-salsa-mint text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}><Users size={14}/> Manage Group</button>
-               <button onClick={() => setActiveTab("history")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'history' ? 'bg-gray-800 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}><History size={14}/> Paid Roster</button>
-             </>
-           )}
-           <button onClick={() => setActiveTab("settings")} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-salsa-pink text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}><Settings size={14}/> Settings</button>
+           <button onClick={() => setActiveTab("tickets")} className={`cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'tickets' ? 'bg-salsa-pink text-white shadow-lg' : 'text-slate-500 hover:bg-gray-50'}`}><Ticket size={14}/> Active Passes</button>
+           <button onClick={() => setActiveTab("settings")} className={`cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-salsa-pink text-white shadow-lg' : 'text-slate-500 hover:bg-gray-50'}`}><Settings size={14}/> Settings</button>
         </div>
 
         {/* TAB 1: TICKETS GRID */}
         {activeTab === "tickets" && (
           <div className="animate-in fade-in duration-500">
-             
-             {/* THE NEW EMPTY STATE LOGIC */}
              {filteredTickets.length > 0 ? (
                <div className="space-y-6">
                  <div className="relative max-w-sm mb-4">
@@ -189,12 +185,12 @@ export default function AccountPage() {
                          <div className="p-8 flex-grow">
                             <div className="flex justify-between items-start mb-4">
                                <span className="bg-salsa-pink/10 text-salsa-pink text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{t.passType}</span>
-                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Pass {t.festivalYear}</span>
+                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pass {t.festivalYear}</span>
                             </div>
-                            <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-8 leading-none">{t.userName}</h3>
+                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter mb-8 leading-none">{t.userName}</h3>
                             <div className="flex gap-6 pt-6 border-t border-gray-50">
-                               <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Calendar size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[0] || "Valid"}</div>
-                               <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest"><Clock size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[1] || "Pass"}</div>
+                               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Calendar size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[0] || "Valid"}</div>
+                               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Clock size={14} className="text-salsa-mint" /> {t.purchaseFormatted?.split(' at ')[1] || "Pass"}</div>
                             </div>
                          </div>
                          <div onClick={() => setFullScreenTicket(t)} className="bg-slate-900 sm:w-44 w-full p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black transition-colors border-l border-dashed border-white/10">
@@ -206,13 +202,12 @@ export default function AccountPage() {
                  </div>
                </div>
              ) : (
-               // EMPTY STATE UI
                <div className="w-full border-2 border-dashed border-gray-200 bg-white/50 rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm">
                  <div className="w-24 h-24 bg-gray-50 border border-gray-100 rounded-[2rem] flex items-center justify-center mb-6 shadow-sm">
                    <ShoppingBag size={40} className="text-gray-300 stroke-[1.5]" />
                  </div>
-                 <h3 className="font-bebas text-4xl text-gray-400 tracking-wide uppercase mb-2">No Active Passes</h3>
-                 <p className="text-gray-400 text-xs font-medium mb-6 max-w-sm">
+                 <h3 className="font-bebas text-4xl text-slate-400 tracking-wide uppercase mb-2">No Active Passes</h3>
+                 <p className="text-slate-400 text-xs font-medium mb-6 max-w-sm">
                    It looks like you haven't secured any passes for {selectedYear} yet.
                  </p>
                  <Link href="/tickets" className="text-salsa-pink text-[11px] font-black uppercase tracking-[0.2em] hover:underline transition-all">
@@ -223,67 +218,93 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* TAB 2: MANAGE GROUP */}
-        {activeTab === "group" && (
-           <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-[2rem] border-2 border-salsa-mint/20 gap-4">
-                <div className="relative w-full md:w-80">
-                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16}/>
-                   <input type="text" placeholder="FILTER DRAFT..." className="w-full p-3.5 pl-12 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 ring-salsa-mint font-bold text-[10px] uppercase" onChange={e => setRosterSearch(e.target.value)} />
-                </div>
-                <button onClick={addRow} className="w-full md:w-auto bg-gray-900 text-white px-8 py-3.5 rounded-xl font-black text-[9px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink transition-all shadow-lg tracking-widest">
-                   <Plus size={16}/> Add New Row
-                </button>
-              </div>
-              <div className="bg-white rounded-[2.5rem] border-2 border-salsa-mint/10 overflow-hidden shadow-2xl">
-                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-[10px] font-black uppercase text-gray-400 tracking-widest border-b">
-                       <tr><th className="p-8">Legal Name (As Per ID)</th><th className="p-8">Pass Selection</th><th className="p-8 text-right">Action</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                       {filteredGroupRows.map((row) => (
-                         <tr key={row.id} className="hover:bg-salsa-mint/5 transition-colors">
-                            <td className="p-4"><input type="text" value={row.name} placeholder="E.G. IVAN GEORGIEV" onChange={(e) => updateRow(row.id, 'name', e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 ring-salsa-mint/10 font-bold uppercase text-[10px]" /></td>
-                            <td className="p-4"><select value={row.type} onChange={(e) => updateRow(row.id, 'type', e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl font-black text-[9px] uppercase outline-none cursor-pointer"><option value="Full Pass">Full Pass - €150</option><option value="Party Pass">Party Pass - €80</option><option value="Day Pass">Day Pass - €60</option></select></td>
-                            <td className="p-8 text-right"><button onClick={() => removeRow(row.id)} className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={18}/></button></td>
-                         </tr>
-                       ))}
-                    </tbody>
-                 </table>
-                 <div className="p-10 bg-gray-50/50 text-center border-t border-gray-100">
-                    <button onClick={submitGroupToCart} disabled={groupRows.some(r => !r.name)} className="bg-salsa-pink text-white font-black px-12 py-5 rounded-2xl shadow-xl hover:scale-105 transition-all tracking-[0.2em] text-[10px] uppercase flex items-center justify-center gap-4 mx-auto disabled:opacity-20">Send Group to Cart <CreditCard size={18}/></button>
-                 </div>
-              </div>
-           </div>
-        )}
-
-        {/* TAB 3: HISTORY */}
-        {activeTab === "history" && (
-           <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="relative max-w-sm"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} /><input type="text" placeholder="FIND PAID ATTENDEES..." className="w-full p-3.5 pl-12 bg-white border-2 border-salsa-mint rounded-xl font-bold text-[10px] uppercase" onChange={e => setHistorySearch(e.target.value)} /></div>
-              <div className="bg-white rounded-[2.5rem] border-2 border-gray-100 overflow-hidden shadow-sm">
-                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-[10px] font-black uppercase text-gray-400 border-b">
-                       <tr><th className="p-6">Name</th><th className="p-6">ID Ref</th><th className="p-6">Pass Type</th><th className="p-6 text-right">Status</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 uppercase text-[10px] font-bold">
-                       {filteredHistory.map(t => (
-                         <tr key={t.id}><td className="p-6">{t.userName}</td><td className="p-6 font-mono text-salsa-pink">{t.ticketID}</td><td className="p-6 text-gray-400">{t.passType}</td><td className="p-6 text-right flex items-center justify-end gap-2 text-emerald-600"><CheckCircle size={14}/> PAID</td></tr>
-                       ))}
-                    </tbody>
-                 </table>
-              </div>
-           </div>
-        )}
-
-        {/* TAB 4: SETTINGS */}
+        {/* TAB 2: SETTINGS (UPGRADED TO SIDE-BY-SIDE GRID) */}
         {activeTab === "settings" && (
-           <div className="max-w-xl bg-white p-10 rounded-[3rem] border-2 border-salsa-mint/20 shadow-xl animate-in zoom-in duration-500">
-              <h2 className="font-bebas text-5xl mb-8 uppercase">Profile</h2>
-              <div className="space-y-3 font-bold text-[10px] uppercase text-gray-600">
-                 <div className="p-5 bg-gray-50 rounded-2xl flex justify-between items-center border border-gray-100"><span className="text-gray-400">Account Holder</span><span>{userData?.displayName}</span></div>
-                 <div className="p-5 bg-gray-50 rounded-2xl flex justify-between items-center border border-gray-100"><span className="text-gray-400">Role</span><span className="text-salsa-pink">{userData?.role}</span></div>
+           <div className="grid lg:grid-cols-2 gap-8 max-w-6xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Left Column: Profile Details */}
+              <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-xl relative overflow-hidden h-fit">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900 tracking-wide">Profile Details</h2>
+                
+                <div className="space-y-4">
+                  
+                  {/* Name Row */}
+                  <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-salsa-mint"><UserIcon size={18}/></div>
+                      <div>
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Account Holder</span>
+                        {isEditingName ? (
+                          <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-salsa-mint/30 rounded-lg px-3 py-1 outline-none focus:ring-2 ring-salsa-mint/20 text-xs font-bold uppercase text-slate-900 w-full max-w-[200px]" autoFocus />
+                        ) : (
+                          <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>
+                        )}
+                      </div>
+                    </div>
+                    {isEditingName ? (
+                      <button onClick={handleUpdateName} className="cursor-pointer bg-salsa-mint text-white text-[10px] font-black uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-teal-500 transition-colors shadow-md flex items-center gap-2 justify-center"><Save size={14}/> Save</button>
+                    ) : (
+                      <button onClick={() => setIsEditingName(true)} className="cursor-pointer text-slate-400 hover:text-salsa-mint text-[10px] font-black uppercase tracking-widest px-4 py-2 flex items-center gap-2 justify-center transition-colors"><Edit2 size={14}/> Edit</button>
+                    )}
+                  </div>
+
+                  {/* Email Row (Read Only) */}
+                  <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18}/></div>
+                      <div>
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Address</span>
+                        <span className="text-xs font-bold text-slate-900">{userData?.email}</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest self-start sm:self-auto">Verified</span>
+                  </div>
+
+                  {/* Role Row */}
+                  <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-salsa-pink"><Shield size={18}/></div>
+                      <div>
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Account Role</span>
+                        <span className="text-xs font-bold uppercase text-salsa-pink">{userData?.role}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
+
+              {/* Right Column: Security & Danger Zone */}
+              <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-xl h-fit">
+                <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900 tracking-wide">Security</h2>
+                
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <button 
+                    onClick={handleResetPassword} 
+                    disabled={resetCooldown > 0}
+                    className={`cursor-pointer flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all group
+                      ${resetCooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300 hover:bg-white'}`}
+                  >
+                    <div className={`w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 transition-colors
+                      ${resetCooldown > 0 ? 'text-gray-400' : 'text-slate-600 group-hover:text-slate-900'}`}
+                    >
+                      <Key size={18}/>
+                    </div>
+                    <span className={`text-xs font-bold uppercase mb-1 ${resetCooldown > 0 ? 'text-gray-500' : 'text-slate-900'}`}>
+                      {resetCooldown > 0 ? `Send Again (${resetCooldown}s)` : "Reset Password"}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500 text-left">Send a recovery link to your email</span>
+                  </button>
+
+                  <button onClick={handleSignOut} className="cursor-pointer flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:bg-red-50 hover:border-red-200 transition-all group">
+                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-red-400 group-hover:text-red-500 mb-4 transition-colors"><LogOut size={18}/></div>
+                    <span className="text-xs font-bold uppercase text-red-600 mb-1">Sign Out</span>
+                    <span className="text-[10px] font-medium text-red-400/80">Log out of your device</span>
+                  </button>
+                </div>
+              </div>
+
            </div>
         )}
 
