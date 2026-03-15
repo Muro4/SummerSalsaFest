@@ -211,7 +211,7 @@ export default function Home() {
       <section className="py-32 bg-gray-50 relative overflow-hidden">
         <div className="text-center mb-16 px-6 relative z-10">
           <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em]">Testimonials</span>
-          <h2 className="font-modak text-5xl md:text-6xl mt-4 uppercase text-gray-900">What Dancers Say</h2>
+          <h2 className="font-modak text-5xl md:text-6xl mt-4 text-gray-900">What Dancers Say</h2>
         </div>
         
         <div className="relative max-w-[100vw] mx-auto group">
@@ -262,7 +262,7 @@ export default function Home() {
 
       {/* 5. CALL TO ACTION */}
       <section className="py-32 px-6 text-center bg-salsa-white text-gray-900">
-        <h2 className="font-modak text-6xl md:text-8xl mb-8 leading-none uppercase">DON&apos;T MISS OUT!</h2>
+        <h2 className="font-modak text-6xl md:text-8xl mb-8 leading-none">DON&apos;T MISS OUT!</h2>
         <p className="max-w-xl mx-auto mb-12 text-xl font-medium opacity-80 leading-relaxed">
           Join thousands of dancers from around the world in Varna. Secure your pass today!
         </p>

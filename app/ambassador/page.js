@@ -290,51 +290,53 @@ export default function AmbassadorDashboard() {
   };
 
   const handleSendTicketEmail = async () => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!recipientEmail || !emailRegex.test(recipientEmail)) {
-    showPopup({ type: "error", title: "Invalid Email", message: "Please enter a valid email address.", confirmText: "Try Again" });
-    return;
-  }
-  
-  setSendingEmail(true);
-
-  // --- 1. SILENTLY GENERATE THE PDF ---
-  const element = document.getElementById("ticket-to-download");
-  const controls = document.getElementById("ticket-controls");
-  const dlIcon = document.getElementById("download-icon-btn");
-  
-  if (controls) controls.style.display = 'none';
-  if (dlIcon) dlIcon.style.display = 'none';
-
-  let pdfBase64 = "";
-
-  try {
-    const dataUrl = await toPng(element, { 
-      quality: 1, 
-      pixelRatio: 3, 
-      backgroundColor: "#ffffff", 
-      skipFonts: true, 
-      style: { boxShadow: "none" }
-    });
-
-    const { width, height } = element.getBoundingClientRect();
-    const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] }); 
-    pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!recipientEmail || !emailRegex.test(recipientEmail)) {
+      showPopup({ type: "error", title: "Invalid Email", message: "Please enter a valid email address.", confirmText: "Try Again" });
+      return;
+    }
     
-    // Instead of saving, output as a base64 string
-    pdfBase64 = pdf.output('datauristring'); 
-  } catch (err) {
-    showPopup({ type: "error", title: "PDF Error", message: "Failed to generate ticket attachment.", confirmText: "Close" });
-    setSendingEmail(false);
-    return;
-  } finally {
+    setSendingEmail(true);
+
+    const element = document.getElementById("ticket-to-download");
+    const controls = document.getElementById("ticket-controls");
+    const dlIcon = document.getElementById("download-icon-btn");
+    
+    if (controls) controls.style.display = 'none';
+    if (dlIcon) dlIcon.style.display = 'none';
+
+    let pdfBase64 = "";
+
+    try {
+      const { width, height } = element.getBoundingClientRect();
+      
+      // OPTIMIZATION 1: Lowered pixelRatio to 2. Faster generation, smaller payload.
+      const dataUrl = await toPng(element, { 
+        quality: 0.9, 
+        pixelRatio: 2, 
+        backgroundColor: "#ffffff", 
+        skipFonts: true, 
+        style: { boxShadow: "none" } 
+      });
+
+      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] }); 
+      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
+      pdfBase64 = pdf.output('datauristring'); 
+    } catch (err) {
+      showPopup({ type: "error", title: "PDF Error", message: "Failed to generate ticket attachment.", confirmText: "Close" });
+      setSendingEmail(false);
+      if (controls) controls.style.display = ''; 
+      if (dlIcon) dlIcon.style.display = ''; 
+      return;
+    } 
+    
+    // Restore UI immediately after PDF generation is done
     if (controls) controls.style.display = ''; 
     if (dlIcon) dlIcon.style.display = ''; 
-  }
 
-  // --- 2. SEND TO BACKEND ---
-  try {
-    const response = await fetch("/api/send-ticket", {
+    // OPTIMIZATION 2: Fire and Forget API Call
+    // We launch the fetch request but DO NOT 'await' it to finish before moving on.
+    fetch("/api/send-ticket", {
       method: "POST", 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -342,27 +344,28 @@ export default function AmbassadorDashboard() {
         ticket: fullScreenTicket,
         pdfAttachment: pdfBase64 
       })
+    }).catch(error => {
+      console.error("🚨 BACKGROUND EMAIL ERROR:", error);
     });
-    
-    // 👇 NEW: This will catch the exact error message from the backend
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("🚨 BACKEND ERROR:", response.status, errorText);
-      throw new Error(errorText || "Failed to send email");
-    }
 
-    await updateDoc(doc(db, "tickets", fullScreenTicket.id), { emailSentCount: (fullScreenTicket.emailSentCount || 0) + 1 });
+    // INSTANT UI UPDATE
+    // Update Firebase in the background so the user doesn't wait
+    updateDoc(doc(db, "tickets", fullScreenTicket.id), { emailSentCount: (fullScreenTicket.emailSentCount || 0) + 1 }).catch(console.error);
+    
+    // Instantly update the local state to show +1 email sent
     setFullScreenTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
 
-    showPopup({ type: "success", title: "Sent!", message: `The ticket was successfully sent to ${recipientEmail}.`, confirmText: "Awesome" });
+    // Replaced "Awesome" with "Done" and tweaked messaging to reflect queuing
+    showPopup({ 
+      type: "success", 
+      title: "Sent!", 
+      message: `The ticket to ${recipientEmail} has been queued and will arrive shortly.`, 
+      confirmText: "Done" 
+    });
+    
     setRecipientEmail(""); 
-  } catch (error) {
-    console.error("🚨 CATCH ERROR:", error);
-    showPopup({ type: "error", title: "Delivery Failed", message: error.message || "Could not connect to the email server.", confirmText: "Close" });
-  } finally { 
     setSendingEmail(false); 
-  }
-};
+  };
 
   const getTicketNameSize = (name) => {
     if (!name) return "text-3xl md:text-4xl";
@@ -771,8 +774,8 @@ export default function AmbassadorDashboard() {
                         <th className="p-6 pl-10 font-bold">Attendee Name</th>
                         <th className="p-6 font-bold">Pass Type</th>
                         <th className="p-6 font-bold text-right w-32">Price</th>
-                        <th className="p-6 font-bold text-center">Emailed</th>
-                        <th className="p-6 pr-10 text-right font-bold">Status</th>
+                        <th className="p-6 pl-16 font-bold text-center">Emailed</th>
+                        <th className="p-6 pr-24 text-right font-bold">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 uppercase text-xs font-bold text-slate-900">
@@ -792,7 +795,7 @@ export default function AmbassadorDashboard() {
                           <td className="p-6 text-[15px] font-montserrat font-semibold text-slate-900 tracking-wide text-right align-middle">
                             €{t.price}
                           </td>
-                          <td className="p-6 text-center align-middle font-montserrat">
+                          <td className="p-6 pl-16 text-center align-middle font-montserrat">
                             <div className="flex items-center justify-center h-full">
                               {t.emailSentCount > 0 ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full tracking-widest"><Mail size={12}/> {t.emailSentCount}</span>
@@ -804,7 +807,7 @@ export default function AmbassadorDashboard() {
                           <td className="p-6 pr-10 align-middle font-montserrat">
                             <div className="flex items-center justify-end gap-3 h-full">
                               <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-[9px] font-black tracking-widest group-hover:bg-emerald-100 transition-colors">
-                                <CheckCircle size={12}/> PAID
+                                <CheckCircle size={12}/> Active
                               </span>
                               <div className="bg-gray-50 p-2 rounded-xl text-gray-400 group-hover:bg-salsa-pink group-hover:text-white transition-colors shadow-sm border border-gray-100 group-hover:border-salsa-pink" title="View Ticket">
                                 <Eye size={16}/>
