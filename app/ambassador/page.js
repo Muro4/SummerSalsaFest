@@ -223,10 +223,29 @@ export default function AmbassadorDashboard() {
   const updateRow = (id, field, value) => saveRoster(groupRows.map(row => row.id === id ? { ...row, [field]: value } : row));
 
   const submitGroupToCart = async () => {
+    // 1. Check for missing names
     if (groupRows.filter(r => !r.name.trim()).length > 0) {
       showPopup({ type: "error", title: "Missing Names", message: "Please fill in all names or delete empty rows.", confirmText: "Fix It" });
       return;
     }
+
+    // 2. Validate names (No numbers, no weird symbols, min 2 characters)
+    const nameRegex = /^[\p{L}\s\-']+$/u;
+    for (let i = 0; i < groupRows.length; i++) {
+      const row = groupRows[i];
+      const trimmedName = row.name.trim();
+      
+      if (trimmedName.length < 2 || !nameRegex.test(trimmedName)) {
+        showPopup({ 
+          type: "error", 
+          title: "Invalid Name", 
+          message: `Row ${i + 1} contains an invalid name: "${row.name}". Please use only real names (letters, spaces, hyphens).`, 
+          confirmText: "Fix It" 
+        });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       for (const person of groupRows) {
@@ -272,7 +291,6 @@ export default function AmbassadorDashboard() {
         style: { boxShadow: "none" }
       });
 
-      // We explicitly set the PDF dimensions to exactly match the ticket, removing the A4 whitespace completely
       const pdf = new jsPDF({
         orientation: "l",
         unit: "px",
@@ -310,7 +328,6 @@ export default function AmbassadorDashboard() {
     try {
       const { width, height } = element.getBoundingClientRect();
       
-      // OPTIMIZATION 1: Lowered pixelRatio to 2. Faster generation, smaller payload.
       const dataUrl = await toPng(element, { 
         quality: 0.9, 
         pixelRatio: 2, 
@@ -330,12 +347,9 @@ export default function AmbassadorDashboard() {
       return;
     } 
     
-    // Restore UI immediately after PDF generation is done
     if (controls) controls.style.display = ''; 
     if (dlIcon) dlIcon.style.display = ''; 
 
-    // OPTIMIZATION 2: Fire and Forget API Call
-    // We launch the fetch request but DO NOT 'await' it to finish before moving on.
     fetch("/api/send-ticket", {
       method: "POST", 
       headers: { "Content-Type": "application/json" },
@@ -348,14 +362,10 @@ export default function AmbassadorDashboard() {
       console.error("🚨 BACKGROUND EMAIL ERROR:", error);
     });
 
-    // INSTANT UI UPDATE
-    // Update Firebase in the background so the user doesn't wait
     updateDoc(doc(db, "tickets", fullScreenTicket.id), { emailSentCount: (fullScreenTicket.emailSentCount || 0) + 1 }).catch(console.error);
     
-    // Instantly update the local state to show +1 email sent
     setFullScreenTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
 
-    // Replaced "Awesome" with "Done" and tweaked messaging to reflect queuing
     showPopup({ 
       type: "success", 
       title: "Sent!", 

@@ -1,18 +1,53 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { usePopup } from "@/components/PopupProvider"; 
-import { Trash2, ShoppingBag, Lock, Loader2, Ticket, ShieldCheck } from "lucide-react";
+import { Trash2, ShoppingBag, Lock, Loader2, TicketCheck, ShieldCheck, CheckCircle } from "lucide-react";
+
+// --- SHARED PASS STYLING ---
+const getPassBgColor = (type) => {
+  const t = (type || '').toLowerCase();
+  if (t.includes('full')) return 'bg-salsa-pink';
+  if (t.includes('party')) return 'bg-violet-600';
+  if (t.includes('day')) return 'bg-teal-300';
+  if (t.includes('free')) return 'bg-yellow-400';
+  return 'bg-gray-200';
+};
+
+const getPassTextColor = (type) => {
+  const t = (type || '').toLowerCase();
+  if (t.includes('day')) return 'text-teal-950';
+  if (t.includes('free')) return 'text-yellow-900';
+  if (t.includes('full') || t.includes('party')) return 'text-white';
+  return 'text-slate-900';
+};
+
+const getPassStyle = (type) => {
+  return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
+};
+
+// --- NEW HELPER: Soft Icon Backgrounds ---
+const getPassIconStyle = (type) => {
+  const t = (type || '').toLowerCase();
+  if (t.includes('full')) return 'bg-salsa-pink/10 text-salsa-pink';
+  if (t.includes('party')) return 'bg-violet-600/10 text-violet-600';
+  if (t.includes('day')) return 'bg-teal-300/20 text-teal-700';
+  if (t.includes('free')) return 'bg-yellow-400/20 text-yellow-700';
+  return 'bg-gray-200/50 text-gray-500';
+};
 
 export default function Cart() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  
+  // NEW STATE: Tracks if the 0-euro checkout was successful
+  const [isSuccess, setIsSuccess] = useState(false); 
   const router = useRouter();
   
   const { showPopup } = usePopup(); 
@@ -34,11 +69,50 @@ export default function Cart() {
     return () => unsubAuth();
   }, []);
 
-  const total = items.reduce((acc, item) => acc + item.price, 0);
+  const total = items.reduce((acc, item) => acc + (item.price || 0), 0);
 
-  // --- THE REAL STRIPE LOGIC ---
   const handleCheckout = async () => {
     setIsPaying(true);
+    
+    // ZERO EURO BYPASS 
+    if (total === 0) {
+        try {
+            // Activate all tickets
+            const promises = items.map(item => 
+                updateDoc(doc(db, "tickets", item.id), { 
+                  status: "active",
+                  paymentConfirmedAt: new Date().toISOString()
+                })
+            );
+            await Promise.all(promises);
+            
+            // Trigger the success UI
+            setIsSuccess(true);
+            
+            // Wait 3 seconds, then redirect
+            setTimeout(() => {
+                if (auth.currentUser) {
+                    router.push("/account"); 
+                } else {
+                    sessionStorage.removeItem("guestSessionID"); 
+                    router.push("/"); 
+                }
+            }, 3000);
+            
+            return; // Exit function so Stripe doesn't run
+        } catch (err) {
+            showPopup({
+                type: "error",
+                title: "Activation Error",
+                message: "Failed to activate free passes. Please try again.",
+                confirmText: "Close"
+            });
+            setIsPaying(false);
+            return;
+        }
+    }
+
+    // NORMAL STRIPE CHECKOUT
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -69,7 +143,6 @@ export default function Cart() {
     }
   };
 
-  // --- CUSTOM POPUP DELETION ---
   const confirmRemoveItem = (id, userName) => {
     showPopup({
       type: "info",
@@ -83,6 +156,7 @@ export default function Cart() {
     });
   };
 
+  // 1. LOADING UI
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-salsa-white">
@@ -91,6 +165,27 @@ export default function Cart() {
     );
   }
 
+  // 2. SUCCESS UI (Renders if 0-euro bypass finishes)
+  if (isSuccess) {
+    return (
+      <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
+        <Navbar />
+        {/* flex-grow and justify-center perfectly center this underneath the Navbar */}
+        <div className="flex-grow flex flex-col items-center justify-center px-6 text-center w-full">
+          <div className="bg-white p-16 rounded-[4rem] shadow-2xl border-2 border-emerald-100 max-w-lg w-full animate-in zoom-in duration-500">
+             <div className="flex flex-col items-center animate-in fade-in duration-500">
+                <CheckCircle className="text-emerald-500 mb-6" size={80} />
+                <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">Passes Activated!</h1>
+                <p className="text-gray-500 font-bold text-sm">Your free entry is confirmed and ready.</p>
+                <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
+             </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // 3. NORMAL CART UI
   return (
     <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
       <Navbar />
@@ -121,11 +216,16 @@ export default function Cart() {
                   
                   {/* Item Details */}
                   <div className="flex items-center gap-6 mb-4 md:mb-0">
-                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-salsa-pink/5 group-hover:border-salsa-pink/20 transition-colors">
-                      <Ticket className="text-gray-400 group-hover:text-salsa-pink transition-colors" size={24} />
+                    
+                    {/* UPDATED: Changed icon to TicketCheck and used soft opacity background */}
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border border-transparent shadow-sm transition-transform group-hover:scale-105 ${getPassIconStyle(item.passType)}`}>
+                      <TicketCheck className="opacity-90" size={24} />
                     </div>
+
                     <div>
-                      <span className="bg-salsa-pink/10 text-salsa-pink text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">{item.passType}</span>
+                      <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${getPassStyle(item.passType)}`}>
+                        {item.passType}
+                      </span>
                       <h3 className="text-2xl font-black mt-3 uppercase text-slate-900 leading-none tracking-wide">{item.userName}</h3>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Festival Year: {item.festivalYear}</p>
                     </div>
@@ -175,12 +275,20 @@ export default function Cart() {
                     disabled={isPaying} 
                     className="cursor-pointer w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest shadow-xl disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 disabled:cursor-not-allowed"
                 >
-                    {isPaying ? <Loader2 className="animate-spin" /> : <><Lock size={16}/> Proceed to Pay</>}
+                    {isPaying ? (
+                        <Loader2 className="animate-spin" />
+                    ) : (
+                        total === 0 ? <><CheckCircle size={16}/> Activate Passes</> : <><Lock size={16}/> Proceed to Pay</>
+                    )}
                 </button>
 
                 {/* Secure Checkout Badge */}
                 <div className="mt-6 flex items-center justify-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  <ShieldCheck size={14} className="text-emerald-500" /> Secure encrypted checkout
+                  {total > 0 ? (
+                      <><ShieldCheck size={14} className="text-emerald-500" /> Secure encrypted checkout</>
+                  ) : (
+                      <><ShieldCheck size={14} className="text-emerald-500" /> 100% Free Processing</>
+                  )}
                 </div>
               </div>
             </div>

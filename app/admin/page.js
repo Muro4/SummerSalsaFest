@@ -325,7 +325,7 @@ export default function AdminDashboard() {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
            <div>
-              <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase tracking-tighter">Event Overview</h1>
+              <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Event Overview</h1>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Summer Salsa Fest Management</p>
            </div>
            <div className="flex flex-col items-end z-20">

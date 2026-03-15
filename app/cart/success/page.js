@@ -1,14 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
-export default function SuccessPage() {
+// We separate the actual logic into its own component so we can wrap it in Suspense
+function SuccessContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
+
+  // Check if this is a €0 bypass
+  const isFreePass = searchParams.get("session_id") === "free_pass_bypass";
 
   useEffect(() => {
     const activateTickets = async () => {
@@ -32,7 +37,7 @@ export default function SuccessPage() {
           for (const document of snap.docs) {
             await updateDoc(doc(db, "tickets", document.id), { 
                 status: "active",
-                paymentConfirmedAt: new Date().toISOString() // Optional: Save exactly when they paid
+                paymentConfirmedAt: new Date().toISOString()
             });
           }
           
@@ -43,7 +48,6 @@ export default function SuccessPage() {
               if (auth.currentUser) {
                   router.push("/account"); // Registered users go to their hub
               } else {
-                  // Guests go home (or you can create a specific guest-success page later)
                   sessionStorage.removeItem("guestSessionID"); // Clear guest memory
                   router.push("/"); 
               }
@@ -51,7 +55,7 @@ export default function SuccessPage() {
 
         } catch (error) {
           console.error("Error activating tickets:", error);
-          alert("Payment received, but database sync failed. Please contact support.");
+          alert("Database sync failed. Please contact support.");
         }
       } else {
         // Fallback if no ID is found
@@ -61,29 +65,49 @@ export default function SuccessPage() {
     };
     
     activateTickets();
-  }, [router]);
+  }, [router, searchParams]);
 
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center">
+      <div className="bg-white p-16 rounded-[4rem] shadow-2xl border-2 border-emerald-100 max-w-lg w-full animate-in zoom-in duration-500">
+          {loading ? (
+             <div className="flex flex-col items-center">
+                <Loader2 className="animate-spin text-salsa-pink mb-6" size={60} />
+                <h1 className="font-bebas text-5xl text-gray-900 uppercase">
+                  {isFreePass ? "Activating Passes..." : "Confirming Payment..."}
+                </h1>
+                <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-4">
+                  Please do not close this window
+                </p>
+             </div>
+          ) : (
+             <div className="flex flex-col items-center animate-in fade-in duration-500">
+                <CheckCircle className="text-emerald-500 mb-6" size={80} />
+                <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">
+                  {isFreePass ? "Passes Activated!" : "Payment Successful!"}
+                </h1>
+                <p className="text-gray-500 font-bold text-sm">
+                  {isFreePass ? "Your free entry is confirmed and ready." : "Your passes are now active and ready."}
+                </p>
+                <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">
+                  Redirecting...
+                </p>
+             </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+// This is the main page component that Next.js expects
+export default function SuccessPage() {
   return (
     <main className="min-h-screen bg-salsa-white font-montserrat">
       <Navbar />
-      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center">
-        <div className="bg-white p-16 rounded-[4rem] shadow-2xl border-2 border-emerald-100 max-w-lg w-full animate-in zoom-in duration-500">
-            {loading ? (
-               <div className="flex flex-col items-center">
-                  <Loader2 className="animate-spin text-salsa-pink mb-6" size={60} />
-                  <h1 className="font-bebas text-5xl text-gray-900 uppercase">Confirming Payment...</h1>
-                  <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-4">Please do not close this window</p>
-               </div>
-            ) : (
-               <div className="flex flex-col items-center animate-in fade-in duration-500">
-                  <CheckCircle className="text-emerald-500 mb-6" size={80} />
-                  <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">Payment Successful!</h1>
-                  <p className="text-gray-500 font-bold text-sm">Your passes are now active and ready.</p>
-                  <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
-               </div>
-            )}
-        </div>
-      </div>
+      {/* Suspense is required here because useSearchParams reads the URL during render */}
+      <Suspense fallback={<div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>}>
+        <SuccessContent />
+      </Suspense>
     </main>
   );
 }

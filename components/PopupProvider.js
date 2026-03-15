@@ -28,7 +28,7 @@ export function PopupProvider({ children }) {
       {popup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 font-montserrat">
           <div 
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 cursor-pointer" 
             onClick={closePopup}
           ></div>
           
@@ -52,19 +52,21 @@ export function PopupProvider({ children }) {
               {popup.message}
             </p>
 
-            <div className="w-full flex gap-3">
+            <div className="w-full flex gap-3 relative z-10">
               {popup.onConfirm && (
                 <button 
+                  type="button"
                   onClick={closePopup}
-                  className="flex-1 bg-gray-50 text-slate-600 font-black py-4 rounded-2xl hover:bg-gray-100 transition-all tracking-widest text-[10px] uppercase"
+                  className="flex-1 bg-gray-50 text-slate-600 font-black py-4 rounded-2xl hover:bg-gray-100 transition-all tracking-widest text-[10px] uppercase cursor-pointer"
                 >
                   {popup.cancelText}
                 </button>
               )}
               
               <button 
+                type="button"
                 onClick={handleConfirm}
-                className={`flex-1 text-white font-black py-4 rounded-2xl hover:scale-105 transition-all tracking-widest text-[10px] uppercase shadow-xl
+                className={`flex-1 text-white font-black py-4 rounded-2xl hover:scale-105 transition-all tracking-widest text-[10px] uppercase shadow-xl cursor-pointer
                   ${popup.type === 'error' ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20' : 'bg-slate-900 hover:bg-salsa-pink shadow-slate-900/20'}`}
               >
                 {popup.confirmText}
@@ -77,6 +79,5 @@ export function PopupProvider({ children }) {
   );
 }
 
-// 3. THIS IS THE LINE IT WAS LOOKING FOR!
-// Export a custom hook to easily use this context
+// 3. Export custom hook
 export const usePopup = () => useContext(PopupContext);
