@@ -8,7 +8,8 @@ import { usePopup } from "@/components/PopupProvider";
 import { 
   Users, Ticket, TrendingUp, Search, Download, 
   Database, ShieldAlert, Gift, Filter, CheckCircle, 
-  Clock, XCircle, Trash2, Loader2, BarChart3, UserCog, ChevronDown
+  Clock, XCircle, Trash2, Loader2, BarChart3, UserCog, ChevronDown,
+  Undo2, Redo2, Save 
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -34,6 +35,28 @@ const getPassStyle = (type) => {
   return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 };
 
+// --- SHARED ROLE STYLING ---
+const getRoleBgColor = (role) => {
+  const r = (role || '').toLowerCase();
+  if (r === 'superadmin') return 'bg-slate-600';
+  if (r === 'admin') return 'bg-salsa-pink';
+  if (r === 'ambassador') return 'bg-teal-300';
+  if (r === 'user') return 'bg-sky-200';
+  return 'bg-gray-200'; // Default
+};
+
+const getRoleTextColor = (role) => {
+  const r = (role || '').toLowerCase();
+  if (r === 'superadmin' || r === 'admin') return 'text-white';
+  if (r === 'ambassador') return 'text-teal-950';
+  if (r === 'user') return 'text-sky-900';
+  return 'text-slate-700';
+};
+
+const getRoleStyle = (role) => {
+  return `${getRoleBgColor(role)} ${getRoleTextColor(role)} border-transparent`;
+};
+
 // --- CUSTOM REUSABLE DROPDOWN ---
 function CustomDropdown({ value, options, onChange, icon: Icon, customIcon, buttonClassName, dropdownClassName, disabled, title, hideChevron }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,9 +80,9 @@ function CustomDropdown({ value, options, onChange, icon: Icon, customIcon, butt
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${buttonClassName}`}
+        className={`flex items-center justify-between outline-none transition-all cursor-pointer disabled:opacity-100 disabled:cursor-not-allowed ${buttonClassName}`}
       >
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex items-center gap-2 truncate justify-center w-full">
           {customIcon ? customIcon : (Icon && <Icon size={14} className="opacity-50 shrink-0" />)}
           <span className="truncate">{selectedOption.label}</span>
         </div>
@@ -69,24 +92,22 @@ function CustomDropdown({ value, options, onChange, icon: Icon, customIcon, butt
       {isOpen && (
         <div className={`absolute z-50 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl py-2 min-w-max w-full ${dropdownClassName}`}>
           {options.map((opt) => (
-            opt.isPass ? (
-              // Pill Style inside Dropdown
+            opt.isPill ? (
               <div key={opt.value} className="px-3 py-1.5">
                 <button
                   type="button"
                   onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                  className={`w-full px-5 py-3 rounded-full text-[10px] uppercase font-black tracking-widest shadow-sm transition-transform hover:scale-105 cursor-pointer ${getPassStyle(opt.value)}`}
+                  className={`w-full px-5 py-3 rounded-full text-[10px] uppercase font-black tracking-widest shadow-sm transition-transform hover:scale-105 cursor-pointer flex items-center justify-center ${opt.colorClass}`}
                 >
                   {opt.label}
                 </button>
               </div>
             ) : (
-              // Standard Text Style inside Dropdown
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                className={`w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer text-[10px] uppercase font-black tracking-widest ${value === opt.value ? 'bg-slate-50 text-slate-900' : (opt.textColor || 'text-slate-500')}`}
+                className={`w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer text-xs uppercase font-black tracking-widest ${value === opt.value ? 'bg-slate-50 text-slate-900' : (opt.textColor || 'text-slate-500')}`}
               >
                 {opt.label}
               </button>
@@ -113,6 +134,10 @@ export default function AdminDashboard() {
   const [passFilter, setPassFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [timeRange, setTimeRange] = useState("week");
+
+  // Undo/Redo/Staging State
+  const [history, setHistory] = useState([{}]);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
   useEffect(() => {
     let unsubUsers = () => {};
@@ -148,33 +173,85 @@ export default function AdminDashboard() {
     };
   }, [router]);
 
-  // --- ACTIONS ---
+  // --- STAGING ACTIONS (Undo/Redo Logic) ---
+  const handleStageChange = (collection, id, updates) => {
+    const currentStaged = history[historyIndex];
+    const newStaged = {
+      ...currentStaged,
+      [`${collection}_${id}`]: {
+        ...(currentStaged[`${collection}_${id}`] || {}),
+        ...updates,
+        _meta: { collection, id } // keep track for DB save
+      }
+    };
+
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newStaged);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const handleSaveChanges = async () => {
+    const changes = history[historyIndex];
+    if (!changes || Object.keys(changes).length === 0) return;
+
+    try {
+      for (const key of Object.keys(changes)) {
+        const { _meta, _deleted, ...updates } = changes[key];
+        if (_deleted) {
+          await deleteDoc(doc(db, _meta.collection, _meta.id));
+        } else if (Object.keys(updates).length > 0) {
+          await updateDoc(doc(db, _meta.collection, _meta.id), updates);
+        }
+      }
+      
+      // Reset history baseline after successful save
+      setHistory([{}]);
+      setHistoryIndex(0);
+      showPopup({ type: "info", title: "Success", message: "All changes saved to database.", confirmText: "Done" });
+    } catch (err) {
+      console.error(err);
+      showPopup({ type: "info", title: "Error", message: "Failed to save changes to database." });
+    }
+  };
+
   const confirmGift = (t) => {
     showPopup({
       type: "info",
-      title: "Gift Ticket?",
-      message: `Are you sure you want to convert ${t.userName}'s ticket (ID: ${t.ticketID}) to a Free Pass?`,
-      confirmText: "Yes, Convert",
+      title: "Stage Gift Ticket?",
+      message: `Convert ${t.userName}'s ticket (ID: ${t.ticketID}) to a Free Pass? (Will be saved locally until committed)`,
+      confirmText: "Yes, Stage Conversion",
       cancelText: "Cancel",
-      onConfirm: async () => await updateDoc(doc(db, "tickets", t.id), { price: 0, passType: 'Free Pass', status: 'active' })
+      onConfirm: () => handleStageChange('tickets', t.id, { price: 0, passType: 'Free Pass', status: 'active' })
     });
   };
 
   const confirmDelete = (t) => {
     showPopup({
       type: "info",
-      title: "Delete Ticket?",
-      message: `Are you sure you want to permanently delete ${t.userName}'s ticket (ID: ${t.ticketID})?`,
-      confirmText: "Yes, Delete",
+      title: "Stage Deletion?",
+      message: `Delete ${t.userName}'s ticket (ID: ${t.ticketID})? (Will be saved locally until committed)`,
+      confirmText: "Yes, Stage Delete",
       cancelText: "Cancel",
-      onConfirm: async () => await deleteDoc(doc(db, "tickets", t.id))
+      onConfirm: () => handleStageChange('tickets', t.id, { _deleted: true })
     });
   };
 
+  // --- APPLY STAGED CHANGES TO LOCAL DATA FOR PREVIEW ---
+  const effectiveTickets = data.tickets.map(t => {
+    const staged = history[historyIndex]?.[`tickets_${t.id}`];
+    return staged ? { ...t, ...staged } : t;
+  }).filter(t => !t._deleted);
+
+  const effectiveUsers = data.users.map(u => {
+    const staged = history[historyIndex]?.[`users_${u.id}`];
+    return staged ? { ...u, ...staged } : u;
+  });
+
   // --- FILTERED LISTS ---
-  const filteredTickets = data.tickets.filter(t => {
+  const filteredTickets = effectiveTickets.filter(t => {
     const matchesYear = t.festivalYear?.toString() === selectedYear;
-    const purchaser = data.users.find(u => u.id === t.userId);
+    const purchaser = effectiveUsers.find(u => u.id === t.userId);
     const ambTag = purchaser?.ambassadorDisplayName || "";
     
     const matchesSearch = 
@@ -188,14 +265,14 @@ export default function AdminDashboard() {
     return matchesYear && matchesSearch && matchesStatus && matchesPass;
   });
 
-  const filteredUsers = data.users.filter(u => 
+  const filteredUsers = effectiveUsers.filter(u => 
     (u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (roleFilter === "all" || u.role === roleFilter)
   );
 
-  // --- CHART LOGIC (CORRECTED CHRONOLOGICAL AGGREGATION) ---
+  // --- CHART LOGIC (AGGREGATION) ---
   const getChartData = () => {
-    const tickets = data.tickets.filter(t => t.status === 'active' && t.festivalYear?.toString() === selectedYear);
+    const tickets = effectiveTickets.filter(t => t.status === 'active' && t.festivalYear?.toString() === selectedYear);
     
     if (timeRange === 'year') {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -204,7 +281,7 @@ export default function AdminDashboard() {
         const d = new Date(t.purchaseDate);
         if (!isNaN(d)) aggregated[months[d.getMonth()]] += (t.price || 0);
       });
-      return months.map(name => ({ name, sales: aggregated[name] }));
+      return months.map(name => ({ name, revenue: aggregated[name] }));
     } 
     
     if (timeRange === 'week') {
@@ -214,11 +291,11 @@ export default function AdminDashboard() {
           if (!isNaN(d)) {
              const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
              const key = d.toISOString().split('T')[0]; 
-             if (!aggregated[key]) aggregated[key] = { name: dateStr, sales: 0, dateObj: d };
-             aggregated[key].sales += (t.price || 0);
+             if (!aggregated[key]) aggregated[key] = { name: dateStr, revenue: 0, dateObj: d };
+             aggregated[key].revenue += (t.price || 0);
           }
        });
-       return Object.values(aggregated).sort((a, b) => a.dateObj - b.dateObj).slice(-7).map(({name, sales}) => ({name, sales}));
+       return Object.values(aggregated).sort((a, b) => a.dateObj - b.dateObj).slice(-7).map(({name, revenue}) => ({name, revenue}));
     }
 
     if (timeRange === 'day') {
@@ -228,11 +305,11 @@ export default function AdminDashboard() {
           if (!isNaN(d)) {
              const hourStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
              const key = d.toISOString().substring(0, 13); 
-             if (!aggregated[key]) aggregated[key] = { name: hourStr, sales: 0, timestamp: d.getTime() };
-             aggregated[key].sales += (t.price || 0);
+             if (!aggregated[key]) aggregated[key] = { name: hourStr, revenue: 0, timestamp: d.getTime() };
+             aggregated[key].revenue += (t.price || 0);
           }
        });
-       return Object.values(aggregated).sort((a, b) => a.timestamp - b.timestamp).slice(-24).map(({name, sales}) => ({name, sales}));
+       return Object.values(aggregated).sort((a, b) => a.timestamp - b.timestamp).slice(-24).map(({name, revenue}) => ({name, revenue}));
     }
     
     return [];
@@ -267,19 +344,50 @@ export default function AdminDashboard() {
            </div>
         </div>
 
-        {/* 3-WAY ANIMATED TABS */}
-        <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-[450px] shadow-inner mb-12">
-          <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
-            style={{ 
-              left: activeTab === 'analytics' ? '0.375rem' : 
-                    activeTab === 'tickets' ? 'calc(0.375rem + (100% - 0.75rem) / 3)' : 
-                    'calc(0.375rem + ((100% - 0.75rem) / 3) * 2)' 
-            }}
-          />
-          <button onClick={() => setActiveTab("analytics")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'analytics' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><BarChart3 size={14}/> Analytics</button>
-          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14}/> Tickets</button>
-          <button onClick={() => setActiveTab("users")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'users' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><UserCog size={14}/> Users</button>
+        {/* CONTROLS LEVEL: Tabs + Undo/Redo/Save */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full">
+            
+            {/* 3-WAY ANIMATED TABS */}
+            <div className="relative flex bg-slate-50 border border-gray-100 p-1.5 rounded-2xl w-full lg:w-[450px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)]">
+            <div 
+                className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
+                style={{ 
+                left: activeTab === 'analytics' ? '0.375rem' : 
+                        activeTab === 'tickets' ? 'calc(0.375rem + (100% - 0.75rem) / 3)' : 
+                        'calc(0.375rem + ((100% - 0.75rem) / 3) * 2)' 
+                }}
+            />
+            <button onClick={() => setActiveTab("analytics")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}><BarChart3 size={14}/> Analytics</button>
+            <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'tickets' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}><Ticket size={14}/> Tickets</button>
+            <button onClick={() => setActiveTab("users")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'users' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}><UserCog size={14}/> Users</button>
+            </div>
+
+            {/* ACTION BUTTONS (UNDO / REDO / SAVE) */}
+            <div className="flex items-center gap-3 w-full lg:w-auto">
+                <button
+                    onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)}
+                    disabled={historyIndex <= 0}
+                    className="p-3.5 bg-white border border-gray-200 rounded-2xl text-slate-900 hover:bg-slate-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center"
+                    title="Undo Stage"
+                >
+                    <Undo2 size={16} />
+                </button>
+                <button
+                    onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)}
+                    disabled={historyIndex >= history.length - 1}
+                    className="p-3.5 bg-white border border-gray-200 rounded-2xl text-slate-900 hover:bg-slate-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center"
+                    title="Redo Stage"
+                >
+                    <Redo2 size={16} />
+                </button>
+                <button
+                    onClick={handleSaveChanges}
+                    disabled={historyIndex === 0}
+                    className="py-3.5 px-8 bg-slate-900 text-white border border-transparent rounded-2xl hover:bg-slate-800 cursor-pointer disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-widest"
+                >
+                    <Save size={16} /> Save
+                </button>
+            </div>
         </div>
 
         <div className="relative min-h-[500px] w-full">
@@ -307,7 +415,7 @@ export default function AdminDashboard() {
                </div>
                <div className="bg-white p-12 rounded-[3.5rem] border border-gray-200 shadow-xl relative z-10">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-                     <h2 className="font-bebas text-5xl text-slate-900 uppercase tracking-tight">Sales Velocity</h2>
+                     <h2 className="font-bebas text-5xl text-slate-900 uppercase tracking-tight">Revenue Stream</h2>
                      <div className="relative flex bg-gray-100 p-1.5 rounded-xl w-full md:w-64 shadow-inner">
                         <div 
                           className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] bg-white rounded-lg transition-all duration-300 ease-out shadow-sm"
@@ -333,9 +441,9 @@ export default function AdminDashboard() {
                            </defs>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat'}} dy={10} />
-                           <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat'}} dx={-10}/>
+                           <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat'}} dx={-10} label={{ value: 'Revenue (€)', angle: -90, position: 'insideLeft', offset: 20, fill: '#94a3b8', dy: -10 }} />
                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontFamily: 'Montserrat', fontSize: '12px', fontWeight: 'bold', color: '#0f172a'}} />
-                           <Area type="monotone" dataKey="sales" stroke="#e84b8a" strokeWidth={4} fill="url(#cs)" />
+                           <Area type="monotone" dataKey="revenue" stroke="#e84b8a" strokeWidth={4} fill="url(#cs)" />
                         </AreaChart>
                      </ResponsiveContainer>
                   </div>
@@ -354,7 +462,7 @@ export default function AdminDashboard() {
                      <input 
                         type="text" 
                         value={searchTerm || ""}
-                        placeholder="Search by Attendee, ID, or Ambassador Tag..." 
+                        placeholder="Search" 
                         className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all shadow-sm font-montserrat text-slate-900" 
                         onChange={e => setSearchTerm(e.target.value)}
                      />
@@ -370,7 +478,7 @@ export default function AdminDashboard() {
                             { label: 'Active', value: 'active', textColor: 'text-emerald-500' },
                             { label: 'Pending', value: 'pending', textColor: 'text-amber-500' }
                           ]}
-                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-[10px] uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
+                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
                           dropdownClassName="w-48"
                         />
                      </div>
@@ -380,13 +488,13 @@ export default function AdminDashboard() {
                           value={passFilter}
                           onChange={setPassFilter}
                           options={[
-                            { label: 'All Passes', value: 'all', isPass: true },
-                            { label: 'Full Pass', value: 'Full Pass', isPass: true },
-                            { label: 'Party Pass', value: 'Party Pass', isPass: true },
-                            { label: 'Day Pass', value: 'Day Pass', isPass: true },
-                            { label: 'Free Pass', value: 'Free Pass', isPass: true }
+                            { label: 'All Passes', value: 'all', isPill: true, colorClass: getPassStyle('all') },
+                            { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') },
+                            { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') },
+                            { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
+                            { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
                           ]}
-                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-[10px] uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
+                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
                           dropdownClassName="w-56"
                         />
                      </div>
@@ -396,68 +504,63 @@ export default function AdminDashboard() {
                {/* Tickets Table */}
                <div className="bg-white rounded-[3rem] border border-gray-100 overflow-visible shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                   <div className="overflow-x-auto overflow-y-visible w-full pb-12">
-                     <table className="w-full text-left border-collapse min-w-[950px] font-montserrat relative">
-                        <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-gray-100 relative z-10">
+                     <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
+                        <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest relative z-10">
                            <tr>
-                              <th className="p-6 pl-10 font-bold w-48">Ambassador</th>
-                              <th className="p-6 font-bold w-1/4">Attendee Name</th>
-                              <th className="p-6 font-bold w-56">Pass Type</th>
-                              <th className="p-6 font-bold text-center w-32">Status</th>
-                              <th className="p-6 font-bold text-center w-32">Price</th>
-                              <th className="p-6 pr-10 text-right font-bold w-32">Action</th>
+                              <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
+                              <th className="p-6 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
+                              <th className="p-6 font-bold w-56 border-b border-gray-100">Pass Type</th>
+                              <th className="p-6 font-bold text-center w-32 border-b border-gray-100">Status</th>
+                              <th className="p-6 font-bold text-center w-32 border-b border-gray-100">Price</th>
+                              <th className="p-6 pr-10 text-right font-bold w-32 rounded-tr-[3rem] border-b border-gray-100">Action</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 uppercase text-xs">
+                        <tbody className="uppercase text-xs">
                            {filteredTickets.map((t, i) => {
-                              const purchaser = data.users.find(u => u.id === t.userId);
+                              const purchaser = effectiveUsers.find(u => u.id === t.userId);
                               const ambTag = purchaser?.ambassadorDisplayName;
 
                               return (
                                 <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                                   <td className="p-6 pl-10 align-middle">
+                                   <td className="p-6 pl-10 align-middle border-b border-gray-50">
                                       {ambTag ? (
-                                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black text-slate-600 bg-slate-100 uppercase tracking-widest border border-slate-200"><Users size={12}/> {ambTag}</span>
+                                         <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400"/> {ambTag}</span>
                                       ) : (
-                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct</span>
+                                         <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Direct</span>
                                       )}
                                    </td>
-                                   <td className="p-6 align-middle truncate max-w-[200px]">
+                                   <td className="p-6 align-middle truncate max-w-[200px] border-b border-gray-50">
                                       <span className="block text-sm font-bold text-slate-900">{t.userName}</span>
-                                      <span className="block text-[9px] font-black text-slate-400 mt-1 uppercase tracking-widest">ID: {t.ticketID}</span>
+                                      <span className="block text-[9px] font-bold text-slate-700 mt-1 uppercase tracking-widest">ID: {t.ticketID}</span>
                                    </td>
-                                   <td className="p-6 align-middle">
-                                      {/* Colored Pill Dropdown Button */}
+                                   <td className="p-6 align-middle border-b border-gray-50">
                                       <CustomDropdown
                                         value={t.passType}
-                                        onChange={async (val) => await updateDoc(doc(db, "tickets", t.id), { passType: val })}
+                                        onChange={(val) => {
+                                          const updateData = { passType: val };
+                                          if (val === 'Free Pass' && t.status === 'pending') {
+                                            updateData.price = 0;
+                                          }
+                                          handleStageChange('tickets', t.id, updateData);
+                                        }}
                                         options={[
-                                          { label: 'Full Pass', value: 'Full Pass', isPass: true },
-                                          { label: 'Party Pass', value: 'Party Pass', isPass: true },
-                                          { label: 'Day Pass', value: 'Day Pass', isPass: true },
-                                          { label: 'Free Pass', value: 'Free Pass', isPass: true }
+                                          { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') },
+                                          { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') },
+                                          { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
+                                          { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
                                         ]}
-                                        buttonClassName={`w-40 px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:scale-105 border border-transparent ${getPassStyle(t.passType)}`}
+                                        buttonClassName={`w-40 px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:scale-105 border border-transparent flex justify-center items-center ${getPassStyle(t.passType)}`}
                                         dropdownClassName="left-0 w-48"
                                       />
                                    </td>
-                                   <td className="p-6 align-middle text-center">
-                                      <div className="flex justify-center">
-                                         <CustomDropdown
-                                           value={t.status}
-                                           onChange={async (val) => await updateDoc(doc(db, "tickets", t.id), { status: val })}
-                                           options={[
-                                             { label: 'Active', value: 'active', textColor: 'text-emerald-500' },
-                                             { label: 'Pending', value: 'pending', textColor: 'text-amber-500' }
-                                           ]}
-                                           buttonClassName={`flex items-center gap-1.5 text-xs font-black tracking-widest uppercase outline-none transition-all cursor-pointer ${t.status === 'active' ? 'text-emerald-500 hover:text-emerald-600' : 'text-amber-500 hover:text-amber-600'}`}
-                                           dropdownClassName="w-32 left-1/2 -translate-x-1/2"
-                                           hideChevron={true}
-                                           customIcon={t.status === 'active' ? <CheckCircle size={14}/> : <Clock size={14}/>}
-                                         />
+                                   <td className="p-6 align-middle text-center border-b border-gray-50">
+                                      <div className={`flex items-center justify-center gap-1.5 text-xs font-black tracking-widest uppercase ${t.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                         {t.status === 'active' ? <CheckCircle size={14}/> : <Clock size={14}/>}
+                                         {t.status}
                                       </div>
                                    </td>
-                                   <td className="p-6 align-middle text-center font-semibold text-[15px] text-slate-900">€{t.price}</td>
-                                   <td className="p-6 pr-10 align-middle text-right">
+                                   <td className="p-6 align-middle text-center font-semibold text-[15px] text-slate-900 border-b border-gray-50">€{t.price}</td>
+                                   <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
                                       <div className="flex justify-end gap-2 h-full items-center">
                                          {t.status === 'pending' && (
                                            <button onClick={() => confirmGift(t)} title="Convert to Free Pass" className="p-2.5 bg-white text-yellow-500 rounded-xl hover:bg-yellow-400 hover:text-white transition-colors border border-gray-200 hover:border-yellow-400 shadow-sm cursor-pointer"><Gift size={16}/></button>
@@ -469,7 +572,7 @@ export default function AdminDashboard() {
                               )
                            })}
                            {filteredTickets.length === 0 && (
-                             <tr><td colSpan="6" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat">No tickets match your search.</td></tr>
+                             <tr><td colSpan="6" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No tickets match your search.</td></tr>
                            )}
                         </tbody>
                      </table>
@@ -489,24 +592,25 @@ export default function AdminDashboard() {
                      <input 
                         type="text" 
                         value={searchTerm || ""}
-                        placeholder="Search user name or email..." 
+                        placeholder="Search" 
                         className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all shadow-sm font-montserrat text-slate-900" 
                         onChange={e => setSearchTerm(e.target.value)}
                      />
                   </div>
-                  <div className="relative w-full xl:w-64">
+                  <div className="relative w-full xl:w-48">
                      <CustomDropdown
                         icon={ShieldAlert}
                         value={roleFilter}
                         onChange={setRoleFilter}
                         options={[
-                          { label: 'All Roles', value: 'all' },
-                          { label: 'Standard User', value: 'user' },
-                          { label: 'Ambassador', value: 'ambassador' },
-                          { label: 'Admin', value: 'admin' },
-                          { label: 'SuperAdmin', value: 'superadmin' }
+                          { label: 'All Roles', value: 'all', isPill: true, colorClass: getRoleStyle('all') },
+                          { label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') }, 
+                          { label: 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
+                          { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
+                          { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
                         ]}
-                        buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-[10px] uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
+                        buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
+                        dropdownClassName="w-48"
                      />
                   </div>
                </div>
@@ -514,62 +618,56 @@ export default function AdminDashboard() {
                {/* Users Table */}
                <div className="bg-white rounded-[3rem] border border-gray-100 overflow-visible shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                   <div className="overflow-x-auto overflow-y-visible w-full pb-12">
-                     <table className="w-full text-left border-collapse min-w-[900px] font-montserrat relative">
-                        <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-gray-100 relative z-10">
+                     <table className="w-full text-left border-separate border-spacing-0 min-w-[900px] font-montserrat relative">
+                        <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest relative z-10">
                            <tr>
-                              <th className="p-6 pl-10 font-bold w-1/4">Name</th>
-                              <th className="p-6 font-bold w-48">Ambassador Tag</th>
-                              <th className="p-6 font-bold w-1/4">Email</th>
-                              <th className="p-6 font-bold w-40">Current Role</th>
-                              <th className="p-6 pr-10 text-right font-bold w-40">Change Role</th>
+                              <th className="p-6 pl-10 font-bold w-1/4 rounded-tl-[3rem] border-b border-gray-100">Name</th>
+                              <th className="p-6 font-bold w-48 border-b border-gray-100">Ambassador Tag</th>
+                              <th className="p-6 font-bold w-1/4 border-b border-gray-100">Email</th>
+                              <th className="p-6 pl-16 text-left font-bold w-56 rounded-tr-[3rem] border-b border-gray-100">Role</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 uppercase text-xs">
-                           {filteredUsers.map((u, i) => (
-                              <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
-                                 <td className="p-6 pl-10 align-middle">
-                                    <span className="block text-sm font-bold text-slate-900">{u.displayName || "Unregistered"}</span>
-                                 </td>
-                                 <td className="p-6 align-middle">
-                                    {u.role === 'ambassador' && u.ambassadorDisplayName ? (
-                                       <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400"/> {u.ambassadorDisplayName}</span>
-                                    ) : (
-                                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">-</span>
-                                    )}
-                                 </td>
-                                 <td className="p-6 align-middle text-gray-500 lowercase font-medium text-sm tracking-wide">{u.email}</td>
-                                 <td className="p-6 align-middle">
-                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest shadow-sm inline-block ${
-                                       u.role === 'superadmin' ? 'bg-slate-900 text-white' : 
-                                       u.role === 'admin' ? 'bg-salsa-pink text-white' :
-                                       u.role === 'ambassador' ? 'bg-emerald-100 text-emerald-700' :
-                                       'bg-gray-100 text-slate-600'
-                                    }`}>
-                                       {u.role}
-                                    </span>
-                                 </td>
-                                 <td className="p-6 pr-10 align-middle text-right">
-                                    <div className="flex justify-end">
-                                       <CustomDropdown
-                                          value={u.role}
-                                          onChange={async (val) => await updateDoc(doc(db, "users", u.id), { role: val })}
-                                          disabled={auth.currentUser?.uid === u.id && u.role === 'superadmin'}
-                                          title={auth.currentUser?.uid === u.id && u.role === 'superadmin' ? "You cannot demote yourself" : "Change User Role"}
-                                          options={[
-                                            { label: 'User', value: 'user' },
-                                            { label: 'Ambassador', value: 'ambassador' },
-                                            { label: 'Admin', value: 'admin' },
-                                            { label: 'SuperAdmin', value: 'superadmin' }
-                                          ]}
-                                          buttonClassName="p-3 pl-4 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase shadow-sm text-slate-900 hover:border-slate-300 w-36"
-                                          dropdownClassName="right-0 w-36"
-                                       />
-                                    </div>
-                                 </td>
-                              </tr>
-                           ))}
+                        <tbody className="uppercase text-xs">
+                           {filteredUsers.map((u, i) => {
+                              const isMySuperAdmin = auth.currentUser?.uid === u.id && u.role === 'superadmin';
+
+                              return (
+                                 <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="p-6 pl-10 align-middle border-b border-gray-50">
+                                       <span className="block text-sm font-bold text-slate-900">{u.displayName || "Unregistered"}</span>
+                                    </td>
+                                    <td className="p-6 align-middle border-b border-gray-50">
+                                       {u.role === 'ambassador' && u.ambassadorDisplayName ? (
+                                          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400"/> {u.ambassadorDisplayName}</span>
+                                       ) : (
+                                          <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">-</span>
+                                       )}
+                                    </td>
+                                    <td className="p-6 align-middle text-gray-500 lowercase font-medium text-sm tracking-wide border-b border-gray-50">{u.email}</td>
+                                    <td className="p-6 pl-16 pr-12 align-middle border-b border-gray-50">
+                                       <div className="flex justify-start">
+                                          <CustomDropdown
+                                             value={u.role}
+                                             onChange={(val) => handleStageChange('users', u.id, { role: val })}
+                                             disabled={isMySuperAdmin}
+                                             title={isMySuperAdmin ? "You cannot demote yourself" : "Stage User Role Change"}
+                                             hideChevron={isMySuperAdmin}
+                                             options={[
+                                                { label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') },
+                                                { label: 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
+                                                { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
+                                                { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
+                                             ]}
+                                             buttonClassName={`w-40 px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all border border-transparent flex items-center justify-center ${getRoleStyle(u.role)} ${isMySuperAdmin ? '' : 'hover:scale-105'}`}
+                                             dropdownClassName="left-0 w-48"
+                                          />
+                                       </div>
+                                    </td>
+                                 </tr>
+                              )
+                           })}
                            {filteredUsers.length === 0 && (
-                             <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat">No users match your search.</td></tr>
+                             <tr><td colSpan="4" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No users match your search.</td></tr>
                            )}
                         </tbody>
                      </table>
