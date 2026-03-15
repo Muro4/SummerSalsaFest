@@ -128,7 +128,7 @@ export default function Navbar() {
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">{user.email}</p>
                   </div>
                   
-                  <Link href="/account" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-salsa-pink hover:bg-gray-50 transition-colors flex items-center gap-2">
+                  <Link href="/account" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 hover:bg-gray-50 transition-colors flex items-center gap-2">
                     <UserIcon size={20} /> My Account
                   </Link>
 

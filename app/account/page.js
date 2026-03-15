@@ -240,7 +240,7 @@ export default function AccountPage() {
       <div className="max-w-7xl mx-auto px-6 mb-24">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
-           <div><h1 className="font-bebas text-7xl uppercase tracking-tighter leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
+           <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
            {activeTab === 'tickets' && (
               <div className="flex flex-col items-end">
                 <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
