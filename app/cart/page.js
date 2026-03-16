@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { usePopup } from "@/components/PopupProvider"; 
-import { Trash2, ShoppingBag, Lock, Loader2, TicketCheck, ShieldCheck, CheckCircle } from "lucide-react";
+import { usePopup } from "@/components/PopupProvider";
+import { Trash2, ShoppingBag, Lock, Loader2, Ticket, ShieldCheck, CheckCircle, Clock, XCircle, Plus } from "lucide-react";
 
-// --- SHARED PASS STYLING ---
+// --- STYLING HELPERS ---
 const getPassBgColor = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('full')) return 'bg-salsa-pink';
@@ -27,11 +27,8 @@ const getPassTextColor = (type) => {
   return 'text-slate-900';
 };
 
-const getPassStyle = (type) => {
-  return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
-};
+const getPassStyle = (type) => `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 
-// --- NEW HELPER: Soft Icon Backgrounds ---
 const getPassIconStyle = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('full')) return 'bg-salsa-pink/10 text-salsa-pink';
@@ -45,12 +42,9 @@ export default function Cart() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
-  
-  // NEW STATE: Tracks if the 0-euro checkout was successful
-  const [isSuccess, setIsSuccess] = useState(false); 
+  const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
-  
-  const { showPopup } = usePopup(); 
+  const { showPopup } = usePopup();
 
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(user => {
@@ -62,255 +56,231 @@ export default function Cart() {
           setLoading(false);
         });
         return () => unsub();
-      } else { 
-        setLoading(false); 
-      }
+      } else { setLoading(false); }
     });
     return () => unsubAuth();
   }, []);
 
   const total = items.reduce((acc, item) => acc + (item.price || 0), 0);
+  const counts = items.reduce((acc, item) => {
+    acc[item.passType] = (acc[item.passType] || 0) + 1;
+    return acc;
+  }, {});
+
+  const handleClearCart = () => {
+    showPopup({
+      type: "error",
+      title: "Clear Selection?",
+      message: "Are you sure you want to remove all items from your cart?",
+      confirmText: "Yes, Clear All",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        const batch = writeBatch(db);
+        items.forEach(item => { batch.delete(doc(db, "tickets", item.id)); });
+        await batch.commit();
+      }
+    });
+  };
+
+  const confirmRemoveItem = (id, userName) => {
+    showPopup({
+      type: "info", title: "Remove Pass?", message: `Remove the ticket for ${userName}?`, confirmText: "Yes, Remove", cancelText: "Keep It",
+      onConfirm: async () => await deleteDoc(doc(db, "tickets", id))
+    });
+  };
 
   const handleCheckout = async () => {
     setIsPaying(true);
-    
-    // ZERO EURO BYPASS 
     if (total === 0) {
-        try {
-            // Activate all tickets
-            const promises = items.map(item => 
-                updateDoc(doc(db, "tickets", item.id), { 
-                  status: "active",
-                  paymentConfirmedAt: new Date().toISOString()
-                })
-            );
-            await Promise.all(promises);
-            
-            // Trigger the success UI
-            setIsSuccess(true);
-            
-            // Wait 3 seconds, then redirect
-            setTimeout(() => {
-                if (auth.currentUser) {
-                    router.push("/account"); 
-                } else {
-                    sessionStorage.removeItem("guestSessionID"); 
-                    router.push("/"); 
-                }
-            }, 3000);
-            
-            return; // Exit function so Stripe doesn't run
-        } catch (err) {
-            showPopup({
-                type: "error",
-                title: "Activation Error",
-                message: "Failed to activate free passes. Please try again.",
-                confirmText: "Close"
-            });
-            setIsPaying(false);
-            return;
-        }
+      try {
+        const promises = items.map(item => updateDoc(doc(db, "tickets", item.id), { status: "active", paymentConfirmedAt: new Date().toISOString() }));
+        await Promise.all(promises);
+        setIsSuccess(true);
+        setTimeout(() => { if (auth.currentUser) router.push("/account"); else { sessionStorage.removeItem("guestSessionID"); router.push("/"); } }, 3000);
+        return;
+      } catch (err) {
+        showPopup({ type: "error", title: "Activation Error", message: "Failed to activate passes.", confirmText: "Close" });
+        setIsPaying(false);
+        return;
+      }
     }
 
-    // NORMAL STRIPE CHECKOUT
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
       });
-
       const data = await response.json();
-
-      if (!response.ok || data.error) {
-          throw new Error(data.error || "Server error");
-      }
-
-      if (data.url) {
-          window.location.href = data.url; 
-      } else {
-          throw new Error("No URL returned from Stripe.");
-      }
-
+      if (data.url) window.location.href = data.url;
+      else throw new Error(data.error || "Server error");
     } catch (err) {
-      showPopup({
-        type: "error",
-        title: "Checkout Error",
-        message: err.message,
-        confirmText: "Close"
-      });
+      showPopup({ type: "error", title: "Checkout Error", message: err.message, confirmText: "Close" });
       setIsPaying(false);
     }
   };
 
-  const confirmRemoveItem = (id, userName) => {
-    showPopup({
-      type: "info",
-      title: "Remove Pass?",
-      message: `Are you sure you want to remove the ticket for ${userName}?`,
-      confirmText: "Yes, Remove",
-      cancelText: "Keep It",
-      onConfirm: async () => {
-        await deleteDoc(doc(db, "tickets", id));
-      }
-    });
-  };
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
-  // 1. LOADING UI
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-salsa-white">
-        <Loader2 className="animate-spin text-salsa-pink" size={48} />
-      </div>
-    );
-  }
-
-  // 2. SUCCESS UI (Renders if 0-euro bypass finishes)
   if (isSuccess) {
     return (
       <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
         <Navbar />
-        {/* flex-grow and justify-center perfectly center this underneath the Navbar */}
         <div className="flex-grow flex flex-col items-center justify-center px-6 text-center w-full">
           <div className="bg-white p-16 rounded-[4rem] shadow-2xl border-2 border-emerald-100 max-w-lg w-full animate-in zoom-in duration-500">
-             <div className="flex flex-col items-center animate-in fade-in duration-500">
-                <CheckCircle className="text-emerald-500 mb-6" size={80} />
-                <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">Passes Activated!</h1>
-                <p className="text-gray-500 font-bold text-sm">Your free entry is confirmed and ready.</p>
-                <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
-             </div>
+            <div className="flex flex-col items-center">
+              <CheckCircle className="text-emerald-500 mb-6" size={80} />
+              <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">Passes Activated!</h1>
+              <p className="text-gray-500 font-bold text-sm">Your entry is confirmed and ready.</p>
+              <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
+            </div>
           </div>
         </div>
       </main>
     );
   }
 
-  // 3. NORMAL CART UI
   return (
     <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
       <Navbar />
-      
       <div className="flex-grow max-w-7xl mx-auto px-6 w-full pt-40 pb-24">
-        
-        {/* HEADER */}
+
+        {/* HEADER AREA */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-            <div>
-                <h1 className="font-bebas text-6xl md:text-8xl tracking-tight leading-none text-slate-900 uppercase">Your Cart</h1>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3">Review your selections</p>
+          <div className="flex flex-col gap-2">
+            <h1 className="font-bebas text-6xl md:text-8xl tracking-tight leading-none text-slate-900 uppercase">Your Cart</h1>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Review your selections</p>
+          </div>
+          {items.length > 0 && (
+            <div className="bg-white px-6 py-3 rounded-full border border-gray-100 shadow-sm flex items-center gap-3 h-[46px]">
+              <ShoppingBag className="text-salsa-pink" size={18} />
+              <span className="font-black text-[10px] uppercase tracking-widest text-slate-700">{items.length} {items.length === 1 ? 'Item' : 'Items'}</span>
             </div>
-            {items.length > 0 && (
-              <div className="bg-white px-6 py-3.5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-                  <ShoppingBag className="text-salsa-pink" size={18} />
-                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-700">{items.length} {items.length === 1 ? 'Item' : 'Items'}</span>
-              </div>
-            )}
+          )}
         </div>
 
         {items.length > 0 ? (
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
-            
-            {/* LEFT COLUMN: ITEMS LIST */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-5">
-              {items.map(item => (
-                <div key={item.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group">
-                  
-                  {/* Item Details */}
-                  <div className="flex items-center gap-6 mb-4 md:mb-0">
-                    
-                    {/* UPDATED: Changed icon to TicketCheck and used soft opacity background */}
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border border-transparent shadow-sm transition-transform group-hover:scale-105 ${getPassIconStyle(item.passType)}`}>
-                      <TicketCheck className="opacity-90" size={24} />
+
+            <div className="lg:col-span-7 xl:col-span-8">
+              {/* ACTION BUTTONS ROW */}
+              <div className="flex justify-between items-center mb-6">
+                {/* LEFT: GET MORE BUTTON */}
+                <Link
+                  href="/tickets"
+                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 bg-white px-5 py-2.5 rounded-full border border-slate-200 shadow-sm hover:border-slate-900 hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  Get More Passes
+                </Link>
+
+                {/* RIGHT: CLEAR CART BUTTON */}
+                <button
+                  onClick={handleClearCart}
+                  className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all cursor-pointer bg-white px-5 py-2.5 rounded-full border border-gray-100 shadow-sm hover:shadow-md active:scale-95"
+                >
+                  <XCircle size={14} className="group-hover:rotate-90 transition-transform duration-300" />
+                  Clear Cart
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {items.map(item => (
+                  <div key={item.id} className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
+                    <div className="flex items-center gap-8 mb-6 md:mb-0 w-full md:w-auto">
+                      <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center border border-transparent shrink-0 shadow-inner ${getPassIconStyle(item.passType)}`}>
+                        <Ticket size={32} strokeWidth={1.5} />
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="mb-1">
+                          <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.15em] shadow-sm ${getPassStyle(item.passType)}`}>{item.passType}</span>
+                        </div>
+                        {/* NAME: Removed tracking-tight and used name-spacing class if you added it to globals.css */}
+                        <h3 className="text-3xl font-black uppercase text-slate-900 leading-tight tracking-normal truncate">
+                          {item.userName}
+                        </h3>
+                        <div className="flex items-center gap-4 mt-1">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                            <Clock size={12} className="opacity-50" /> {item.festivalYear} Edition
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${getPassStyle(item.passType)}`}>
-                        {item.passType}
-                      </span>
-                      <h3 className="text-2xl font-black mt-3 uppercase text-slate-900 leading-none tracking-wide">{item.userName}</h3>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Festival Year: {item.festivalYear}</p>
+                    <div className="flex items-center justify-between w-full md:w-auto gap-12 pt-6 md:pt-0 border-t border-slate-50 md:border-none">
+                      <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Price</p>
+                        <p className="font-bebas text-5xl text-slate-900 leading-none">€{item.price}</p>
+                      </div>
+                      <button onClick={() => confirmRemoveItem(item.id, item.userName)} className="group/btn cursor-pointer w-14 h-14 rounded-2xl flex items-center justify-center bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all duration-300" title="Remove Item"><Trash2 size={22} className="group-hover/btn:scale-110 transition-transform" /></button>
                     </div>
                   </div>
-
-                  {/* Price & Actions */}
-                  <div className="flex items-center justify-between w-full md:w-auto gap-8 pt-4 border-t border-gray-50 md:border-none md:pt-0">
-                    <p className="font-bebas text-4xl text-slate-900">€{item.price}</p>
-                    <button 
-                      onClick={() => confirmRemoveItem(item.id, item.userName)} 
-                      className="cursor-pointer w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      title="Remove Item"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* RIGHT COLUMN: SUMMARY BOX */}
+            {/* SUMMARY COLUMN */}
+            {/* SUMMARY COLUMN */}
             <div className="lg:col-span-5 xl:col-span-4">
-              <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-2xl sticky top-32">
-                <h2 className="font-bebas text-5xl mb-8 uppercase text-slate-900 tracking-wide">Summary</h2>
-                
-                {/* Breakdown */}
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-500">
-                      <span>Subtotal</span>
-                      <span className="text-slate-900 text-sm">€{total}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-500">
-                      <span>Processing Fees</span>
-                      <span className="text-gray-400">Calculated next</span>
-                  </div>
+              <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-2xl sticky top-32">
+                <h2 className="font-bebas text-4xl mb-6 uppercase text-slate-900 tracking-wide">Summary</h2>
+
+                {/* COMPACT BREAKDOWN */}
+                <div className="space-y-0 mb-6 border-y border-slate-100">
+                  {Object.entries(counts).map(([type, count], index) => (
+                    <div
+                      key={type}
+                      className={`flex justify-between items-center py-3 ${index !== Object.entries(counts).length - 1 ? 'border-b border-slate-100' : ''
+                        }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-2 h-2 rounded-full ${getPassBgColor(type)}`}></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{type}</span>
+                      </div>
+
+                      {/* SMALLER PURE COUNT */}
+                      <span className="text-slate-900 font-black text-sm font-montserrat">
+                        {count}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Total */}
-                <div className="flex justify-between items-end border-t border-gray-100 pt-8 mb-8">
-                    <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2">Total Due</span>
-                    <span className="font-bebas text-6xl text-salsa-pink leading-none">€{total}</span>
+                <div className="flex justify-between items-end pt-2 mb-6">
+                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-1">Total Due</span>
+                  <span className="font-bebas text-5xl text-salsa-pink leading-none">€{total}</span>
                 </div>
 
-                {/* Checkout Button */}
-                <button 
-                    onClick={handleCheckout} 
-                    disabled={isPaying} 
-                    className="cursor-pointer w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest shadow-xl disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                <button
+                  onClick={handleCheckout}
+                  disabled={isPaying}
+                  className="cursor-pointer w-full h-[56px] bg-slate-900 text-white font-black rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-50 mt-4"
                 >
-                    {isPaying ? (
-                        <Loader2 className="animate-spin" />
-                    ) : (
-                        total === 0 ? <><CheckCircle size={16}/> Activate Passes</> : <><Lock size={16}/> Proceed to Pay</>
-                    )}
+                  {isPaying ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    total === 0 ? <><CheckCircle size={16} /> Activate Passes</> : <><Lock size={16} /> Proceed to Pay</>
+                  )}
                 </button>
 
-                {/* Secure Checkout Badge */}
-                <div className="mt-6 flex items-center justify-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="mt-5 flex items-center justify-center gap-2 text-[9px] font-black text-slate-300 uppercase tracking-widest">
                   {total > 0 ? (
-                      <><ShieldCheck size={14} className="text-emerald-500" /> Secure encrypted checkout</>
+                    <><ShieldCheck size={12} className="text-emerald-400" /> Secure Checkout</>
                   ) : (
-                      <><ShieldCheck size={14} className="text-emerald-500" /> 100% Free Processing</>
+                    <><ShieldCheck size={12} className="text-emerald-400" /> Free Processing</>
                   )}
                 </div>
               </div>
             </div>
-
           </div>
         ) : (
-          
-          /* EMPTY STATE */
-          <div className="w-full border-2 border-dashed border-salsa-mint/40 bg-[#f4fdfb] rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm animate-in fade-in duration-500">
-            <div className="mb-6">
-              <ShoppingBag size={56} className="text-slate-300 stroke-[1.5]" />
-            </div>
+          <div className="w-full border-2 border-dashed border-salsa-mint/40 bg-[#f4fdfb] rounded-[3rem] py-32 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+            <ShoppingBag size={56} className="text-slate-300 mb-6" />
             <h3 className="font-bebas text-4xl text-slate-400 tracking-wide uppercase mb-4">Cart is empty</h3>
-            <Link href="/tickets" className="text-salsa-pink text-[11px] font-black uppercase tracking-[0.2em] hover:underline transition-all">
-              Browse Tickets
-            </Link>
+            <Link href="/tickets" className="text-salsa-pink text-[11px] font-black uppercase tracking-[0.2em] hover:underline transition-all">Browse Tickets</Link>
           </div>
-
         )}
       </div>
-      
-      <Footer />
     </main>
   );
 }
