@@ -10,7 +10,7 @@ import Button from "@/components/Button";
 import {
   Users, Plus, Trash2, Search, Loader2, CheckCircle, CreditCard,
   ShieldAlert, History, UserPlus, ArrowRight, Download, Send, X, Mail,
-  ChevronLeft, ChevronRight, Info, Eye, Filter, Ticket
+  ChevronLeft, ChevronRight, Info, Eye, Filter, Ticket, Clock
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
@@ -467,7 +467,7 @@ export default function AmbassadorDashboard() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
 
                 <div className="mb-4 relative z-10">
-                  <span className={`text-[11px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>
+                  <span className={`text-[12px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>
                     {fullScreenTicket.passType}
                   </span>
                 </div>
@@ -554,7 +554,8 @@ export default function AmbassadorDashboard() {
       {/* --- MAIN DASHBOARD UI --- */}
       <div className="flex-grow max-w-7xl mx-auto px-6 w-full pt-32 pb-24">
 
-        <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        {/* HEADER */}
+        <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-30">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm">
@@ -564,44 +565,65 @@ export default function AmbassadorDashboard() {
             <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Dashboard</h1>
           </div>
           <div className="flex flex-col items-end w-full md:w-auto z-20">
-            <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Festival Year</label>
+            <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Festival Archive</label>
             <CustomDropdown
               value={selectedYear}
               onChange={setSelectedYear}
               options={[
-                { label: 'SSF: 2026', value: '2026' },
-                { label: 'SSF: 2025', value: '2025' },
-                { label: 'SSF: 2024', value: '2024' }
+                { label: 'SSF 2026', value: '2026' },
+                { label: 'SSF 2025', value: '2025' },
+                { label: 'SSF 2024', value: '2024' }
               ]}
               variant="compact"
             />
           </div>
         </div>
 
-        {/* CONTROLS ROW */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
-
-          <div className="tabs-container w-full lg:w-80 z-0">
+        {/* CONTROLS LEVEL 1: TABS */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-6 w-full">
+          <div className="relative flex bg-slate-50 border border-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)]">
             <div
               className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
               style={{ left: activeTab === 'draft' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }}
             />
             <button
-              onClick={() => setActiveTab("draft")}
+              onClick={() => {
+                setActiveTab("draft");
+                setPassFilter("All");
+                setSearchQuery("");
+              }}
               className={`tab-button cursor-pointer ${activeTab === 'draft' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
             >
               <UserPlus size={14} /> Draft Roster
             </button>
             <button
-              onClick={() => setActiveTab("history")}
+              onClick={() => {
+                setActiveTab("history");
+                setPassFilter("All");
+                setSearchQuery("");
+              }}
               className={`tab-button cursor-pointer ${activeTab === 'history' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
             >
               <History size={14} /> Paid History
             </button>
           </div>
+        </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto z-10">
-            <div className="w-full md:w-auto relative">
+        {/* CONTROLS LEVEL 2: SEARCH & FILTERS (Matches Admin Dashboard Layout) */}
+        <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-10">
+          <div className="relative flex-grow group">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
+            <input
+              type="text"
+              maxLength={50}
+              placeholder={`Search ${activeTab === 'draft' ? 'draft' : 'paid'} names...`}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 focus:shadow-md transition-all font-montserrat text-slate-900 shadow-sm"
+            />
+          </div>
+          <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+            <div className="relative w-full md:w-auto">
               <CustomDropdown
                 value={passFilter}
                 onChange={setPassFilter}
@@ -616,28 +638,18 @@ export default function AmbassadorDashboard() {
                 variant="filter"
               />
             </div>
-
-            <div className="relative w-full md:w-72 group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
-              <input
-                type="text"
-                maxLength={50}
-                placeholder={`Search ${activeTab === 'draft' ? 'draft' : 'paid'} names...`}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 focus:shadow-md font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat"
-              />
-            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden min-h-[500px] flex flex-col z-0 relative">
+        {/* DATA CONTAINER */}
+        <div className="bg-white rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden min-h-[500px] flex flex-col z-0 relative">
 
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full flex flex-col flex-grow">
 
+            {/* --- DRAFT TAB --- */}
             {activeTab === "draft" && (
               <div className="flex flex-col h-full">
-                <div className="p-8 md:p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 gap-6 shrink-0">
+                <div className="p-8 md:p-10 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 gap-6 shrink-0 rounded-t-[3rem]">
                   <div>
                     <h2 className="font-bebas text-4xl text-slate-900 uppercase tracking-wide">Pending Group</h2>
                     <p className="text-xs font-medium text-slate-500 mt-1 font-montserrat">Draft names and select passes. Changes save automatically.</p>
@@ -656,11 +668,11 @@ export default function AmbassadorDashboard() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto w-full flex-grow">
-                  <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
+                <div className="overflow-x-auto w-full flex-grow pb-40">
+                  <table className="w-full text-left border-separate border-spacing-0 min-w-[800px] font-montserrat relative">
+                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                       <tr>
-                        <th className="p-4 md:p-6 pl-10 w-20">
+                        <th className="p-6 pl-10 font-bold w-20 border-b border-gray-100">
                           <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
@@ -673,10 +685,10 @@ export default function AmbassadorDashboard() {
                             )}
                           </div>
                         </th>
-                        <th className="p-4 md:p-6 font-bold w-1/3">Legal Name (As Per ID)</th>
-                        <th className="p-4 md:p-6 font-bold text-center">Pass Selection</th>
-                        <th className="p-4 md:p-6 font-bold text-right w-32">Price</th>
-                        <th className="p-4 md:p-6 pr-10 text-right font-bold w-20">
+                        <th className="p-6 font-bold w-1/3 border-b border-gray-100">Legal Name (As Per ID)</th>
+                        <th className="p-6 font-bold text-center border-b border-gray-100">Pass Selection</th>
+                        <th className="p-6 font-bold text-right w-32 border-b border-gray-100">Price</th>
+                        <th className="p-6 pr-10 text-right font-bold w-24 border-b border-gray-100">
                           {selectedDrafts.length > 0 && (
                             <button onClick={confirmMassDelete} title="Delete Selected" className="text-red-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg flex items-center justify-end ml-auto transition-colors cursor-pointer animate-in zoom-in">
                               <Trash2 size={24} />
@@ -685,14 +697,14 @@ export default function AmbassadorDashboard() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="uppercase text-xs font-bold text-slate-900">
                       {filteredDrafts.map((row, index) => (
                         <tr
                           key={row.id}
                           className={`transition-colors group ${selectedDrafts.includes(row.id) ? 'bg-pink-100/50' : 'hover:bg-slate-50/50'}`}
                         >
                           <td
-                            className="p-3 md:p-4 pl-10 cursor-pointer align-middle font-montserrat"
+                            className="p-6 pl-10 cursor-pointer align-middle border-b border-gray-50"
                             onMouseDown={() => handleMouseDownOnRow(row.id)}
                             onMouseEnter={() => handleMouseEnterOnRow(row.id)}
                           >
@@ -706,17 +718,17 @@ export default function AmbassadorDashboard() {
                               <span className={`text-[10px] font-black w-6 text-right ${selectedDrafts.includes(row.id) ? 'text-pink-600' : 'text-slate-500'}`}>{index + 1}.</span>
                             </div>
                           </td>
-                          <td className="p-3 md:p-4 align-middle font-montserrat">
+                          <td className="p-6 align-middle border-b border-gray-50">
                             <input
                               type="text"
                               maxLength={50}
                               value={row.name}
                               placeholder="FULL NAME"
                               onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                              className="w-full p-2.5 bg-white/50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-slate-900 font-bold uppercase text-xs text-slate-900 transition-all shadow-sm text-left"
+                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold uppercase text-xs text-slate-900 transition-all shadow-sm text-left font-montserrat"
                             />
                           </td>
-                          <td className="p-3 md:p-4 align-middle font-montserrat">
+                          <td className="p-6 align-middle border-b border-gray-50">
                             <div className="flex justify-center w-full">
                               <div className="relative flex items-center bg-gray-100 p-1.5 rounded-full w-full min-w-[320px] shadow-inner">
                                 <div
@@ -727,7 +739,7 @@ export default function AmbassadorDashboard() {
                                   <button
                                     key={type}
                                     onClick={() => updateRow(row.id, 'type', type)}
-                                    className={`relative z-10 flex-1 py-2 text-[10px] font-sans font-black uppercase tracking-widest transition-colors duration-300 cursor-pointer ${row.type === type ? getPassTextColor(type) : 'text-gray-400 hover:text-gray-700'
+                                    className={`relative z-10 flex-1 py-2 text-[11px] font-sans font-black uppercase tracking-widest transition-colors duration-300 cursor-pointer ${row.type === type ? getPassTextColor(type) : 'text-gray-400 hover:text-gray-700'
                                       }`}
                                   >
                                     {type}
@@ -736,10 +748,10 @@ export default function AmbassadorDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 md:p-4 text-right font-montserrat font-bold text-base text-slate-700 align-middle">
+                          <td className="p-6 text-right font-bold text-base text-slate-700 align-middle border-b border-gray-50">
                             €{getPrice(row.type)}
                           </td>
-                          <td className="p-3 md:p-4 pr-10 text-right align-middle font-montserrat">
+                          <td className="p-6 pr-10 text-right align-middle border-b border-gray-50">
                             <div className="flex items-center justify-end h-full mt-1">
                               <button
                                 onClick={() => confirmRemoveRow(row.id, row.name)}
@@ -753,13 +765,13 @@ export default function AmbassadorDashboard() {
                         </tr>
                       ))}
                       {filteredDrafts.length === 0 && (
-                        <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat">No drafts found. Try adding rows or clearing filters.</td></tr>
+                        <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No drafts found. Try adding rows or clearing filters.</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="p-8 bg-slate-50 border-t border-gray-100 flex justify-end items-center gap-8 shrink-0 mt-auto">
+                <div className="p-8 bg-slate-50 border-t border-gray-100 flex justify-end items-center gap-8 shrink-0 mt-auto rounded-b-[3rem] relative z-10">
                   <div className="text-right">
                     <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
                     <span className="block font-montserrat text-2xl font-black text-slate-900">€{draftTotal}</span>
@@ -771,9 +783,10 @@ export default function AmbassadorDashboard() {
               </div>
             )}
 
+            {/* --- HISTORY TAB --- */}
             {activeTab === "history" && (
               <div className="flex flex-col h-full">
-                <div className="p-8 md:p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 shrink-0 gap-6">
+                <div className="p-8 md:p-10 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 shrink-0 gap-6 rounded-t-[3rem]">
                   <div>
                     <h2 className="font-bebas text-4xl text-slate-900 uppercase tracking-wide">Paid Roster</h2>
                     <p className="text-xs font-medium text-slate-500 mt-1 font-montserrat">Confirmed attendees. Click any row to view and send the ticket.</p>
@@ -791,35 +804,37 @@ export default function AmbassadorDashboard() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto w-full flex-grow">
-                  <table className="w-full text-left border-collapse min-w-[600px]">
-                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
+                <div className="overflow-x-auto w-full flex-grow pb-40">
+                  <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
+                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                       <tr>
-                        <th className="p-6 pl-10 font-bold">Attendee Name</th>
-                        <th className="p-6 font-bold">Pass Type</th>
-                        <th className="p-6 font-bold text-right w-32">Price</th>
-                        <th className="p-6 pl-16 font-bold text-center">Emailed</th>
-                        <th className="p-6 pr-24 text-right font-bold">Status</th>
+                        <th className="p-6 pl-10 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
+                        <th className="p-6 font-bold w-56 border-b border-gray-100">Pass Type</th>
+                        <th className="p-6 font-bold text-right w-32 border-b border-gray-100">Price</th>
+                        {/* Increased width and added pl-16 to center Emailed perfectly without changing column order */}
+                        <th className="p-6 pl-16 font-bold text-center w-56 border-b border-gray-100">Emailed</th>
+                        <th className="p-6 pr-10 text-right font-bold w-40 border-b border-gray-100">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 uppercase text-xs font-bold text-slate-900">
+                    <tbody className="uppercase text-xs font-bold text-slate-900">
                       {filteredHistory.map((t, i) => (
                         <tr key={t.id} onClick={() => setFullScreenTicket(t)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                          <td className="p-6 pl-10 align-middle font-montserrat">
+                          <td className="p-6 pl-10 align-middle border-b border-gray-50">
                             <div className="flex items-center gap-4 h-full">
                               <span className="text-[10px] font-black text-slate-500 w-6 text-right group-hover:text-salsa-pink transition-colors">{i + 1}.</span>
-                              <span className="group-hover:text-salsa-pink transition-colors">{t.userName}</span>
+                              <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide group-hover:text-salsa-pink transition-colors">{t.userName}</span>
                             </div>
                           </td>
-                          <td className="p-6 align-middle">
-                            <span className={`px-4 py-1.5 rounded-full font-sans text-[10px] font-black tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>
+                          <td className="p-6 align-middle border-b border-gray-50">
+                            <span className={`px-5 py-2 rounded-full font-sans text-xs font-black tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>
                               {t.passType}
                             </span>
                           </td>
-                          <td className="p-6 text-[15px] font-montserrat font-semibold text-slate-900 tracking-wide text-right align-middle">
+                          <td className="p-6 text-base font-montserrat font-bold text-slate-700 tracking-wide text-right align-middle border-b border-gray-50">
                             €{t.price}
                           </td>
-                          <td className="p-6 pl-16 text-center align-middle font-montserrat">
+                          {/* Centers the content within its newly widened cell block */}
+                          <td className="p-6 pl-16 text-center align-middle font-montserrat border-b border-gray-50">
                             <div className="flex items-center justify-center h-full">
                               {t.emailSentCount > 0 ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full tracking-widest"><Mail size={12} /> {t.emailSentCount}</span>
@@ -828,12 +843,13 @@ export default function AmbassadorDashboard() {
                               )}
                             </div>
                           </td>
-                          <td className="p-6 pr-10 align-middle font-montserrat">
-                            <div className="flex items-center justify-end gap-3 h-full">
-                              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-[9px] font-black tracking-widest group-hover:bg-emerald-100 transition-colors">
-                                <CheckCircle size={12} /> Active
-                              </span>
-                              <div className="bg-gray-50 p-2 rounded-xl text-gray-400 group-hover:bg-salsa-pink group-hover:text-white transition-colors duration-300 shadow-sm border border-gray-100 group-hover:border-salsa-pink group-hover:scale-110" title="View Ticket">
+                          <td className="p-6 pr-10 align-middle font-montserrat border-b border-gray-50">
+                            <div className="flex items-center justify-end gap-4 h-full">
+                              <div className={`flex items-center gap-1.5 text-xs font-black tracking-widest uppercase ${t.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                {t.status === 'active' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                                {t.status}
+                              </div>
+                              <div className="bg-white p-2 rounded-xl text-gray-400 group-hover:bg-salsa-pink group-hover:text-white transition-colors duration-300 shadow-sm border border-gray-200 group-hover:border-salsa-pink group-hover:scale-110" title="View Ticket">
                                 <Eye size={16} />
                               </div>
                             </div>
@@ -841,7 +857,7 @@ export default function AmbassadorDashboard() {
                         </tr>
                       ))}
                       {filteredHistory.length === 0 && (
-                        <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat">No paid attendees found. Try clearing filters.</td></tr>
+                        <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No paid attendees found. Try clearing filters.</td></tr>
                       )}
                     </tbody>
                   </table>

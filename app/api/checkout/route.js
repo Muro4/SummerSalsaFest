@@ -46,13 +46,17 @@ export async function POST(req) {
       };
     });
 
+    // 🟢 THE FIX: Dynamically grab the origin (e.g., http://localhost:3000 or your real domain)
+    // If headers fail for some reason, it falls back to the .env, and finally to localhost
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
     // 5. Create Stripe Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart`,
+      success_url: `${origin}/cart/success`,
+      cancel_url: `${origin}/cart`,
     });
 
     // 6. Return Success URL

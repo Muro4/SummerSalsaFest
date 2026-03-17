@@ -30,9 +30,9 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // --- THE FIX: Safe Listener Management ---
+  // --- Safe Listener Management ---
   useEffect(() => {
-    let unsubCart = null; // Initialize as null to safely check if it exists
+    let unsubCart = null; 
 
     const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
@@ -44,7 +44,7 @@ export default function Navbar() {
           setUserData(uDoc.data());
         }
 
-        // Clean up any weird lingering listeners before making a new one
+        // Clean up any lingering listeners before making a new one
         if (unsubCart) unsubCart();
 
         // Listen for Cart Items safely
@@ -59,13 +59,12 @@ export default function Navbar() {
             setCartItems(totalItems);
           },
           (error) => {
-            // This stops the red error from blowing up your console if rules block it
             console.log("Cart sync paused (Update Firestore rules to enable):", error.message);
           }
         );
 
       } else {
-        // THE CRITICAL FIX: Kill the listener IMMEDIATELY when signing out
+        // Kill the listener IMMEDIATELY when signing out
         if (unsubCart) {
           unsubCart();
           unsubCart = null;
@@ -77,7 +76,7 @@ export default function Navbar() {
 
     return () => {
       unsubAuth();
-      if (unsubCart) unsubCart(); // Final safety cleanup on unmount
+      if (unsubCart) unsubCart(); 
     };
   }, []);
 
@@ -152,39 +151,44 @@ export default function Navbar() {
           {user ? (
             <div className="relative" ref={dropdownRef}>
               
-              {/* AVATAR BUTTON */}
+              {/* AVATAR BUTTON (Updated with Gradient Ring) */}
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)} 
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer duration-300 border overflow-hidden
-                  ${isTransparent 
-                    ? 'bg-white/20 border-white/30 text-white hover:bg-white/30' 
-                    : 'bg-gray-50 border-gray-200 text-slate-800 hover:bg-salsa-pink hover:text-white hover:border-salsa-pink'}`}
+                className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
               >
-                {user.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover" 
-                    referrerPolicy="no-referrer" 
-                  />
-                ) : (
-                  <UserIcon size={20} />
-                )}
+                {/* Inner Wrapper ensures the gradient shows as a border */}
+                <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center transition-colors duration-300 ${isTransparent ? 'bg-slate-900/80 text-white' : 'bg-white text-slate-800'}`}>
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover rounded-full" 
+                      referrerPolicy="no-referrer" 
+                    />
+                  ) : (
+                    <UserIcon size={18} />
+                  )}
+                </div>
               </button>
 
               {/* DROPDOWN MENU */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-4 w-72 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-4 w-60 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                   
                   {/* User Info Header */}
                   <div className="px-4 py-3 border-b border-gray-50 mb-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
-                      {user.photoURL ? (
-                        <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <UserIcon size={16} className="text-slate-400" />
-                      )}
+                    
+                    {/* Dropdown Avatar (Matches Gradient Ring) */}
+                    <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shrink-0">
+                      <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center">
+                        {user.photoURL ? (
+                          <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                        ) : (
+                          <UserIcon size={16} className="text-slate-400" />
+                        )}
+                      </div>
                     </div>
+
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-black text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
                       <p className="text-[10px] font-bold text-slate-500 truncate lowercase tracking-wide mt-0.5">{user.email}</p>
@@ -210,7 +214,7 @@ export default function Navbar() {
 
                     {userData?.role === 'superadmin' && (
                       <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                        Admin Dashboard
+                        Admin Panel
                       </Button>
                     )}
 

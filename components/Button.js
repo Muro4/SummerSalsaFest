@@ -36,7 +36,7 @@ export default function Button({
     secondary: "bg-slate-800 text-white shadow-md hover:bg-slate-700 hover:shadow-lg",
     
     // Tier 3: Subtle actions (Ghost buttons, filters)
-    ghost: "bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50",
+    ghost: "bg-transparent text-slate-500 hover:text-slate-800",
     
     // Tier 4: Outlined buttons for high contrast without heavy background
     outline: "bg-transparent border-2 border-slate-200 text-slate-800 hover:border-slate-800",
