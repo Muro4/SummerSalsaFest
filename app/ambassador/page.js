@@ -4,11 +4,12 @@ import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc, setDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
 import { 
   Users, Plus, Trash2, Search, Loader2, CheckCircle, CreditCard, 
   ShieldAlert, History, UserPlus, ArrowRight, Download, Send, X, Mail,
-  ChevronLeft, ChevronRight, Info, Eye, Filter
+  ChevronLeft, ChevronRight, Info, Eye, Filter, Ticket
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
@@ -223,13 +224,11 @@ export default function AmbassadorDashboard() {
   const updateRow = (id, field, value) => saveRoster(groupRows.map(row => row.id === id ? { ...row, [field]: value } : row));
 
   const submitGroupToCart = async () => {
-    // 1. Check for missing names
     if (groupRows.filter(r => !r.name.trim()).length > 0) {
       showPopup({ type: "error", title: "Missing Names", message: "Please fill in all names or delete empty rows.", confirmText: "Fix It" });
       return;
     }
 
-    // 2. Validate names (No numbers, no weird symbols, min 2 characters)
     const nameRegex = /^[\p{L}\s\-']+$/u;
     for (let i = 0; i < groupRows.length; i++) {
       const row = groupRows[i];
@@ -429,15 +428,15 @@ export default function AmbassadorDashboard() {
           
           <div className="relative w-fit max-w-[95vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300 my-10 mx-auto">
             
-            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink transition bg-white/10 p-2 rounded-full backdrop-blur-md z-50">
+            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md z-50">
               <X size={24} />
             </button>
 
             <div className="absolute top-1/2 -translate-y-1/2 -left-12 md:-left-20 hidden md:flex z-50">
-               <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32}/></button>
+               <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32}/></button>
             </div>
             <div className="absolute top-1/2 -translate-y-1/2 -right-12 md:-right-20 hidden md:flex z-50">
-               <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredHistory.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32}/></button>
+               <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredHistory.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32}/></button>
             </div>
             
             {/* TICKET CONTAINER */}
@@ -451,7 +450,7 @@ export default function AmbassadorDashboard() {
                 id="download-icon-btn" 
                 onClick={handleDownloadPDF} 
                 title="Download PDF"
-                className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint/10 text-gray-400 hover:text-salsa-mint rounded-full transition-all cursor-pointer shadow-sm border border-gray-100"
+                className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint hover:-translate-y-1 hover:shadow-lg text-gray-400 hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100"
               >
                 <Download size={20} />
               </button>
@@ -504,7 +503,7 @@ export default function AmbassadorDashboard() {
             </div>
 
             {/* CONTROLS */}
-            <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4">
+            <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
               
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
                 <div className="flex items-center gap-2">
@@ -517,17 +516,24 @@ export default function AmbassadorDashboard() {
               </div>
 
               <div className="border-t border-gray-50 pt-4">
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                  Attendee Email
+                </label>
                 <div className="relative flex items-center w-full">
                   <Mail className="absolute left-4 text-gray-400" size={16} />
                   <input 
                     type="email" 
                     maxLength={50}
-                    placeholder="ENTER ATTENDEE EMAIL ADDRESS..." 
+                    placeholder="EMAIL" 
                     value={recipientEmail} 
                     onChange={(e) => setRecipientEmail(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[10px] uppercase tracking-widest font-montserrat" 
                   />
-                  <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[10px] uppercase hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat">
+                  <button 
+                    onClick={handleSendTicketEmail} 
+                    disabled={sendingEmail} 
+                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[10px] uppercase hover:bg-pink-600 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat shadow-sm"
+                  >
                     {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14}/> Send</>}
                   </button>
                 </div>
@@ -555,19 +561,25 @@ export default function AmbassadorDashboard() {
             </div>
             <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Dashboard</h1>
           </div>
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end w-full md:w-auto z-20">
             <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Festival Year</label>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-white border-2 border-slate-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase outline-none focus:border-slate-900 shadow-sm cursor-pointer hover:border-slate-900 transition-all text-slate-900 font-montserrat">
-                <option value="2026">SSF 2026</option>
-                <option value="2025">SSF 2025</option>
-            </select>
+            <CustomDropdown 
+              value={selectedYear}
+              onChange={setSelectedYear}
+              options={[
+                { label: 'SSF: 2026', value: '2026' },
+                { label: 'SSF: 2025', value: '2025' },
+                { label: 'SSF: 2024', value: '2024' }
+              ]}
+              buttonClassName="bg-white border-2 border-slate-200 p-2.5 px-4 rounded-xl text-xs font-black uppercase shadow-sm hover:border-slate-900 transition-all text-slate-900 font-montserrat w-full md:w-auto"
+            />
           </div>
         </div>
 
-        {/* CONTROLS ROW */}
+       {/* CONTROLS ROW */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
           
-          <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-inner">
+          <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-inner z-0">
             <div 
               className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
               style={{ left: activeTab === 'draft' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }}
@@ -586,37 +598,38 @@ export default function AmbassadorDashboard() {
             </button>
           </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
-            <div className="relative w-full md:w-auto">
-              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14}/>
-              <select 
-                value={passFilter} 
-                onChange={e => setPassFilter(e.target.value)}
-                className="w-full md:w-48 p-3.5 pl-10 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat cursor-pointer appearance-none"
-              >
-                <option value="All">All Passes</option>
-                <option value="Full Pass">Full Pass</option>
-                <option value="Party Pass">Party Pass</option>
-                <option value="Day Pass">Day Pass</option>
-                {activeTab === 'history' && <option value="Free Pass">Free Pass</option>}
-              </select>
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto z-10">
+            <div className="w-full md:w-auto relative">
+              <CustomDropdown
+                value={passFilter}
+                onChange={setPassFilter}
+                icon={Ticket}
+                options={[
+                  { label: 'All Passes', value: 'All', isPill: true, colorClass: getPassStyle('All') },
+                  { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') },
+                  { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') },
+                  { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
+                  ...(activeTab === 'history' ? [{ label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }] : [])
+                ]}
+                buttonClassName="w-full md:w-auto p-3.5 px-5 bg-white border border-gray-200 rounded-2xl outline-none hover:border-slate-900 font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat"
+              />
             </div>
 
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+            <div className="relative w-full md:w-72 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16}/>
               <input 
                 type="text" 
                 maxLength={50}
                 placeholder={`Search ${activeTab === 'draft' ? 'draft' : 'paid'} names...`} 
                 value={searchQuery} 
                 onChange={e => setSearchQuery(e.target.value)} 
-                className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat" 
+                className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 focus:shadow-md font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat" 
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
+        <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl overflow-hidden min-h-[500px] flex flex-col z-0 relative">
           
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full flex flex-col flex-grow">
             
@@ -636,7 +649,7 @@ export default function AmbassadorDashboard() {
 
                     <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                       <input type="number" min="1" max="100" maxLength={3} value={bulkAddCount} onChange={(e) => setBulkAddCount(e.target.value)} className="w-16 px-3 py-2 text-xs font-bold text-center outline-none bg-transparent text-slate-900 font-montserrat" />
-                      <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink transition-all font-montserrat"><Plus size={14}/> Add Rows</button>
+                      <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink hover:scale-105 transition-all duration-300 font-montserrat"><Plus size={14}/> Add Rows</button>
                     </div>
                   </div>
                 </div>
@@ -649,7 +662,7 @@ export default function AmbassadorDashboard() {
                           <div className="flex items-center gap-3">
                             <input 
                               type="checkbox" 
-                              className="w-4 h-4 accent-slate-900 rounded cursor-pointer"
+                              className="w-4 h-4 accent-slate-900 rounded cursor-pointer hover:scale-110 transition-transform"
                               checked={selectedDrafts.length > 0 && selectedDrafts.length === filteredDrafts.length}
                               onChange={handleSelectAll} 
                             />
@@ -674,7 +687,7 @@ export default function AmbassadorDashboard() {
                       {filteredDrafts.map((row, index) => (
                         <tr 
                           key={row.id} 
-                          className={`transition-colors group ${selectedDrafts.includes(row.id) ? 'bg-pink-200' : 'hover:bg-slate-50/50'}`}
+                          className={`transition-colors group ${selectedDrafts.includes(row.id) ? 'bg-pink-100/50' : 'hover:bg-slate-50/50'}`}
                         >
                           <td 
                             className="p-3 md:p-4 pl-10 cursor-pointer align-middle font-montserrat"
@@ -684,7 +697,7 @@ export default function AmbassadorDashboard() {
                             <div className="flex items-center gap-4 pointer-events-none h-full mt-1">
                               <input 
                                 type="checkbox" 
-                                className="w-4 h-4 accent-slate-900 rounded cursor-pointer pointer-events-auto"
+                                className="w-4 h-4 accent-slate-900 rounded cursor-pointer pointer-events-auto hover:scale-110 transition-transform"
                                 checked={selectedDrafts.includes(row.id)}
                                 readOnly
                               />
@@ -730,7 +743,7 @@ export default function AmbassadorDashboard() {
                               <button 
                                 onClick={() => confirmRemoveRow(row.id, row.name)} 
                                 title="Delete Row" 
-                                className="cursor-pointer text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all duration-300"
+                                className="cursor-pointer text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all duration-300 hover:scale-110"
                               >
                                 <Trash2 size={18}/>
                               </button>
@@ -750,7 +763,7 @@ export default function AmbassadorDashboard() {
                      <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
                      <span className="block font-montserrat text-2xl font-black text-slate-900">€{draftTotal}</span>
                   </div>
-                  <button onClick={submitGroupToCart} disabled={groupRows.length === 0 || groupRows.some(r => !r.name)} className="cursor-pointer bg-salsa-pink text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all tracking-widest text-[10px] uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed font-montserrat">
+                  <button onClick={submitGroupToCart} disabled={groupRows.length === 0 || groupRows.some(r => !r.name)} className="cursor-pointer bg-salsa-pink text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all duration-300 tracking-widest text-[10px] uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed font-montserrat">
                     Send to Cart <ArrowRight size={16}/>
                   </button>
                 </div>
@@ -759,7 +772,7 @@ export default function AmbassadorDashboard() {
 
             {activeTab === "history" && (
               <div className="flex flex-col h-full">
-                <div className="p-8 md:p-10 border-b border-gray-50 flex justify-between items-center bg-slate-50/50 shrink-0">
+                <div className="p-8 md:p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 shrink-0 gap-6">
                   <div>
                     <h2 className="font-bebas text-4xl text-slate-900 uppercase tracking-wide">Paid Roster</h2>
                     <p className="text-xs font-medium text-slate-500 mt-1 font-montserrat">Confirmed attendees. Click any row to view and send the ticket.</p>
@@ -819,7 +832,7 @@ export default function AmbassadorDashboard() {
                               <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-[9px] font-black tracking-widest group-hover:bg-emerald-100 transition-colors">
                                 <CheckCircle size={12}/> Active
                               </span>
-                              <div className="bg-gray-50 p-2 rounded-xl text-gray-400 group-hover:bg-salsa-pink group-hover:text-white transition-colors shadow-sm border border-gray-100 group-hover:border-salsa-pink" title="View Ticket">
+                              <div className="bg-gray-50 p-2 rounded-xl text-gray-400 group-hover:bg-salsa-pink group-hover:text-white transition-colors duration-300 shadow-sm border border-gray-100 group-hover:border-salsa-pink group-hover:scale-110" title="View Ticket">
                                 <Eye size={16}/>
                               </div>
                             </div>

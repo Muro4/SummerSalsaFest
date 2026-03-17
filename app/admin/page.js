@@ -1,15 +1,16 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc, updateDoc, onSnapshot, addDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDoc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import CustomDropdown from "@/components/CustomDropdown"; // Imported global component
 import { usePopup } from "@/components/PopupProvider";
 import { 
-  Users, Ticket, TrendingUp, Search, Download, 
-  Database, ShieldAlert, Gift, Filter, CheckCircle, 
-  Clock, XCircle, Trash2, Loader2, BarChart3, UserCog, ChevronDown,
-  Undo2, Redo2, Save 
+  Users, Ticket, Search, Download, 
+  ShieldAlert, Gift, Filter, CheckCircle, 
+  Clock, Trash2, Loader2, BarChart3, UserCog,
+  Undo2, Redo2, Save, Eye
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -56,68 +57,6 @@ const getRoleTextColor = (role) => {
 const getRoleStyle = (role) => {
   return `${getRoleBgColor(role)} ${getRoleTextColor(role)} border-transparent`;
 };
-
-// --- CUSTOM REUSABLE DROPDOWN ---
-function CustomDropdown({ value, options, onChange, icon: Icon, customIcon, buttonClassName, dropdownClassName, disabled, title, hideChevron }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedOption = options.find(o => o.value === value) || { label: value, value: value };
-
-  return (
-    <div className="relative inline-block font-montserrat w-full" ref={dropdownRef} title={title}>
-      <button 
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between outline-none transition-all cursor-pointer disabled:opacity-100 disabled:cursor-not-allowed ${buttonClassName}`}
-      >
-        <div className="flex items-center gap-2 truncate justify-center w-full">
-          {customIcon ? customIcon : (Icon && <Icon size={14} className="opacity-50 shrink-0" />)}
-          <span className="truncate">{selectedOption.label}</span>
-        </div>
-        {!hideChevron && <ChevronDown size={14} strokeWidth={3} className={`shrink-0 transition-transform duration-200 ml-2 opacity-50 ${isOpen ? 'rotate-180' : ''}`} />}
-      </button>
-      
-      {isOpen && (
-        <div className={`absolute z-50 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl py-2 min-w-max w-full ${dropdownClassName}`}>
-          {options.map((opt) => (
-            opt.isPill ? (
-              <div key={opt.value} className="px-3 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                  className={`w-full px-5 py-3 rounded-full text-[10px] uppercase font-black tracking-widest shadow-sm transition-transform hover:scale-105 cursor-pointer flex items-center justify-center ${opt.colorClass}`}
-                >
-                  {opt.label}
-                </button>
-              </div>
-            ) : (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                className={`w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer text-xs uppercase font-black tracking-widest ${value === opt.value ? 'bg-slate-50 text-slate-900' : (opt.textColor || 'text-slate-500')}`}
-              >
-                {opt.label}
-              </button>
-            )
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("analytics");
@@ -208,10 +147,10 @@ export default function AdminDashboard() {
       // Reset history baseline after successful save
       setHistory([{}]);
       setHistoryIndex(0);
-      showPopup({ type: "info", title: "Success", message: "All changes saved to database.", confirmText: "Done" });
+      showPopup({ type: "success", title: "Success", message: "All changes saved to database.", confirmText: "Done" });
     } catch (err) {
       console.error(err);
-      showPopup({ type: "info", title: "Error", message: "Failed to save changes to database." });
+      showPopup({ type: "error", title: "Error", message: "Failed to save changes to database." });
     }
   };
 
@@ -338,8 +277,7 @@ export default function AdminDashboard() {
                   { label: 'SSF 2025', value: '2025' },
                   { label: 'SSF 2024', value: '2024' }
                 ]}
-                buttonClassName="bg-white border border-gray-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase shadow-sm transition-all font-montserrat text-slate-900 hover:border-slate-300 w-40 cursor-pointer"
-                dropdownClassName="right-0 w-40"
+                buttonClassName="bg-white border border-gray-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase shadow-sm transition-all font-montserrat text-slate-900 hover:border-slate-300 cursor-pointer"
               />
            </div>
         </div>
@@ -396,15 +334,15 @@ export default function AdminDashboard() {
           {activeTab === 'analytics' && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
+                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center hover:shadow-2xl transition-shadow">
                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Total Revenue</p>
                      <p className="font-bebas text-5xl xl:text-6xl text-salsa-pink leading-none">€{filteredTickets.filter(t => t.status === 'active').reduce((a, b) => a + (b.price || 0), 0)}</p>
                   </div>
-                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
+                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center hover:shadow-2xl transition-shadow">
                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Tickets Sold</p>
                      <p className="font-bebas text-5xl xl:text-6xl text-slate-900 leading-none">{filteredTickets.filter(t => t.status === 'active').length}</p>
                   </div>
-                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
+                  <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center hover:shadow-2xl transition-shadow">
                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Ticket Breakdown</p>
                      <div className="space-y-4 font-montserrat">
                         <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-salsa-pink"></div> Full Pass</span> <span className="text-slate-900 text-2xl font-black leading-none">{filteredTickets.filter(t => t.passType === "Full Pass").length}</span></div>
@@ -457,8 +395,8 @@ export default function AdminDashboard() {
                
                {/* Controls */}
                <div className="flex flex-col xl:flex-row gap-4">
-                  <div className="relative flex-grow">
-                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                  <div className="relative flex-grow group">
+                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16}/>
                      <input 
                         type="text" 
                         value={searchTerm || ""}
@@ -467,8 +405,8 @@ export default function AdminDashboard() {
                         onChange={e => setSearchTerm(e.target.value)}
                      />
                   </div>
-                  <div className="flex gap-4 w-full xl:w-auto">
-                     <div className="relative w-full xl:w-48">
+                  <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                     <div className="relative w-full md:w-auto">
                         <CustomDropdown
                           icon={Filter}
                           value={statusFilter}
@@ -478,11 +416,10 @@ export default function AdminDashboard() {
                             { label: 'Active', value: 'active', textColor: 'text-emerald-500' },
                             { label: 'Pending', value: 'pending', textColor: 'text-amber-500' }
                           ]}
-                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
-                          dropdownClassName="w-48"
+                          buttonClassName="w-full md:w-auto p-5 px-6 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300 transition-all"
                         />
                      </div>
-                     <div className="relative w-full xl:w-56">
+                     <div className="relative w-full md:w-auto">
                         <CustomDropdown
                           icon={Ticket}
                           value={passFilter}
@@ -494,8 +431,7 @@ export default function AdminDashboard() {
                             { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
                             { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
                           ]}
-                          buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
-                          dropdownClassName="w-56"
+                          buttonClassName="w-full md:w-auto p-5 px-6 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300 transition-all"
                         />
                      </div>
                   </div>
@@ -550,7 +486,6 @@ export default function AdminDashboard() {
                                           { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
                                         ]}
                                         buttonClassName={`w-40 px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:scale-105 border border-transparent flex justify-center items-center ${getPassStyle(t.passType)}`}
-                                        dropdownClassName="left-0 w-48"
                                       />
                                    </td>
                                    <td className="p-6 align-middle text-center border-b border-gray-50">
@@ -563,9 +498,9 @@ export default function AdminDashboard() {
                                    <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
                                       <div className="flex justify-end gap-2 h-full items-center">
                                          {t.status === 'pending' && (
-                                           <button onClick={() => confirmGift(t)} title="Convert to Free Pass" className="p-2.5 bg-white text-yellow-500 rounded-xl hover:bg-yellow-400 hover:text-white transition-colors border border-gray-200 hover:border-yellow-400 shadow-sm cursor-pointer"><Gift size={16}/></button>
+                                           <button onClick={() => confirmGift(t)} title="Convert to Free Pass" className="p-2.5 bg-white text-yellow-500 rounded-xl hover:bg-yellow-400 hover:text-white transition-colors border border-gray-200 hover:border-yellow-400 shadow-sm cursor-pointer hover:scale-105"><Gift size={16}/></button>
                                          )}
-                                         <button onClick={() => confirmDelete(t)} title="Delete Ticket" className="p-2.5 bg-white text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-colors border border-gray-200 hover:border-red-500 shadow-sm cursor-pointer"><Trash2 size={16}/></button>
+                                         <button onClick={() => confirmDelete(t)} title="Delete Ticket" className="p-2.5 bg-white text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-colors border border-gray-200 hover:border-red-500 shadow-sm cursor-pointer hover:scale-105"><Trash2 size={16}/></button>
                                       </div>
                                    </td>
                                 </tr>
@@ -587,8 +522,8 @@ export default function AdminDashboard() {
                
                {/* Controls */}
                <div className="flex flex-col xl:flex-row gap-4">
-                  <div className="relative flex-grow">
-                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                  <div className="relative flex-grow group">
+                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16}/>
                      <input 
                         type="text" 
                         value={searchTerm || ""}
@@ -597,7 +532,7 @@ export default function AdminDashboard() {
                         onChange={e => setSearchTerm(e.target.value)}
                      />
                   </div>
-                  <div className="relative w-full xl:w-48">
+                  <div className="relative w-full xl:w-auto">
                      <CustomDropdown
                         icon={ShieldAlert}
                         value={roleFilter}
@@ -609,8 +544,7 @@ export default function AdminDashboard() {
                           { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
                           { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
                         ]}
-                        buttonClassName="w-full p-5 pl-4 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300"
-                        dropdownClassName="w-48"
+                        buttonClassName="w-full md:w-auto p-5 px-6 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase shadow-sm font-montserrat text-slate-900 hover:border-slate-300 transition-all"
                      />
                   </div>
                </div>
@@ -659,7 +593,6 @@ export default function AdminDashboard() {
                                                 { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
                                              ]}
                                              buttonClassName={`w-40 px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all border border-transparent flex items-center justify-center ${getRoleStyle(u.role)} ${isMySuperAdmin ? '' : 'hover:scale-105'}`}
-                                             dropdownClassName="left-0 w-48"
                                           />
                                        </div>
                                     </td>

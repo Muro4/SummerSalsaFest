@@ -2,20 +2,22 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { updateProfile, sendPasswordResetEmail, signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc } from "firebase/firestore"; // Added updateDoc
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
-import { 
-  Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag, 
-  User as UserIcon, Mail, Shield, LogOut, Key, Edit2, Save, Download, Users,
-  ChevronLeft, ChevronRight
-} from "lucide-react"; 
+import {
+  Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
+  User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
+  ChevronLeft, ChevronRight, Send // Added Send icon
+} from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
 import jsPDF from "jspdf";
 
+// --- UTILS ---
 const getPassBgColor = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('full')) return 'bg-salsa-pink';
@@ -47,22 +49,27 @@ const formatDate = (isoString) => {
   };
 };
 
+// --- MAIN PAGE ---
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState("tickets");
   const [userData, setUserData] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
-  
+
   const [isEditingAmbName, setIsEditingAmbName] = useState(false);
   const [editAmbNameValue, setEditAmbNameValue] = useState("");
 
-  const [resetCooldown, setResetCooldown] = useState(0); 
+  const [resetCooldown, setResetCooldown] = useState(0);
   const [selectedYear, setSelectedYear] = useState("2026");
   const [ticketSearch, setTicketSearch] = useState("");
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
+
+  // NEW: Email Sending State
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const router = useRouter();
   const { showPopup } = usePopup();
@@ -76,15 +83,15 @@ export default function AccountPage() {
   }, [resetCooldown]);
 
   useEffect(() => {
-    let unsubTickets = () => {};
+    let unsubTickets = () => { };
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const uDoc = await getDoc(doc(db, "users", user.uid));
         if (uDoc.exists()) {
-            const profile = uDoc.data();
-            setUserData(profile);
-            setEditNameValue(profile.displayName || "");
-            setEditAmbNameValue(profile.ambassadorDisplayName || "");
+          const profile = uDoc.data();
+          setUserData(profile);
+          setEditNameValue(profile.displayName || "");
+          setEditAmbNameValue(profile.ambassadorDisplayName || "");
         }
         const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
         unsubTickets = onSnapshot(q, (snap) => {
@@ -146,11 +153,82 @@ export default function AccountPage() {
     try {
       const { width, height } = element.getBoundingClientRect();
       const dataUrl = await toPng(element, { quality: 1, pixelRatio: 3, backgroundColor: "#ffffff", skipFonts: true, style: { boxShadow: "none" } });
-      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] }); 
+      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
       pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
       pdf.save(`SalsaFest_Ticket_${fullScreenTicket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { showPopup({ type: "error", title: "Export Error", message: err.message, confirmText: "Close" }); }
     finally { if (dlIcon) dlIcon.style.display = ''; }
+  };
+
+  // NEW: Handle Sending Ticket via Email
+  const handleSendTicketEmail = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!recipientEmail || !emailRegex.test(recipientEmail)) {
+      showPopup({ type: "error", title: "Invalid Email", message: "Please enter a valid email address.", confirmText: "Try Again" });
+      return;
+    }
+
+    setSendingEmail(true);
+
+    const element = document.getElementById("ticket-to-download");
+    const controls = document.getElementById("ticket-controls");
+    const dlIcon = document.getElementById("download-icon-btn");
+
+    if (controls) controls.style.display = 'none';
+    if (dlIcon) dlIcon.style.display = 'none';
+
+    let pdfBase64 = "";
+
+    try {
+      const { width, height } = element.getBoundingClientRect();
+
+      const dataUrl = await toPng(element, {
+        quality: 0.9,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        skipFonts: true,
+        style: { boxShadow: "none" }
+      });
+
+      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
+      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
+      pdfBase64 = pdf.output('datauristring');
+    } catch (err) {
+      showPopup({ type: "error", title: "PDF Error", message: "Failed to generate ticket attachment.", confirmText: "Close" });
+      setSendingEmail(false);
+      if (controls) controls.style.display = '';
+      if (dlIcon) dlIcon.style.display = '';
+      return;
+    }
+
+    if (controls) controls.style.display = '';
+    if (dlIcon) dlIcon.style.display = '';
+
+    fetch("/api/send-ticket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: recipientEmail,
+        ticket: fullScreenTicket,
+        pdfAttachment: pdfBase64
+      })
+    }).catch(error => {
+      console.error("🚨 BACKGROUND EMAIL ERROR:", error);
+    });
+
+    updateDoc(doc(db, "tickets", fullScreenTicket.id), { emailSentCount: (fullScreenTicket.emailSentCount || 0) + 1 }).catch(console.error);
+
+    setFullScreenTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
+
+    showPopup({
+      type: "success",
+      title: "Sent!",
+      message: `The ticket to ${recipientEmail} has been queued and will arrive shortly.`,
+      confirmText: "Done"
+    });
+
+    setRecipientEmail("");
+    setSendingEmail(false);
   };
 
   const getTicketNameSize = (name) => {
@@ -160,14 +238,13 @@ export default function AccountPage() {
     return "text-3xl md:text-4xl";
   };
 
-  const filteredTickets = tickets.filter(t => 
-    t.festivalYear?.toString() === selectedYear && 
+  const filteredTickets = tickets.filter(t =>
+    t.festivalYear?.toString() === selectedYear &&
     (t.userName?.toLowerCase().includes(ticketSearch.toLowerCase()) || t.ticketID?.toLowerCase().includes(ticketSearch.toLowerCase()))
   );
 
   const currentTicketIndex = fullScreenTicket ? filteredTickets.findIndex(t => t.id === fullScreenTicket.id) : -1;
 
-  // KEYBOARD NAVIGATION
   useEffect(() => {
     if (!fullScreenTicket) return;
     const handleKeyDown = (e) => {
@@ -186,7 +263,7 @@ export default function AccountPage() {
     if (currentTicketIndex > 0) setFullScreenTicket(filteredTickets[currentTicketIndex - 1]);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48}/></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
   return (
     <main className="min-h-screen bg-salsa-white pt-32 pb-20 font-montserrat select-none">
@@ -197,20 +274,20 @@ export default function AccountPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-x-hidden overflow-y-auto">
           <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setFullScreenTicket(null)}></div>
           <div className="relative w-fit max-w-[95vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300 my-10 mx-auto">
-            
-            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink transition bg-white/10 p-2 rounded-full backdrop-blur-md z-50"><X size={24} /></button>
-            
+
+            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md z-50"><X size={24} /></button>
+
             <div className="absolute top-1/2 -translate-y-1/2 -left-12 md:-left-20 hidden md:flex z-50">
-               <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32}/></button>
+              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32} /></button>
             </div>
             <div className="absolute top-1/2 -translate-y-1/2 -right-12 md:-right-20 hidden md:flex z-50">
-               <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32}/></button>
+              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32} /></button>
             </div>
 
             <div id="ticket-to-download" className="w-[320px] md:w-[850px] flex-none bg-white rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-              <button id="download-icon-btn" onClick={handleDownloadPDF} title="Download PDF" className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint/10 text-gray-400 hover:text-salsa-mint rounded-full transition-all cursor-pointer shadow-sm border border-gray-100"><Download size={20} /></button>
+              <button id="download-icon-btn" onClick={handleDownloadPDF} title="Download PDF" className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint hover:-translate-y-1 hover:shadow-lg text-gray-400 hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100"><Download size={20} /></button>
               <div className="p-8 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0">
-                 <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
               </div>
               <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
@@ -227,12 +304,50 @@ export default function AccountPage() {
                 </div>
               </div>
             </div>
-            
-            <div className="flex md:hidden justify-between w-full max-w-[320px] px-4 mt-2">
-               <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 disabled:opacity-30"><ChevronLeft size={14}/> Prev</button>
-               <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 disabled:opacity-30">Next <ChevronRight size={14}/></button>
+
+            {/* TICKET EMAIL CONTROLS */}
+            <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredTickets.length}</span>
+              </div>
+
+              <div className="border-t border-gray-50 pt-4">
+                {/* NEW: Attendee Email Label */}
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                  Attendee Email
+                </label>
+                <div className="relative flex items-center w-full">
+                  <Mail className="absolute left-4 text-gray-400" size={16} />
+                  <input
+                    type="email"
+                    maxLength={50}
+                    placeholder="EMAIL"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[10px] uppercase tracking-widest font-montserrat"
+                  />
+                  <button
+                    onClick={handleSendTicketEmail}
+                    disabled={sendingEmail}
+                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[10px] uppercase hover:bg-pink-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat"
+                  >
+                    {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}
+                  </button>
+                </div>
+              </div>
             </div>
-            
+
+            <div className="flex md:hidden justify-between w-full max-w-[320px] px-4 mt-2">
+              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
+              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30">Next <ChevronRight size={14} /></button>
+            </div>
+
           </div>
         </div>
       )}
@@ -240,118 +355,124 @@ export default function AccountPage() {
       <div className="max-w-7xl mx-auto px-6 mb-24">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
-           <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
-           {activeTab === 'tickets' && (
-              <div className="flex flex-col items-end">
-                <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
-                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-white border border-gray-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase outline-none focus:border-slate-900 shadow-sm cursor-pointer transition-all font-montserrat">
-                    <option value="2026">Varna 2026</option>
-                    <option value="2025">Archive 2025</option>
-                </select>
-              </div>
-           )}
+          <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
+          {activeTab === 'tickets' && (
+            <div className="flex flex-col items-end z-20">
+              <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
+              <CustomDropdown
+                value={selectedYear}
+                onChange={setSelectedYear}
+                options={[
+                  { label: 'SSF 2026', value: '2026' },
+                  { label: 'SSF 2025', value: '2025' },
+                  { label: 'SSF 2024', value: '2024' }
+                ]}
+                buttonClassName="bg-white border border-gray-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase shadow-sm transition-all font-montserrat text-slate-900 hover:border-slate-300 cursor-pointer"
+              />
+            </div>
+          )}
         </div>
 
         {/* TABS */}
         <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-inner mb-12">
           <div className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm" style={{ left: activeTab === 'tickets' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }} />
-          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14}/> Active Passes</button>
-          <button onClick={() => setActiveTab("settings")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Settings size={14}/> Settings</button>
+          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14} /> Active Passes</button>
+          <button onClick={() => setActiveTab("settings")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Settings size={14} /> Settings</button>
         </div>
 
         <div className="relative min-h-[500px] w-full">
-          <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
-            
+          <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full z-0">
+
             {activeTab === "tickets" && (
               <div>
-                 <div className="relative max-w-sm mb-8">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                    <input type="text" placeholder="SEARCH PASSES..." className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:border-slate-900 transition-all shadow-sm font-bold text-[10px] uppercase font-montserrat" onChange={e => setTicketSearch(e.target.value)} />
-                 </div>
-                 {filteredTickets.length > 0 ? (
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8">
-                      {filteredTickets.map(t => (
-                        <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 group h-full cursor-pointer relative">
-                          <div className="p-6 md:p-8 flex flex-col items-center justify-center bg-salsa-mint/[0.03] border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-gray-100 shrink-0 group-hover:bg-salsa-mint/[0.07] transition-colors">
-                              <div className="bg-white p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500"><QRCodeSVG value={t.ticketID} size={85} level="H" /></div>
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
-                          </div>
-                          <div className="p-6 md:p-8 flex flex-col justify-center flex-grow relative bg-white min-w-0">
-                              <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>
-                              <div className="mb-3 relative z-10"><span className={`text-[9px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>{t.passType}</span></div>
-                              <h3 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-[1.1] mb-1 relative z-10 truncate transition-colors">{t.userName}</h3>
-                              <p className="font-mono text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-6 relative z-10">ID: {t.ticketID}</p>
-                              <div className="flex flex-col xl:flex-row gap-3 xl:gap-6 pt-5 border-t border-gray-100 mt-auto relative z-10">
-                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Calendar size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).date}</div>
-                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Clock size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).time}</div>
-                              </div>
+                <div className="relative max-w-sm mb-8 group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-salsa-pink transition-colors" size={16} />
+                  <input type="text" placeholder="SEARCH PASSES..." className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:border-slate-900 focus:shadow-md transition-all duration-300 shadow-sm font-bold text-[10px] uppercase font-montserrat" onChange={e => setTicketSearch(e.target.value)} />
+                </div>
+                {filteredTickets.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8">
+                    {filteredTickets.map(t => (
+                      <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative">
+                        <div className="p-6 md:p-8 flex flex-col items-center justify-center bg-salsa-mint/[0.03] border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-gray-100 shrink-0 group-hover:bg-salsa-mint/[0.07] transition-colors">
+                          <div className="bg-white p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500"><QRCodeSVG value={t.ticketID} size={85} level="H" /></div>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
+                        </div>
+                        <div className="p-6 md:p-8 flex flex-col justify-center flex-grow relative bg-white min-w-0">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>
+                          <div className="mb-3 relative z-10"><span className={`text-[9px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>{t.passType}</span></div>
+                          <h3 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-[1.1] mb-1 relative z-10 truncate transition-colors">{t.userName}</h3>
+                          <p className="font-mono text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-6 relative z-10">ID: {t.ticketID}</p>
+                          <div className="flex flex-col xl:flex-row gap-3 xl:gap-6 pt-5 border-t border-gray-100 mt-auto relative z-10">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Calendar size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).date}</div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Clock size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).time}</div>
                           </div>
                         </div>
-                      ))}
-                   </div>
-                 ) : (
-                   <div className="w-full border-2 border-dashed border-gray-200 bg-white/50 rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm">
-                     <ShoppingBag size={40} className="text-gray-300 mb-6" /><h3 className="font-bebas text-4xl text-slate-400 uppercase">No Active Passes</h3>
-                     <Link href="/tickets" className="mt-6 text-slate-900 bg-gray-100 px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all shadow-sm">Browse Tickets</Link>
-                   </div>
-                 )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="w-full border-2 border-dashed border-gray-200 bg-white/50 rounded-[3rem] py-32 flex flex-col items-center justify-center text-center shadow-sm">
+                    <ShoppingBag size={40} className="text-gray-300 mb-6" /><h3 className="font-bebas text-4xl text-slate-400 uppercase">No Active Passes</h3>
+                    <Link href="/tickets" className="mt-6 text-slate-900 bg-gray-100 px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:scale-105 hover:shadow-lg transition-all duration-300 cursor-pointer">Browse Tickets</Link>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "settings" && (
-               <div className="grid lg:grid-cols-2 gap-8 max-w-6xl">
-                 <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit">
-                   <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Profile Details</h2>
-                   <div className="space-y-4 relative z-10">
-                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4">
-                       <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18}/></div>
-                         <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
-                           {isEditingName ? <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
-                           : <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>}
-                         </div>
-                       </div>
-                       {isEditingName ? <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 font-montserrat"><Save size={14}/> Save</button>
-                       : <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 text-[10px] font-black flex items-center gap-2 font-montserrat"><Edit2 size={14}/> Edit</button>}
-                     </div>
+              <div className="grid lg:grid-cols-2 gap-8 max-w-6xl">
+                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                  <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Profile Details</h2>
+                  <div className="space-y-4 relative z-10">
+                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
+                      <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18} /></div>
+                        <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
+                          {isEditingName ? <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
+                            : <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>}
+                        </div>
+                      </div>
+                      {isEditingName ? <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
+                        : <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                    </div>
 
-                     {userData?.role === 'ambassador' && (
-                       <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4">
-                         <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500"><Users size={18}/></div>
-                           <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Ambassador Tag</span>
-                             {isEditingAmbName ? <input type="text" value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
-                             : <span className="text-xs font-bold uppercase text-slate-900">{userData?.ambassadorDisplayName || "Not Set"}</span>}
-                           </div>
-                         </div>
-                         {isEditingAmbName ? <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 font-montserrat"><Save size={14}/> Save</button>
-                         : <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 text-[10px] font-black flex items-center gap-2 font-montserrat"><Edit2 size={14}/> Edit</button>}
-                       </div>
-                     )}
+                    {userData?.role === 'ambassador' && (
+                      <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
+                        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500"><Users size={18} /></div>
+                          <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Ambassador Tag</span>
+                            {isEditingAmbName ? <input type="text" value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
+                              : <span className="text-xs font-bold uppercase text-slate-900">{userData?.ambassadorDisplayName || "Not Set"}</span>}
+                          </div>
+                        </div>
+                        {isEditingAmbName ? <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
+                          : <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                      </div>
+                    )}
 
-                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4">
-                       <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18}/></div>
-                         <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Email Address</span><span className="text-xs font-bold text-slate-900">{userData?.email}</span></div>
-                       </div>
-                       <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase shadow-sm">Verified</span>
-                     </div>
-                   </div>
-                 </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
+                      <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18} /></div>
+                        <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Email Address</span><span className="text-xs font-bold text-slate-900">{userData?.email}</span></div>
+                      </div>
+                      <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase shadow-sm">Verified</span>
+                    </div>
+                  </div>
+                </div>
 
-                 <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] h-fit">
-                   <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Security</h2>
-                   <div className="grid sm:grid-cols-2 gap-4">
-                     <button onClick={handleResetPassword} disabled={resetCooldown > 0} className={`flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all ${resetCooldown > 0 ? 'opacity-50' : 'hover:border-slate-900 shadow-sm'}`}>
-                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 text-slate-600"><Key size={18}/></div>
-                       <span className="text-xs font-bold uppercase mb-1 font-montserrat">{resetCooldown > 0 ? `Reset (${resetCooldown}s)` : "Reset Password"}</span>
-                       <span className="text-[10px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
-                     </button>
-                     <button onClick={handleSignOut} className="flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:border-red-600 transition-all shadow-sm">
-                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-400 mb-4"><LogOut size={18}/></div>
-                       <span className="text-xs font-bold uppercase text-red-600 mb-1 font-montserrat">Sign Out</span>
-                       <span className="text-[10px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
-                     </button>
-                   </div>
-                 </div>
-               </div>
+                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                  <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Security</h2>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <button onClick={handleResetPassword} disabled={resetCooldown > 0} className={`flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all duration-300 cursor-pointer ${resetCooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-900 hover:shadow-md hover:-translate-y-1'}`}>
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 text-slate-600 shadow-sm"><Key size={18} /></div>
+                      <span className="text-xs font-bold uppercase mb-1 font-montserrat">{resetCooldown > 0 ? `Reset (${resetCooldown}s)` : "Reset Password"}</span>
+                      <span className="text-[10px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
+                    </button>
+                    <button onClick={handleSignOut} className="flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:border-red-500 hover:bg-red-50 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-400 mb-4 shadow-sm"><LogOut size={18} /></div>
+                      <span className="text-xs font-bold uppercase text-red-600 mb-1 font-montserrat">Sign Out</span>
+                      <span className="text-[10px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
