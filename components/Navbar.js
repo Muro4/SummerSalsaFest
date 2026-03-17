@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
@@ -15,39 +15,72 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
+  const [cartItems, setCartItems] = useState(0); 
+
   const dropdownRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   
-  // Check if we are on the landing page
   const isHome = pathname === "/";
-  // The navbar is ONLY transparent when we are on the home page AND haven't scrolled yet
   const isTransparent = isHome && !scrolled;
 
-  // Handle scroll effect for background blur (Only needed for Home)
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch Auth & Role
+  // --- THE FIX: Safe Listener Management ---
   useEffect(() => {
+    let unsubCart = null; // Initialize as null to safely check if it exists
+
     const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
+      
       if (currentUser) {
+        // Fetch User Role Data
         const uDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (uDoc.exists()) {
           setUserData(uDoc.data());
         }
+
+        // Clean up any weird lingering listeners before making a new one
+        if (unsubCart) unsubCart();
+
+        // Listen for Cart Items safely
+        const cartRef = collection(db, "users", currentUser.uid, "cart");
+        unsubCart = onSnapshot(
+          cartRef, 
+          (snap) => {
+            let totalItems = 0;
+            snap.forEach((itemDoc) => {
+              totalItems += (itemDoc.data().quantity || 1);
+            });
+            setCartItems(totalItems);
+          },
+          (error) => {
+            // This stops the red error from blowing up your console if rules block it
+            console.log("Cart sync paused (Update Firestore rules to enable):", error.message);
+          }
+        );
+
       } else {
+        // THE CRITICAL FIX: Kill the listener IMMEDIATELY when signing out
+        if (unsubCart) {
+          unsubCart();
+          unsubCart = null;
+        }
         setUserData(null);
+        setCartItems(0);
       }
     });
-    return () => unsubAuth();
+
+    return () => {
+      unsubAuth();
+      if (unsubCart) unsubCart(); // Final safety cleanup on unmount
+    };
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -64,12 +97,10 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  // Determine Nav Background Style
   const navBackgroundClass = isHome 
     ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6') 
     : 'bg-white shadow-sm py-4 border-b border-gray-200';
 
-  // Dynamic Text Color for Links and Icons
   const textColorClass = isTransparent ? "text-white" : "text-slate-800";
 
   return (
@@ -79,7 +110,6 @@ export default function Navbar() {
         {/* LEFT: LOGO */}
         <div className="flex-1 flex justify-start items-center">
           <Link href="/" className="hover:opacity-80 transition-opacity">
-            {/* The brightness-0 invert trick makes the logo pure white on transparent mode */}
             <img 
               src="/images/logo.png" 
               alt="Salsa Fest Logo" 
@@ -89,7 +119,7 @@ export default function Navbar() {
         </div>
 
         {/* CENTER: DESKTOP LINKS */}
-        <div className={`hidden md:flex justify-center items-center gap-8 text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${textColorClass}`}>
+        <div className={`hidden md:flex justify-center items-center gap-8 text-[11px] font-black uppercase tracking-widest transition-colors duration-300 ${textColorClass}`}>
           <Link href="/" className="hover:text-salsa-pink transition-colors">Home</Link>
           <Link href="/tickets" className="hover:text-salsa-pink transition-colors">Prices</Link>
           <Link href="/info" className="hover:text-salsa-pink transition-colors">Info</Link>
@@ -100,90 +130,138 @@ export default function Navbar() {
         {/* RIGHT: ACTIONS & ICONS */}
         <div className="flex-1 flex justify-end items-center gap-4">
           
-          {/* CART ICON */}
+          {/* CART ICON WITH BADGE */}
           {user && (
-            <Link href="/cart" className={`relative p-2 hover:text-salsa-pink transition-colors duration-300 ${textColorClass}`}>
-              <ShoppingCart size={20} />
-            </Link>
+            <div className="relative">
+              <Link 
+                href="/cart" 
+                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent 
+                  ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}
+              >
+                <ShoppingCart size={22} />
+              </Link>
+              
+              {cartItems > 0 && (
+                <span className={`absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
+                  {cartItems}
+                </span>
+              )}
+            </div>
           )}
 
           {user ? (
             <div className="relative" ref={dropdownRef}>
+              
+              {/* AVATAR BUTTON */}
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)} 
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer duration-300
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer duration-300 border overflow-hidden
                   ${isTransparent 
-                    ? 'bg-white/20 border border-white/30 text-white hover:bg-white/30' 
-                    : 'bg-gray-50 border border-gray-200 text-slate-800 hover:bg-salsa-pink hover:text-white hover:border-salsa-pink'}`}
+                    ? 'bg-white/20 border-white/30 text-white hover:bg-white/30' 
+                    : 'bg-gray-50 border-gray-200 text-slate-800 hover:bg-salsa-pink hover:text-white hover:border-salsa-pink'}`}
               >
-                <UserIcon size={18} />
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                  />
+                ) : (
+                  <UserIcon size={20} />
+                )}
               </button>
 
-              {/* DROPDOWN MENU (Always white background for readability) */}
+              {/* DROPDOWN MENU */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl py-2 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-4 w-72 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                   
                   {/* User Info Header */}
-                  <div className="px-5 py-3 border-b border-gray-50 mb-2">
-                    <p className="text-xs font-bold text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">{user.email}</p>
+                  <div className="px-4 py-3 border-b border-gray-50 mb-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <UserIcon size={16} className="text-slate-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
+                      <p className="text-[10px] font-bold text-slate-500 truncate lowercase tracking-wide mt-0.5">{user.email}</p>
+                    </div>
                   </div>
                   
-                  <Link href="/account" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                    <UserIcon size={20} /> My Account
-                  </Link>
+                  <div className="flex flex-col gap-1">
+                    <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className="w-full justify-start text-slate-600">
+                      My Account
+                    </Button>
 
-                  {userData?.role === 'ambassador' && (
-                    <Link href="/ambassador" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-salsa-pink hover:bg-salsa-pink/10 transition-colors flex items-center gap-2">
-                      <Shield size={20} />Dashboard
-                    </Link>
-                  )}
+                    {userData?.role === 'ambassador' && (
+                      <Button href="/ambassador" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
+                        Dashboard
+                      </Button>
+                    )}
 
-                  {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
-                    <Link href="/admin/scanner" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-2">
-                      <QrCode size={20} /> Scanner
-                    </Link>
-                  )}
+                    {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
+                      <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                        Scanner
+                      </Button>
+                    )}
 
-                  {userData?.role === 'superadmin' && (
-                    <Link href="/admin" onClick={() => setDropdownOpen(false)} className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-salsa-pink hover:bg-salsa-pink/10 transition-colors flex items-center gap-2">
-                      <Shield size={20} /> Admin Dashboard
-                    </Link>
-                  )}
+                    {userData?.role === 'superadmin' && (
+                      <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
+                        Admin Dashboard
+                      </Button>
+                    )}
 
-                  <button onClick={handleSignOut} className="w-full text-left px-5 py-2.5 mt-2 border-t border-gray-50 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer">
-                    <LogOut size={20} /> Sign Out
-                  </button>
+                    <div className="h-px bg-gray-100 w-full my-2" />
+
+                    <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">
+                      Sign Out
+                    </Button>
+                  </div>
 
                 </div>
               )}
             </div>
           ) : (
-            <Link href="/login" className={`hidden md:flex px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md duration-300
-              ${isTransparent 
-                ? 'bg-white text-slate-900 hover:bg-gray-100' 
-                : 'bg-slate-900 text-white hover:bg-salsa-pink'}`}
+            <Button 
+              href="/login" 
+              variant={isTransparent ? "ghost" : "secondary"}
+              size="sm"
+              className={`hidden md:flex px-8 transition-all duration-300 shadow-md ${isTransparent ? '!bg-white !text-slate-900 hover:!bg-gray-100' : 'hover:!bg-salsa-pink'}`}
             >
               Login
-            </Link>
+            </Button>
           )}
 
-          {/* Mobile Menu Toggle */}
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className={`md:hidden p-2 transition-colors duration-300 ${textColorClass}`}>
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {/* MOBILE MENU TOGGLE */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+            className={`md:hidden p-2 transition-colors duration-300 ${textColorClass}`}
+          >
+            {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
       </div>
 
       {/* MOBILE MENU DROPDOWN */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex flex-col py-4 px-6 gap-4 animate-in slide-in-from-top-4 duration-300">
-          <Link href="/" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Home</Link>
-          <Link href="/tickets" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Prices</Link>
-          <Link href="/info" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Info</Link>
-          <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">Gallery</Link>
-          <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-salsa-pink">About Us</Link>
-          {!user && <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-xs font-black uppercase tracking-widest text-salsa-pink mt-4 pt-4 border-t border-gray-50">Login / Sign Up</Link>}
+        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex flex-col p-6 gap-3 animate-in slide-in-from-top-4 duration-300">
+          <Button href="/" onClick={() => setMobileMenuOpen(false)} variant="ghost" size="md" className="w-full justify-start">Home</Button>
+          <Button href="/tickets" onClick={() => setMobileMenuOpen(false)} variant="ghost" size="md" className="w-full justify-start">Prices</Button>
+          <Button href="/info" onClick={() => setMobileMenuOpen(false)} variant="ghost" size="md" className="w-full justify-start">Info</Button>
+          <Button href="/gallery" onClick={() => setMobileMenuOpen(false)} variant="ghost" size="md" className="w-full justify-start">Gallery</Button>
+          <Button href="/about" onClick={() => setMobileMenuOpen(false)} variant="ghost" size="md" className="w-full justify-start">About Us</Button>
+          
+          {!user && (
+            <>
+              <div className="h-px bg-gray-100 w-full my-3" />
+              <Button href="/login" onClick={() => setMobileMenuOpen(false)} variant="primary" size="md" className="w-full">
+                Login / Sign Up
+              </Button>
+            </>
+          )}
         </div>
       )}
     </nav>

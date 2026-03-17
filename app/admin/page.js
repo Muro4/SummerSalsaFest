@@ -80,6 +80,7 @@ export default function AdminDashboard() {
    const [historyIndex, setHistoryIndex] = useState(0);
 
    useEffect(() => {
+      // 1. Initialize the unsubs with empty functions
       let unsubUsers = () => { };
       let unsubTickets = () => { };
 
@@ -102,6 +103,9 @@ export default function AdminDashboard() {
                router.push("/");
             }
          } else {
+            // 2. THE PERMANENT FIX: Kill the page listeners BEFORE redirecting
+            unsubUsers();
+            unsubTickets();
             router.push("/login");
          }
       });
@@ -292,28 +296,28 @@ export default function AdminDashboard() {
 
                {/* ACTION BUTTONS (UNDO / REDO / SAVE) */}
                <div className="flex items-center gap-3 w-full lg:w-auto">
-                  <Button 
-                     variant="outline" 
-                     size="icon" 
-                     icon={Undo2} 
+                  <Button
+                     variant="outline"
+                     size="icon"
+                     icon={Undo2}
                      onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)}
                      disabled={historyIndex <= 0}
                      title="Undo Stage"
                      className="border-gray-200 bg-white p-3.5"
                   />
-                  <Button 
-                     variant="outline" 
-                     size="icon" 
-                     icon={Redo2} 
+                  <Button
+                     variant="outline"
+                     size="icon"
+                     icon={Redo2}
                      onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)}
                      disabled={historyIndex >= history.length - 1}
                      title="Redo Stage"
                      className="border-gray-200 bg-white p-3.5"
                   />
-                  <Button 
-                     variant="secondary" 
-                     size="lg" 
-                     icon={Save} 
+                  <Button
+                     variant="secondary"
+                     size="lg"
+                     icon={Save}
                      onClick={handleSaveChanges}
                      disabled={historyIndex === 0}
                   >
@@ -473,9 +477,9 @@ export default function AdminDashboard() {
                                                    // Auto-update price only if pending
                                                    if (t.status === 'pending') {
                                                       if (val === 'Free Pass') updateData.price = 0;
-                                                      else if (val === 'Full Pass') updateData.price = 150; 
-                                                      else if (val === 'Party Pass') updateData.price = 80;  
-                                                      else if (val === 'Day Pass') updateData.price = 60;    
+                                                      else if (val === 'Full Pass') updateData.price = 150;
+                                                      else if (val === 'Party Pass') updateData.price = 80;
+                                                      else if (val === 'Day Pass') updateData.price = 60;
                                                    }
 
                                                    handleStageChange('tickets', t.id, updateData);
@@ -500,13 +504,13 @@ export default function AdminDashboard() {
                                           <td className="p-6 align-middle text-center font-bold text-base text-slate-700 border-b border-gray-50">€{t.price}</td>
                                           <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
                                              <div className="flex justify-end gap-2 h-full items-center">
-                                                <Button 
-                                                   variant="actionIcon" 
-                                                   size="icon" 
-                                                   icon={Trash2} 
-                                                   onClick={() => confirmDelete(t)} 
-                                                   title="Delete Ticket" 
-                                                   className="opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50" 
+                                                <Button
+                                                   variant="actionIcon"
+                                                   size="icon"
+                                                   icon={Trash2}
+                                                   onClick={() => confirmDelete(t)}
+                                                   title="Delete Ticket"
+                                                   className="opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50"
                                                 />
                                              </div>
                                           </td>
