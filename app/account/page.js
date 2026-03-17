@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { updateProfile, sendPasswordResetEmail, signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc } from "firebase/firestore"; // Added updateDoc
+import { doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -12,7 +12,7 @@ import Button from "@/components/Button";
 import {
   Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
   User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
-  ChevronLeft, ChevronRight, Send // Added Send icon
+  ChevronLeft, ChevronRight, Send, Filter
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
@@ -65,10 +65,14 @@ export default function AccountPage() {
 
   const [resetCooldown, setResetCooldown] = useState(0);
   const [selectedYear, setSelectedYear] = useState("2026");
+  
+  // Search & Filter State
   const [ticketSearch, setTicketSearch] = useState("");
+  const [passFilter, setPassFilter] = useState("all"); 
+  
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
 
-  // NEW: Email Sending State
+  // Email Sending State
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -161,7 +165,6 @@ export default function AccountPage() {
     finally { if (dlIcon) dlIcon.style.display = ''; }
   };
 
-  // NEW: Handle Sending Ticket via Email
   const handleSendTicketEmail = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || !emailRegex.test(recipientEmail)) {
@@ -241,6 +244,7 @@ export default function AccountPage() {
 
   const filteredTickets = tickets.filter(t =>
     t.festivalYear?.toString() === selectedYear &&
+    (passFilter === "all" || t.passType === passFilter) &&
     (t.userName?.toLowerCase().includes(ticketSearch.toLowerCase()) || t.ticketID?.toLowerCase().includes(ticketSearch.toLowerCase()))
   );
 
@@ -292,15 +296,15 @@ export default function AccountPage() {
               </div>
               <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                <div className="mb-4 relative z-10"><span className={`text-[11px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>{fullScreenTicket.passType}</span></div>
+                <div className="mb-4 relative z-10"><span className={`text-xs font-sans font-black px-5 py-2 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>{fullScreenTicket.passType}</span></div>
                 <h2 className={`${getTicketNameSize(fullScreenTicket.userName)} font-black text-slate-900 uppercase leading-[1.1] tracking-tight mb-2 pr-12 whitespace-normal break-words relative z-10 w-full transition-all duration-300`}>{fullScreenTicket.userName}</h2>
-                <p className="font-mono text-gray-400 text-[11px] font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
+                <p className="font-mono text-gray-500 text-[14px] font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
                 <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span><span className="block text-xs font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span></div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span><span className="block text-xs font-black text-slate-900 uppercase">€{fullScreenTicket.price || 0}</span></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span><span className="block text-xs font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span></div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span><span className="block text-xs font-black text-slate-900 uppercase">€{fullScreenTicket.price || 0}</span></div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
-                    <div><span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span></div>
-                    <div className="text-right"><span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span></div>
+                    <div><span className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Purchase Date</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span></div>
+                    <div className="text-right"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span></div>
                   </div>
                 </div>
               </div>
@@ -310,17 +314,16 @@ export default function AccountPage() {
             <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+                  <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                     {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
                   </span>
                 </div>
-                <span className="text-[10px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredTickets.length}</span>
+                <span className="text-[11px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredTickets.length}</span>
               </div>
 
               <div className="border-t border-gray-50 pt-4">
-                {/* NEW: Attendee Email Label */}
-                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
                   Attendee Email
                 </label>
                 <div className="relative flex items-center w-full">
@@ -331,12 +334,12 @@ export default function AccountPage() {
                     placeholder="EMAIL"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[10px] uppercase tracking-widest font-montserrat"
+                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[11px] uppercase tracking-widest font-montserrat"
                   />
                   <button
                     onClick={handleSendTicketEmail}
                     disabled={sendingEmail}
-                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[10px] uppercase hover:bg-pink-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat"
+                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[11px] uppercase hover:bg-pink-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat"
                   >
                     {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}
                   </button>
@@ -345,8 +348,8 @@ export default function AccountPage() {
             </div>
 
             <div className="flex md:hidden justify-between w-full max-w-[320px] px-4 mt-2">
-              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
-              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[9px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30">Next <ChevronRight size={14} /></button>
+              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
+              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30">Next <ChevronRight size={14} /></button>
             </div>
 
           </div>
@@ -356,10 +359,10 @@ export default function AccountPage() {
       <div className="max-w-7xl mx-auto px-6 mb-24">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
-          <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
+          <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
           {activeTab === 'tickets' && (
             <div className="flex flex-col items-end z-20">
-              <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
+              <label className="text-[11px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
               <CustomDropdown
                 value={selectedYear}
                 onChange={setSelectedYear}
@@ -386,26 +389,54 @@ export default function AccountPage() {
 
             {activeTab === "tickets" && (
               <div>
-                <div className="relative max-w-sm mb-8 group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-salsa-pink transition-colors" size={16} />
-                  <input type="text" placeholder="SEARCH PASSES..." className="w-full p-3.5 pl-12 bg-white border border-gray-200 rounded-xl outline-none focus:border-slate-900 focus:shadow-md transition-all duration-300 shadow-sm font-bold text-[10px] uppercase font-montserrat" onChange={e => setTicketSearch(e.target.value)} />
+                
+                {/* Search & Filter Row */}
+                <div className="flex flex-col md:flex-row gap-4 mb-8">
+                  <div className="relative flex-grow group">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
+                    <input 
+                      type="text" 
+                      placeholder="SEARCH PASSES..." 
+                      className="w-full p-4 pl-14 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 focus:shadow-md transition-all duration-300 shadow-sm font-bold text-xs uppercase font-montserrat text-slate-900" 
+                      onChange={e => setTicketSearch(e.target.value)} 
+                    />
+                  </div>
+
+                  {userData?.role !== 'user' && (
+                    <div className="relative w-full md:w-auto">
+                      <CustomDropdown
+                        icon={Filter}
+                        value={passFilter}
+                        onChange={setPassFilter}
+                        options={[
+                          { label: 'All Passes', value: 'all', isPill: true, colorClass: 'bg-slate-100 text-slate-600' },
+                          { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: 'bg-salsa-pink text-white' },
+                          { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: 'bg-violet-600 text-white' },
+                          { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: 'bg-teal-300 text-teal-950' },
+                          { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: 'bg-yellow-400 text-yellow-900' }
+                        ]}
+                        variant="filter"
+                      />
+                    </div>
+                  )}
                 </div>
+
                 {filteredTickets.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8">
                     {filteredTickets.map(t => (
-                      <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative">
+                      <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_10px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative">
                         <div className="p-6 md:p-8 flex flex-col items-center justify-center bg-salsa-mint/[0.03] border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-gray-100 shrink-0 group-hover:bg-salsa-mint/[0.07] transition-colors">
                           <div className="bg-white p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500"><QRCodeSVG value={t.ticketID} size={85} level="H" /></div>
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
                         </div>
                         <div className="p-6 md:p-8 flex flex-col justify-center flex-grow relative bg-white min-w-0">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>
-                          <div className="mb-3 relative z-10"><span className={`text-[9px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>{t.passType}</span></div>
+                          <div className="mb-3 relative z-10"><span className={`text-[11px] font-sans font-black px-5 py-2 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>{t.passType}</span></div>
                           <h3 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-[1.1] mb-1 relative z-10 truncate transition-colors">{t.userName}</h3>
-                          <p className="font-mono text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-6 relative z-10">ID: {t.ticketID}</p>
+                          <p className="font-mono text-gray-500 text-[12px] font-bold tracking-widest uppercase mb-6 relative z-10">ID: {t.ticketID}</p>
                           <div className="flex flex-col xl:flex-row gap-3 xl:gap-6 pt-5 border-t border-gray-100 mt-auto relative z-10">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Calendar size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).date}</div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest"><Clock size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).time}</div>
+                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest"><Calendar size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).date}</div>
+                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest"><Clock size={14} className="text-slate-400 transition-colors" /> {formatDate(t.purchaseDate).time}</div>
                           </div>
                         </div>
                       </div>
@@ -422,54 +453,54 @@ export default function AccountPage() {
 
             {activeTab === "settings" && (
               <div className="grid lg:grid-cols-2 gap-8 max-w-6xl">
-                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
                   <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Profile Details</h2>
                   <div className="space-y-4 relative z-10">
                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
                       <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18} /></div>
-                        <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
+                        <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
                           {isEditingName ? <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
                             : <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>}
                         </div>
                       </div>
-                      {isEditingName ? <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
-                        : <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                      {isEditingName ? <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
+                        : <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
                     </div>
 
                     {userData?.role === 'ambassador' && (
                       <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
                         <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500"><Users size={18} /></div>
-                          <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Ambassador Tag</span>
+                          <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Ambassador Tag</span>
                             {isEditingAmbName ? <input type="text" value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
                               : <span className="text-xs font-bold uppercase text-slate-900">{userData?.ambassadorDisplayName || "Not Set"}</span>}
                           </div>
                         </div>
-                        {isEditingAmbName ? <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[10px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
-                          : <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                        {isEditingAmbName ? <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
+                          : <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
                       </div>
                     )}
 
                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
                       <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18} /></div>
-                        <div><span className="block text-[9px] font-black text-slate-400 uppercase mb-1">Email Address</span><span className="text-xs font-bold text-slate-900">{userData?.email}</span></div>
+                        <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Email Address</span><span className="text-xs font-bold text-slate-900">{userData?.email}</span></div>
                       </div>
-                      <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase shadow-sm">Verified</span>
+                      <span className="text-[11px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase shadow-sm">Verified</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
                   <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Security</h2>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <button onClick={handleResetPassword} disabled={resetCooldown > 0} className={`flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all duration-300 cursor-pointer ${resetCooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-900 hover:shadow-md hover:-translate-y-1'}`}>
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 text-slate-600 shadow-sm"><Key size={18} /></div>
                       <span className="text-xs font-bold uppercase mb-1 font-montserrat">{resetCooldown > 0 ? `Reset (${resetCooldown}s)` : "Reset Password"}</span>
-                      <span className="text-[10px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
+                      <span className="text-[11px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
                     </button>
                     <button onClick={handleSignOut} className="flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:border-red-500 hover:bg-red-50 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-400 mb-4 shadow-sm"><LogOut size={18} /></div>
                       <span className="text-xs font-bold uppercase text-red-600 mb-1 font-montserrat">Sign Out</span>
-                      <span className="text-[10px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
+                      <span className="text-[11px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
                     </button>
                   </div>
                 </div>
