@@ -1,19 +1,56 @@
 @import "tailwindcss";
 
 @theme {
+  /* Brand Colors */
   --color-salsa-pink: #e84b8a;
   --color-salsa-mint: #7dd3c0;
   --color-salsa-white: #f0ffff;
   
+  /* OVERRIDE: Soften slate-900 by mapping it to slate-800's hex code */
+  --color-slate-900: #1e293b; 
+
+  /* Fonts */
   --font-modak: var(--font-modak);
   --font-bebas: var(--font-bebas);
   --font-montserrat: var(--font-montserrat);
 }
 
-/* 1. The Entrance Animation (Fade In Drop) */
-@keyframes simpleFadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+/* =========================================
+   1. BASE LAYER (HTML Elements)
+========================================= */
+@layer base {
+  body {
+    @apply font-montserrat text-slate-900 bg-white antialiased;
+  }
+  
+  /* Instantly makes all buttons and links use the pointer cursor */
+  button:not(:disabled), a {
+    @apply cursor-pointer;
+  }
+
+  /* Ensures disabled buttons show the correct 'unavailable' cursor */
+  button:disabled {
+    @apply cursor-not-allowed;
+  }
+}
+
+/* =========================================
+   2. TAILWIND V4 CUSTOM UTILITIES
+========================================= */
+@utility input-standard {
+  @apply w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 focus:shadow-md transition-all font-montserrat text-slate-900;
+}
+
+@utility tabs-container {
+  @apply relative flex bg-slate-50 border border-gray-100 p-1.5 rounded-2xl shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)];
+}
+
+@utility tab-button {
+  @apply relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 font-montserrat;
+}
+
+@utility btn-interact {
+  @apply transition-all duration-300 active:scale-95 hover:scale-[1.02];
 }
 
 @utility animate-fade-in {
@@ -21,22 +58,12 @@
   opacity: 0; /* Keeps it invisible until animation starts */
 }
 
-@layer utilities {
-  /* Beautiful custom scrollbar to match your theme */
-  .custom-scrollbar::-webkit-scrollbar {
-    height: 8px; /* Makes the horizontal scrollbar thin and elegant */
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f3f4f6; /* A subtle gray track matching your background */
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--color-salsa-pink); /* Themed thumb */
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #d03a78; /* Slightly darker pink on hover */
-  }
+/* =========================================
+   3. KEYFRAMES & ANIMATIONS
+========================================= */
+@keyframes simpleFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Stagger Delays for the entrance */
@@ -46,7 +73,7 @@
 .delay-700 { animation-delay: 700ms; }
 .delay-900 { animation-delay: 900ms; }
 
-/* 2. The Slow Ambient Glow Loop */
+/* The Slow Ambient Glow Loop */
 @keyframes ambientWave {
   0%, 40%, 100% {
     text-shadow: 
@@ -68,13 +95,26 @@
   animation: ambientWave 8s infinite ease-in-out;
 }
 
-/* Delays for the continuous loop (Separate from the entrance delays) */
+/* Delays for the continuous loop */
 .wave-1 { animation-delay: 0s; }
 .wave-2 { animation-delay: 0.8s; }
 .wave-3 { animation-delay: 1.6s; }
 
-@layer base {
-  body {
-    @apply font-montserrat text-slate-900 bg-white antialiased;
-  }
+/* =========================================
+   4. CUSTOM SCROLLBAR
+========================================= */
+::-webkit-scrollbar {
+  height: 8px; /* Makes the horizontal scrollbar thin and elegant */
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f3f4f6; /* A subtle gray track matching your background */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-salsa-pink); /* Themed thumb */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d03a78; /* Slightly darker pink on hover */
 }

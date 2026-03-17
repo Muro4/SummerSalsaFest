@@ -200,7 +200,7 @@ export default function Login() {
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 ml-2">Email or Name</label>
               <div className="relative flex items-center">
                 {/* Changed to type="text" to allow Names, and bound to identifier state */}
-                <input required type="text" value={identifier} onChange={e => setIdentifier(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-6 py-4 pl-12 focus:bg-white focus:border-salsa-mint focus:ring-2 focus:ring-salsa-mint/30 transition-all outline-none" />
+                <input required type="text" value={identifier} onChange={e => setIdentifier(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-6 py-4 pl-12 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 <UserIcon className="absolute left-4 text-gray-500" size={18} />
               </div>
             </div>
@@ -208,7 +208,7 @@ export default function Login() {
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
               <div className="relative flex items-center">
-                <input required type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-6 py-4 pl-12 focus:bg-white focus:border-salsa-mint focus:ring-2 focus:ring-salsa-mint/30 transition-all outline-none" />
+                <input required type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-6 py-4 pl-12 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 <Lock className="absolute left-4 text-gray-500" size={18} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer absolute right-4 text-gray-500 hover:text-slate-900 transition">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -244,7 +244,7 @@ export default function Login() {
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 ml-2">Full Name</label>
               <div className="relative flex items-center">
-                <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-4 py-3 pl-12 focus:bg-white focus:border-salsa-mint focus:ring-2 focus:ring-salsa-mint/30 transition-all outline-none" />
+                <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-medium rounded-2xl px-4 py-3 pl-12 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 <UserIcon className="absolute left-4 text-gray-500" size={18} />
               </div>
             </div>
@@ -252,7 +252,7 @@ export default function Login() {
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
               <div className="relative flex items-center">
-                <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className={`w-full bg-gray-50 border text-slate-900 font-medium rounded-2xl px-6 py-3 pl-12 focus:bg-white focus:ring-2 transition-all outline-none ${isEmailInvalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30' : 'border-gray-200 focus:border-salsa-mint focus:ring-salsa-mint/30'}`} />
+                <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className={`w-full bg-gray-50 border text-slate-900 font-medium rounded-2xl px-6 py-3 pl-12 focus:bg-white focus:ring-2 transition-all outline-none ${isEmailInvalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30' : 'border-gray-200 focus:border-slate-900 focus:ring-salsa-mint/30'}`} />
                 <Mail className={`absolute left-4 ${isEmailInvalid ? 'text-red-400' : 'text-gray-500'}`} size={18} />
               </div>
               {isEmailInvalid && <p className="text-red-500 text-[10px] font-bold mt-1 ml-2 tracking-widest">Please enter a valid email.</p>}
@@ -261,7 +261,7 @@ export default function Login() {
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 ml-2">Create Password</label>
               <div className="relative flex items-center">
-                <input required type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full bg-gray-50 border text-slate-900 font-medium rounded-2xl px-6 py-3 pl-12 focus:bg-white focus:ring-2 transition-all outline-none ${isPasswordInvalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30' : 'border-gray-200 focus:border-salsa-mint focus:ring-salsa-mint/30'}`} />
+                <input required type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className={`w-full bg-gray-50 border text-slate-900 font-medium rounded-2xl px-6 py-3 pl-12 focus:bg-white focus:ring-2 transition-all outline-none ${isPasswordInvalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30' : 'border-gray-200 focus:border-slate-900 focus:ring-salsa-mint/30'}`} />
                 <Lock className={`absolute left-4 ${isPasswordInvalid ? 'text-red-400' : 'text-gray-500'}`} size={18} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer absolute right-4 text-gray-500 hover:text-slate-900 transition">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

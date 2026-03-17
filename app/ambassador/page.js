@@ -507,7 +507,7 @@ export default function AmbassadorDashboard() {
               
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
                   <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                     {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
                   </span>
@@ -516,7 +516,7 @@ export default function AmbassadorDashboard() {
               </div>
 
               <div className="border-t border-gray-50 pt-4">
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
                   Attendee Email
                 </label>
                 <div className="relative flex items-center w-full">
@@ -579,20 +579,20 @@ export default function AmbassadorDashboard() {
        {/* CONTROLS ROW */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
           
-          <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-inner z-0">
+          <div className="tabs-container w-full lg:w-80 z-0">
             <div 
               className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
               style={{ left: activeTab === 'draft' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }}
             />
             <button 
               onClick={() => setActiveTab("draft")} 
-              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'draft' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`tab-button cursor-pointer ${activeTab === 'draft' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
             >
               <UserPlus size={14}/> Draft Roster
             </button>
             <button 
               onClick={() => setActiveTab("history")} 
-              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${activeTab === 'history' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`tab-button cursor-pointer ${activeTab === 'history' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
             >
               <History size={14}/> Paid History
             </button>
@@ -643,7 +643,7 @@ export default function AmbassadorDashboard() {
                   
                   <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
                       <span className={`font-bebas text-3xl leading-none ${groupRows.length >= 100 ? 'text-red-500' : 'text-slate-900'}`}>{groupRows.length}/100</span>
                     </div>
 
@@ -656,7 +656,7 @@ export default function AmbassadorDashboard() {
 
                 <div className="overflow-x-auto w-full flex-grow">
                   <table className="w-full text-left border-collapse min-w-[800px]">
-                    <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
+                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
                       <tr>
                         <th className="p-4 md:p-6 pl-10 w-20">
                           <div className="flex items-center gap-3">
@@ -735,7 +735,7 @@ export default function AmbassadorDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 md:p-4 text-right font-montserrat font-semibold text-[15px] text-slate-900 align-middle">
+                          <td className="p-3 md:p-4 text-right font-montserrat font-bold text-base text-slate-700 align-middle">
                             €{getPrice(row.type)}
                           </td>
                           <td className="p-3 md:p-4 pr-10 text-right align-middle font-montserrat">
@@ -780,11 +780,11 @@ export default function AmbassadorDashboard() {
                   
                   <div className="flex items-center gap-6">
                     <div className="flex flex-col md:flex-row items-center gap-2">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Registered:</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Registered:</span>
                         <span className="font-bebas text-4xl leading-none text-slate-900">{filteredHistory.length}</span>
                     </div>
                     <div className="flex flex-col md:flex-row items-center gap-2">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Total Paid:</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Total Paid:</span>
                         <span className="font-bebas text-4xl leading-none text-emerald-500">€{totalPaidRevenue}</span>
                     </div>
                   </div>
@@ -792,7 +792,7 @@ export default function AmbassadorDashboard() {
                 
                 <div className="overflow-x-auto w-full flex-grow">
                   <table className="w-full text-left border-collapse min-w-[600px]">
-                    <thead className="bg-white text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
+                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest border-b border-gray-100 font-montserrat">
                       <tr>
                         <th className="p-6 pl-10 font-bold">Attendee Name</th>
                         <th className="p-6 font-bold">Pass Type</th>

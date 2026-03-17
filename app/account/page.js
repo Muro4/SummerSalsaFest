@@ -309,7 +309,7 @@ export default function AccountPage() {
             <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
                   <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                     {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
                   </span>
@@ -319,7 +319,7 @@ export default function AccountPage() {
 
               <div className="border-t border-gray-50 pt-4">
                 {/* NEW: Attendee Email Label */}
-                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
                   Attendee Email
                 </label>
                 <div className="relative flex items-center w-full">
@@ -374,10 +374,10 @@ export default function AccountPage() {
         </div>
 
         {/* TABS */}
-        <div className="relative flex bg-gray-100 p-1.5 rounded-2xl w-full lg:w-80 shadow-inner mb-12">
+        <div className="tabs-container w-full lg:w-80 mb-12">
           <div className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm" style={{ left: activeTab === 'tickets' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }} />
-          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14} /> Active Passes</button>
-          <button onClick={() => setActiveTab("settings")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-[10px] font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Settings size={14} /> Settings</button>
+          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14} /> Active Passes</button>
+          <button onClick={() => setActiveTab("settings")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Settings size={14} /> Settings</button>
         </div>
 
         <div className="relative min-h-[500px] w-full">

@@ -123,11 +123,11 @@ export default function ContactPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Full Name</label>
-                  <input required name="user_name" type="text" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-salsa-mint focus:ring-4 focus:ring-salsa-mint/20 transition-all outline-none" />
+                  <input required name="user_name" type="text" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Email</label>
-                  <input required name="user_email" type="email" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-salsa-mint focus:ring-4 focus:ring-salsa-mint/20 transition-all outline-none" />
+                  <input required name="user_email" type="email" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 </div>
               </div>
 
@@ -147,7 +147,7 @@ export default function ContactPage() {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Your Message</label>
-                <textarea required name="message" rows="5" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-salsa-mint focus:ring-4 focus:ring-salsa-mint/20 transition-all outline-none resize-none"></textarea>
+                <textarea required name="message" rows="5" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none resize-none"></textarea>
               </div>
 
               <button 
