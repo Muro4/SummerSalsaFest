@@ -111,6 +111,7 @@ export default function AmbassadorDashboard() {
           setLoading(false);
         });
       } else {
+        unsubTickets();
         router.push("/login");
       }
     });
