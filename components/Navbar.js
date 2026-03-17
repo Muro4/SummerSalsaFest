@@ -5,6 +5,7 @@ import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
+import Button from "@/components/Button";
 import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
 
 export default function Navbar() {

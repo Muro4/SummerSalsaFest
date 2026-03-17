@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown"; // Imported global component
 import { usePopup } from "@/components/PopupProvider";
+import Button from "@/components/Button";
 import {
    Users, Ticket, Search, Download,
    ShieldAlert, Gift, Filter, CheckCircle,
@@ -154,17 +155,6 @@ export default function AdminDashboard() {
       }
    };
 
-   const confirmGift = (t) => {
-      showPopup({
-         type: "info",
-         title: "Stage Gift Ticket?",
-         message: `Convert ${t.userName}'s ticket (ID: ${t.ticketID}) to a Free Pass? (Will be saved locally until committed)`,
-         confirmText: "Yes, Stage Conversion",
-         cancelText: "Cancel",
-         onConfirm: () => handleStageChange('tickets', t.id, { price: 0, passType: 'Free Pass', status: 'active' })
-      });
-   };
-
    const confirmDelete = (t) => {
       showPopup({
          type: "info",
@@ -261,8 +251,8 @@ export default function AdminDashboard() {
          <Navbar />
          <div className="max-w-7xl mx-auto px-6">
 
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 relative z-[60]">
+            {/* HEADER - z-30 safely under Navbar */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 relative z-30">
                <div>
                   <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Event Overview</h1>
                   <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Summer Salsa Fest Management</p>
@@ -302,29 +292,33 @@ export default function AdminDashboard() {
 
                {/* ACTION BUTTONS (UNDO / REDO / SAVE) */}
                <div className="flex items-center gap-3 w-full lg:w-auto">
-                  <button
+                  <Button 
+                     variant="outline" 
+                     size="icon" 
+                     icon={Undo2} 
                      onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)}
                      disabled={historyIndex <= 0}
-                     className="p-3.5 bg-white border border-gray-200 rounded-2xl text-slate-900 hover:bg-slate-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center"
                      title="Undo Stage"
-                  >
-                     <Undo2 size={16} />
-                  </button>
-                  <button
+                     className="border-gray-200 bg-white p-3.5"
+                  />
+                  <Button 
+                     variant="outline" 
+                     size="icon" 
+                     icon={Redo2} 
                      onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)}
                      disabled={historyIndex >= history.length - 1}
-                     className="p-3.5 bg-white border border-gray-200 rounded-2xl text-slate-900 hover:bg-slate-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center"
                      title="Redo Stage"
-                  >
-                     <Redo2 size={16} />
-                  </button>
-                  <button
+                     className="border-gray-200 bg-white p-3.5"
+                  />
+                  <Button 
+                     variant="secondary" 
+                     size="lg" 
+                     icon={Save} 
                      onClick={handleSaveChanges}
                      disabled={historyIndex === 0}
-                     className="py-3.5 px-8 bg-slate-900 text-white border border-transparent rounded-2xl hover:bg-slate-800 cursor-pointer disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-widest"
                   >
-                     <Save size={16} /> Save
-                  </button>
+                     Save
+                  </Button>
                </div>
             </div>
 
@@ -396,7 +390,7 @@ export default function AdminDashboard() {
                      {/* Controls */}
                      <div className="flex flex-col xl:flex-row gap-4">
                         <div className="relative flex-grow group">
-                           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
+                           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
                            <input
                               type="text"
                               value={searchTerm || ""}
@@ -420,6 +414,7 @@ export default function AdminDashboard() {
                               />
                            </div>
                            <div className="relative w-full md:w-auto">
+                              {/* OMITTED FREE PASS FROM TOP FILTER */}
                               <CustomDropdown
                                  icon={Ticket}
                                  value={passFilter}
@@ -428,8 +423,7 @@ export default function AdminDashboard() {
                                     { label: 'All Passes', value: 'all', isPill: true, colorClass: 'bg-slate-100 text-slate-600' },
                                     { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: 'bg-salsa-pink text-white' },
                                     { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: 'bg-violet-600 text-white' },
-                                    { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: 'bg-teal-300 text-teal-950' },
-                                    { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: 'bg-yellow-400 text-yellow-900' }
+                                    { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: 'bg-teal-300 text-teal-950' }
                                  ]}
                                  variant="filter"
                               />
@@ -437,9 +431,9 @@ export default function AdminDashboard() {
                         </div>
                      </div>
 
-                     {/* Tickets Table */}
+                     {/* Tickets Table Wrapper (Overflow Hidden + Extra PB padding) */}
                      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                        <div className="overflow-x-auto overflow-y-visible w-full pb-12">
+                        <div className="overflow-x-auto w-full pb-40">
                            <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
                               <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                                  <tr>
@@ -472,20 +466,29 @@ export default function AdminDashboard() {
                                           <td className="p-6 align-middle border-b border-gray-50">
                                              <CustomDropdown
                                                 value={t.passType}
+                                                variant="pill"
                                                 onChange={(val) => {
                                                    const updateData = { passType: val };
-                                                   if (val === 'Free Pass' && t.status === 'pending') {
-                                                      updateData.price = 0;
+
+                                                   // Auto-update price only if pending
+                                                   if (t.status === 'pending') {
+                                                      if (val === 'Free Pass') updateData.price = 0;
+                                                      else if (val === 'Full Pass') updateData.price = 150; 
+                                                      else if (val === 'Party Pass') updateData.price = 80;  
+                                                      else if (val === 'Day Pass') updateData.price = 60;    
                                                    }
+
                                                    handleStageChange('tickets', t.id, updateData);
                                                 }}
                                                 options={[
-                                                   { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') },
-                                                   { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') },
-                                                   { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
-                                                   { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
+                                                   { label: 'Full Pass', value: 'Full Pass', colorClass: 'bg-salsa-pink text-white' },
+                                                   { label: 'Party Pass', value: 'Party Pass', colorClass: 'bg-violet-600 text-white' },
+                                                   { label: 'Day Pass', value: 'Day Pass', colorClass: 'bg-teal-300 text-teal-950' },
+                                                   ...(t.status === 'pending' || t.passType === 'Free Pass'
+                                                      ? [{ label: 'Free Pass', value: 'Free Pass', colorClass: 'bg-yellow-400 text-yellow-900' }]
+                                                      : []
+                                                   )
                                                 ]}
-                                                variant="pill"
                                              />
                                           </td>
                                           <td className="p-6 align-middle text-center border-b border-gray-50">
@@ -497,10 +500,14 @@ export default function AdminDashboard() {
                                           <td className="p-6 align-middle text-center font-bold text-base text-slate-700 border-b border-gray-50">€{t.price}</td>
                                           <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
                                              <div className="flex justify-end gap-2 h-full items-center">
-                                                {t.status === 'pending' && (
-                                                   <button onClick={() => confirmGift(t)} title="Convert to Free Pass" className="p-2.5 bg-white text-yellow-500 rounded-xl hover:bg-yellow-400 hover:text-white transition-colors border border-gray-200 hover:border-yellow-400 shadow-sm cursor-pointer hover:scale-105"><Gift size={16} /></button>
-                                                )}
-                                                <button onClick={() => confirmDelete(t)} title="Delete Ticket" className="p-2.5 bg-white text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-colors border border-gray-200 hover:border-red-500 shadow-sm cursor-pointer hover:scale-105"><Trash2 size={16} /></button>
+                                                <Button 
+                                                   variant="actionIcon" 
+                                                   size="icon" 
+                                                   icon={Trash2} 
+                                                   onClick={() => confirmDelete(t)} 
+                                                   title="Delete Ticket" 
+                                                   className="opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50" 
+                                                />
                                              </div>
                                           </td>
                                        </tr>
@@ -523,7 +530,7 @@ export default function AdminDashboard() {
                      {/* Controls */}
                      <div className="flex flex-col xl:flex-row gap-4">
                         <div className="relative flex-grow group">
-                           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
+                           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
                            <input
                               type="text"
                               value={searchTerm || ""}
@@ -549,9 +556,9 @@ export default function AdminDashboard() {
                         </div>
                      </div>
 
-                     {/* Users Table */}
+                     {/* Users Table Wrapper (Overflow Hidden + Extra PB padding) */}
                      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                        <div className="overflow-x-auto overflow-y-visible w-full pb-12">
+                        <div className="overflow-x-auto w-full pb-40">
                            <table className="w-full text-left border-separate border-spacing-0 min-w-[900px] font-montserrat relative">
                               <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                                  <tr>
@@ -577,7 +584,7 @@ export default function AdminDashboard() {
                                                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">-</span>
                                              )}
                                           </td>
-                                          <td className="p-6 align-middle text-gray-500 lowercase font-medium text-sm tracking-wide border-b border-gray-50">{u.email}</td>
+                                          <td className="p-6 align-middle text-slate-500 lowercase font-bold text-xs tracking-wide border-b border-gray-50">{u.email}</td>
                                           <td className="p-6 pl-16 pr-12 align-middle border-b border-gray-50">
                                              <div className="flex justify-start">
                                                 <CustomDropdown

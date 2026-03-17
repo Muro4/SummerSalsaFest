@@ -4,6 +4,7 @@ import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Navbar from "@/components/Navbar";
+import Button from "@/components/Button";
 import { CheckCircle, RefreshCw, ShieldAlert, Loader2, Search, Camera, AlertCircle } from "lucide-react";
 
 export default function AdminScanner() {

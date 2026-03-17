@@ -8,6 +8,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
+import Button from "@/components/Button";
 import {
   Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
   User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
