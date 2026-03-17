@@ -367,7 +367,7 @@ export default function AccountPage() {
                   { label: 'SSF 2025', value: '2025' },
                   { label: 'SSF 2024', value: '2024' }
                 ]}
-                buttonClassName="bg-white border border-gray-200 p-2.5 px-6 rounded-xl text-xs font-black uppercase shadow-sm transition-all font-montserrat text-slate-900 hover:border-slate-300 cursor-pointer"
+                variant="compact"
               />
             </div>
           )}

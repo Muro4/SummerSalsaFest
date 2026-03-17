@@ -31,8 +31,13 @@ export default function CustomDropdown({
     pill: `w-44 px-5 py-3 rounded-full text-xs font-black uppercase tracking-widest shadow-sm border border-transparent justify-center`
   };
 
+  // Determine width based on variant safely
+  let widthClass = "w-full md:w-max";
+  if (variant === 'pill') widthClass = "w-44";
+  if (variant === 'filter') widthClass = "w-full md:w-56";
+
   return (
-    <div className={`relative inline-block font-montserrat ${variant === 'pill' ? 'w-44' : 'w-full md:w-max'}`} ref={dropdownRef} title={title}>
+    <div className={`relative inline-block font-montserrat ${widthClass}`} ref={dropdownRef} title={title}>
       <button 
         type="button"
         disabled={disabled}
@@ -47,10 +52,7 @@ export default function CustomDropdown({
       </button>
       
       {isOpen && (
-        <div className={`absolute z-50 mt-2 bg-white border border-gray-100 shadow-2xl p-1.5 
-          ${variant === 'pill' ? 'w-44 rounded-2xl' : 'min-w-full rounded-xl'} 
-          right-0 animate-in fade-in slide-in-from-top-2`}
-        >
+        <div className={`absolute z-50 mt-2 bg-white border border-gray-100 shadow-2xl p-1.5 right-0 animate-in fade-in slide-in-from-top-2 ${variant === 'pill' ? 'w-44 rounded-2xl' : 'min-w-full rounded-xl'}`}>
           <div className="flex flex-col gap-1">
             {options.map((opt) => {
               const isActive = value === opt.value;
@@ -61,7 +63,6 @@ export default function CustomDropdown({
                     key={opt.value}
                     type="button"
                     onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                    // Bumped text-[10px] to text-xs
                     className={`w-full flex items-center justify-center py-3 px-2 transition-all duration-200 cursor-pointer text-xs font-black uppercase tracking-widest whitespace-nowrap rounded-full hover:scale-[1.03] shadow-sm ${opt.colorClass || 'bg-gray-100 text-slate-600'}`}
                   >
                     <span className="truncate">{opt.label}</span>
@@ -74,9 +75,7 @@ export default function CustomDropdown({
                   key={opt.value}
                   type="button"
                   onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                  // Bumped text-[10px] to text-xs
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer text-xs font-bold uppercase tracking-widest whitespace-nowrap 
-                    ${isActive ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer text-xs font-bold uppercase tracking-widest whitespace-nowrap ${isActive ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                 >
                   {opt.label}
                 </button>

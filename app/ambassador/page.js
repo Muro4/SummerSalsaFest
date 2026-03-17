@@ -571,7 +571,7 @@ export default function AmbassadorDashboard() {
                 { label: 'SSF: 2025', value: '2025' },
                 { label: 'SSF: 2024', value: '2024' }
               ]}
-              buttonClassName="bg-white border-2 border-slate-200 p-2.5 px-4 rounded-xl text-xs font-black uppercase shadow-sm hover:border-slate-900 transition-all text-slate-900 font-montserrat w-full md:w-auto"
+              variant="compact"
             />
           </div>
         </div>
@@ -611,7 +611,7 @@ export default function AmbassadorDashboard() {
                   { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') },
                   ...(activeTab === 'history' ? [{ label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }] : [])
                 ]}
-                buttonClassName="w-full md:w-auto p-3.5 px-5 bg-white border border-gray-200 rounded-2xl outline-none hover:border-slate-900 font-bold text-xs uppercase text-slate-900 transition-all shadow-sm font-montserrat"
+                variant="filter"
               />
             </div>
 
