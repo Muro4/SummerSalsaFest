@@ -120,7 +120,7 @@ export default function Home() {
           <div className="text-salsa-white max-w-6xl mt-12 flex flex-col items-center">
             
             {/* DYNAMIC EDITION TEXT */}
-            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 inline-block">
+            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[11px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 inline-block">
               {editionText}
             </span>
 
@@ -134,12 +134,12 @@ export default function Home() {
               <div className="text-center md:text-right">
                 <p className="font-bebas text-5xl">1-3 AUG</p>
                 {/* DYNAMIC YEAR */}
-                <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.3em]">{festivalYear}</p>
+                <p className="text-[11px] font-black opacity-60 uppercase tracking-[0.3em]">{festivalYear}</p>
               </div>
               <div className="hidden md:block w-px h-16 bg-white/30" />
               <div className="text-center md:text-left">
                 <p className="font-bebas text-5xl uppercase">Varna</p>
-                <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.3em]">Varna Free University</p>
+                <p className="text-[11px] font-black opacity-60 uppercase tracking-[0.3em]">Varna Free University</p>
               </div>
             </div>
 
@@ -154,7 +154,7 @@ export default function Home() {
           </div>
 
           <div className="animate-fade-in delay-900 absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
+            <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
             <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">
               <div className="w-1 h-2 bg-salsa-pink rounded-full animate-bounce"></div>
             </div>
@@ -171,7 +171,7 @@ export default function Home() {
       {/* 2. SPECIALTY CARDS (Updated for Static Premium Look) */}
       <section id="info" className="py-32 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-20">
-          <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em]">Experience</span>
+          <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">Experience</span>
           <h2 className="font-modak text-6xl text-slate-900 mt-2">Why Summer Salsa?</h2>
           <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
         </div>
@@ -228,7 +228,7 @@ export default function Home() {
       {/* 4. REVIEWS */}
       <section className="py-32 bg-slate-50 relative overflow-hidden">
         <div className="text-center mb-16 px-6 relative z-10">
-          <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em]">Testimonials</span>
+          <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">Testimonials</span>
           <h2 className="font-modak text-5xl md:text-6xl mt-4 text-slate-900">What Dancers Say</h2>
         </div>
 
@@ -250,7 +250,7 @@ export default function Home() {
                 <p className="italic text-slate-600 text-lg mb-8 leading-relaxed font-medium flex-grow">"{review.text}"</p>
                 <div className="pt-6 border-t border-slate-50 mt-auto">
                   <p className="font-black text-slate-900 text-sm uppercase tracking-widest">{review.name}</p>
-                  <p className="text-[10px] text-salsa-pink font-bold mt-1 uppercase tracking-widest">{review.role}</p>
+                  <p className="text-[11px] text-salsa-pink font-bold mt-1 uppercase tracking-widest">{review.role}</p>
                 </div>
               </div>
             ))}

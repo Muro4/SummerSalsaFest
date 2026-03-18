@@ -127,7 +127,7 @@ export default function TicketPage() {
         {step === 1 ? (
           <div className="flex flex-col items-center w-full animate-in fade-in duration-500">
             <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-normal">Select Your Pass</h1>
-            <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-8">Choose an experience to continue</p>
+            <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-8">Choose an experience to continue</p>
 
             <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
               {PASSES.map((p) => (
@@ -161,7 +161,7 @@ export default function TicketPage() {
             <button
               onClick={handleProceedToDetails}
               disabled={!selected || loading}
-              className="cursor-pointer group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[10px] uppercase disabled:opacity-50"
+              className="cursor-pointer group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[11px] uppercase disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" /> : <>NEXT STEP <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
             </button>
@@ -170,7 +170,7 @@ export default function TicketPage() {
           <div className="flex flex-col items-center justify-center w-full max-w-md animate-in fade-in slide-in-from-right-8 duration-500">
             <button
               onClick={() => setStep(1)}
-              className="flex items-center gap-2 mb-6 text-slate-400 hover:text-slate-900 transition-colors font-black text-[10px] uppercase tracking-[0.2em] cursor-pointer self-start ml-2"
+              className="flex items-center gap-2 mb-6 text-slate-400 hover:text-slate-900 transition-colors font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer self-start ml-2"
             >
               <ChevronLeft size={16} strokeWidth={3} /> Change Pass
             </button>
@@ -181,21 +181,21 @@ export default function TicketPage() {
 
               <div className="space-y-5 relative z-10">
                 <div className="flex flex-col items-center gap-2 mb-2">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Selected</span>
-                  <span className={`border border-transparent px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${selected?.color} ${selected?.text}`}>
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Selected</span>
+                  <span className={`border border-transparent px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${selected?.color} ${selected?.text}`}>
                     {selected?.name}
                   </span>
                 </div>
 
                 {isGuest && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Email for Delivery</label>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">Email for Delivery</label>
                     <input type="email" placeholder="YOUR@EMAIL.COM" required className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900" onChange={e => setGuestEmail(e.target.value)} />
                   </div>
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Full Name (As per ID)</label>
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">Full Name (As per ID)</label>
                   <input
                     type="text"
                     placeholder="E.G. IVAN GEORGIEV"
@@ -204,7 +204,7 @@ export default function TicketPage() {
                     onChange={e => setRealName(e.target.value)}
                   />
                   {isNameInvalid && (
-                    <p className="text-red-500 text-[10px] font-bold mt-1 ml-2 tracking-widest leading-relaxed">
+                    <p className="text-red-500 text-[11px] font-bold mt-1 ml-2 tracking-widest leading-relaxed">
                       {!isWithinWordLimit ? "Please enter a shorter name (max 5 words)." : "Numbers and special symbols are not allowed."}
                     </p>
                   )}
@@ -213,7 +213,7 @@ export default function TicketPage() {
                 <button
                   onClick={handleAddToCart}
                   disabled={!realName || isNameInvalid || (isGuest && !guestEmail) || loading}
-                  className="cursor-pointer w-full h-[52px] bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[10px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
+                  className="cursor-pointer w-full h-[52px] bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
                 >
                   {loading ? (
                     <Loader2 className="animate-spin" size={18} />

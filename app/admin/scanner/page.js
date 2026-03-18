@@ -91,7 +91,7 @@ export default function AdminScanner() {
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="text-center">
                 <h1 className="font-bebas text-6xl text-gray-900 uppercase leading-none">Gate Entry</h1>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Festival Check-in System</p>
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-2">Festival Check-in System</p>
             </div>
 
             <div className="bg-white rounded-[2.5rem] border-2 border-salsa-mint/20 shadow-2xl overflow-hidden min-h-[300px] flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function AdminScanner() {
         {scanResult && (
           <div className={`p-10 rounded-[3.5rem] border-4 animate-in zoom-in duration-300 shadow-2xl ${scanResult.status === 'used' ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-300"}`}>
               <div className="text-center">
-                <div className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-8 ${scanResult.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                <div className={`inline-block px-4 py-1.5 rounded-full text-[11px] font-black uppercase mb-8 ${scanResult.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
                     {scanResult.status === 'active' ? 'Valid Pass' : 'Entry Denied'}
                 </div>
                 
@@ -143,13 +143,13 @@ export default function AdminScanner() {
                 ) : (
                   <div className="bg-white/80 p-6 rounded-[2rem] border-2 border-amber-200 flex flex-col items-center gap-2">
                      <ShieldAlert className="text-amber-500" />
-                     <p className="text-[10px] font-black text-amber-900 uppercase">ALREADY SCANNED</p>
+                     <p className="text-[11px] font-black text-amber-900 uppercase">ALREADY SCANNED</p>
                   </div>
                 )}
                 
                 <button 
                     onClick={() => { setScanResult(null); setManualID(""); }} 
-                    className="mt-10 flex items-center gap-2 mx-auto text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-salsa-pink transition"
+                    className="mt-10 flex items-center gap-2 mx-auto text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-salsa-pink transition"
                 >
                     <RefreshCw size={14}/> Reset Scanner
                 </button>

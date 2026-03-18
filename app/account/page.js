@@ -65,11 +65,11 @@ export default function AccountPage() {
 
   const [resetCooldown, setResetCooldown] = useState(0);
   const [selectedYear, setSelectedYear] = useState("2026");
-  
+
   // Search & Filter State
   const [ticketSearch, setTicketSearch] = useState("");
-  const [passFilter, setPassFilter] = useState("all"); 
-  
+  const [passFilter, setPassFilter] = useState("all");
+
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
 
   // Email Sending State
@@ -389,16 +389,16 @@ export default function AccountPage() {
 
             {activeTab === "tickets" && (
               <div>
-                
+
                 {/* Search & Filter Row */}
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
                   <div className="relative flex-grow group">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
-                    <input 
-                      type="text" 
-                      placeholder="SEARCH PASSES..." 
-                      className="w-full p-4 pl-14 bg-white border border-gray-200 rounded-2xl outline-none focus:border-slate-900 focus:shadow-md transition-all duration-300 shadow-sm font-bold text-xs uppercase font-montserrat text-slate-900" 
-                      onChange={e => setTicketSearch(e.target.value)} 
+                    <input
+                      type="text"
+                      placeholder="SEARCH PASSES..."
+                      className="input-standard"
+                      onChange={e => setTicketSearch(e.target.value)}
                     />
                   </div>
 
@@ -427,7 +427,7 @@ export default function AccountPage() {
                       <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_10px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative">
                         <div className="p-6 md:p-8 flex flex-col items-center justify-center bg-salsa-mint/[0.03] border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-gray-100 shrink-0 group-hover:bg-salsa-mint/[0.07] transition-colors">
                           <div className="bg-white p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500"><QRCodeSVG value={t.ticketID} size={85} level="H" /></div>
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
                         </div>
                         <div className="p-6 md:p-8 flex flex-col justify-center flex-grow relative bg-white min-w-0">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>

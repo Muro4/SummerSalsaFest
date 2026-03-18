@@ -57,7 +57,7 @@ export function PopupProvider({ children }) {
                 <button 
                   type="button"
                   onClick={closePopup}
-                  className="flex-1 bg-gray-50 text-slate-600 font-black py-4 rounded-2xl hover:bg-gray-100 transition-all tracking-widest text-[10px] uppercase cursor-pointer"
+                  className="flex-1 bg-gray-50 text-slate-600 font-black py-4 rounded-2xl hover:bg-gray-100 transition-all tracking-widest text-[11px] uppercase cursor-pointer"
                 >
                   {popup.cancelText}
                 </button>
@@ -66,7 +66,7 @@ export function PopupProvider({ children }) {
               <button 
                 type="button"
                 onClick={handleConfirm}
-                className={`flex-1 text-white font-black py-4 rounded-2xl hover:scale-105 transition-all tracking-widest text-[10px] uppercase shadow-xl cursor-pointer
+                className={`flex-1 text-white font-black py-4 rounded-2xl hover:scale-105 transition-all tracking-widest text-[11px] uppercase shadow-xl cursor-pointer
                   ${popup.type === 'error' ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20' : 'bg-slate-900 hover:bg-salsa-pink shadow-slate-900/20'}`}
               >
                 {popup.confirmText}

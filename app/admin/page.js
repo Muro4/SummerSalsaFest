@@ -259,7 +259,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 relative z-30">
                <div>
                   <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Event Overview</h1>
-                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Summer Salsa Fest Management</p>
+                  <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Summer Salsa Fest Management</p>
                </div>
                <div className="flex flex-col items-end z-20">
                   <label className="text-[12px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
@@ -362,7 +362,7 @@ export default function AdminDashboard() {
                                  }}
                               />
                               {['day', 'week', 'year'].map(r => (
-                                 <button key={r} onClick={() => setTimeRange(r)} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${timeRange === r ? 'text-salsa-pink' : 'text-slate-400 hover:text-slate-700'}`}>{r}</button>
+                                 <button key={r} onClick={() => setTimeRange(r)} className={`relative z-10 flex-1 py-2 text-[11px] font-black uppercase transition-colors duration-300 font-montserrat cursor-pointer ${timeRange === r ? 'text-salsa-pink' : 'text-slate-400 hover:text-slate-700'}`}>{r}</button>
                               ))}
                            </div>
                         </div>
@@ -439,7 +439,7 @@ export default function AdminDashboard() {
                      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                         <div className="overflow-x-auto w-full pb-40">
                            <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
-                              <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
+                              <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                                  <tr>
                                     <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
                                     <th className="p-6 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
@@ -460,12 +460,12 @@ export default function AdminDashboard() {
                                              {ambTag ? (
                                                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span>
                                              ) : (
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Direct</span>
+                                                <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Direct</span>
                                              )}
                                           </td>
                                           <td className="p-6 align-middle truncate max-w-[200px] border-b border-gray-50">
                                              <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide">{t.userName}</span>
-                                             <span className="block text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">ID: {t.ticketID}</span>
+                                             <span className="block text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">ID: {t.ticketID}</span>
                                           </td>
                                           <td className="p-6 align-middle border-b border-gray-50">
                                              <CustomDropdown
@@ -564,7 +564,7 @@ export default function AdminDashboard() {
                      <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                         <div className="overflow-x-auto w-full pb-40">
                            <table className="w-full text-left border-separate border-spacing-0 min-w-[900px] font-montserrat relative">
-                              <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
+                              <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                                  <tr>
                                     <th className="p-6 pl-10 font-bold w-1/4 rounded-tl-[3rem] border-b border-gray-100">Name</th>
                                     <th className="p-6 font-bold w-48 border-b border-gray-100">Ambassador Tag</th>
@@ -585,7 +585,7 @@ export default function AdminDashboard() {
                                              {u.role === 'ambassador' && u.ambassadorDisplayName ? (
                                                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {u.ambassadorDisplayName}</span>
                                              ) : (
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">-</span>
+                                                <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">-</span>
                                              )}
                                           </td>
                                           <td className="p-6 align-middle text-slate-500 lowercase font-bold text-xs tracking-wide border-b border-gray-50">{u.email}</td>

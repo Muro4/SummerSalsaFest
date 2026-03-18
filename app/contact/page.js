@@ -76,7 +76,7 @@ export default function ContactPage() {
               <div className={`w-14 h-14 ${item.color} text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
                 {item.icon}
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-2">{item.label}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 mb-2">{item.label}</p>
               <p className="font-bold text-slate-900 tracking-tight">{item.val}</p>
             </div>
           ))}
@@ -94,7 +94,7 @@ export default function ContactPage() {
           </p>
           
           <div className="pt-8 space-y-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-salsa-pink">Socials</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-salsa-pink">Socials</p>
             <div className="flex gap-4">
               <a href="#" className="p-4 bg-white rounded-2xl text-slate-900 shadow-md hover:bg-salsa-pink hover:text-white transition-all"><Instagram size={24}/></a>
               <a href="#" className="p-4 bg-white rounded-2xl text-slate-900 shadow-md hover:bg-salsa-pink hover:text-white transition-all"><Facebook size={24}/></a>
@@ -122,17 +122,17 @@ export default function ContactPage() {
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Full Name</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-2">Full Name</label>
                   <input required name="user_name" type="text" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Email</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-2">Email</label>
                   <input required name="user_email" type="email" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">What's this about?</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-2">What's this about?</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {['Tickets', 'Workshops', 'Media', 'Other'].map((cat) => (
                     <label key={cat} className="relative cursor-pointer group">
@@ -146,7 +146,7 @@ export default function ContactPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-2">Your Message</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-2">Your Message</label>
                 <textarea required name="message" rows="5" className="w-full bg-gray-50 border border-salsa-mint/40 text-gray-900 font-medium rounded-2xl px-6 py-4 focus:bg-white focus:border-slate-900 focus:shadow-md focus:ring-0 transition-all outline-none resize-none"></textarea>
               </div>
 

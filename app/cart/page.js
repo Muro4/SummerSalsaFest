@@ -132,7 +132,7 @@ export default function Cart() {
               <CheckCircle className="text-emerald-500 mb-6" size={80} />
               <h1 className="font-bebas text-6xl text-gray-900 mb-4 uppercase leading-none">Passes Activated!</h1>
               <p className="text-gray-500 font-bold text-sm">Your entry is confirmed and ready.</p>
-              <p className="text-salsa-mint font-black text-[10px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
+              <p className="text-salsa-mint font-black text-[11px] uppercase tracking-widest mt-8 animate-pulse">Redirecting...</p>
             </div>
           </div>
         </div>
@@ -149,12 +149,12 @@ export default function Cart() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
           <div className="flex flex-col gap-2">
             <h1 className="font-bebas text-6xl md:text-8xl tracking-tight leading-none text-slate-900 uppercase">Your Cart</h1>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Review your selections</p>
+            <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Review your selections</p>
           </div>
           {items.length > 0 && (
             <div className="bg-white px-6 py-3 rounded-full border border-gray-100 shadow-sm flex items-center gap-3 h-[46px]">
               <ShoppingBag className="text-salsa-pink" size={18} />
-              <span className="font-black text-[10px] uppercase tracking-widest text-slate-700">{items.length} {items.length === 1 ? 'Item' : 'Items'}</span>
+              <span className="font-black text-[11px] uppercase tracking-widest text-slate-700">{items.length} {items.length === 1 ? 'Item' : 'Items'}</span>
             </div>
           )}
         </div>
@@ -168,7 +168,7 @@ export default function Cart() {
                 {/* LEFT: GET MORE BUTTON */}
                 <Link
                   href="/tickets"
-                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 bg-white px-5 py-2.5 rounded-full border border-slate-200 shadow-sm hover:border-slate-900 hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-900 bg-white px-5 py-2.5 rounded-full border border-slate-200 shadow-sm hover:border-slate-900 hover:shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <Plus size={14} />
                   Get More Passes
@@ -177,7 +177,7 @@ export default function Cart() {
                 {/* RIGHT: CLEAR CART BUTTON */}
                 <button
                   onClick={handleClearCart}
-                  className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all cursor-pointer bg-white px-5 py-2.5 rounded-full border border-gray-100 shadow-sm hover:shadow-md active:scale-95"
+                  className="group flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all cursor-pointer bg-white px-5 py-2.5 rounded-full border border-gray-100 shadow-sm hover:shadow-md active:scale-95"
                 >
                   <XCircle size={14} className="group-hover:rotate-90 transition-transform duration-300" />
                   Clear Cart
@@ -193,14 +193,14 @@ export default function Cart() {
                       </div>
                       <div className="flex flex-col gap-1 min-w-0">
                         <div className="mb-1">
-                          <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.15em] shadow-sm ${getPassStyle(item.passType)}`}>{item.passType}</span>
+                          <span className={`text-[11px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.15em] shadow-sm ${getPassStyle(item.passType)}`}>{item.passType}</span>
                         </div>
                         {/* NAME: Removed tracking-tight and used name-spacing class if you added it to globals.css */}
                         <h3 className="text-3xl font-black uppercase text-slate-900 leading-tight tracking-normal truncate">
                           {item.userName}
                         </h3>
                         <div className="flex items-center gap-4 mt-1">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
                             <Clock size={12} className="opacity-50" /> {item.festivalYear} Edition
                           </span>
                         </div>
@@ -209,7 +209,7 @@ export default function Cart() {
 
                     <div className="flex items-center justify-between w-full md:w-auto gap-12 pt-6 md:pt-0 border-t border-slate-50 md:border-none">
                       <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Price</p>
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Price</p>
                         <p className="font-bebas text-5xl text-slate-900 leading-none">€{item.price}</p>
                       </div>
                       <button onClick={() => confirmRemoveItem(item.id, item.userName)} className="group/btn cursor-pointer w-14 h-14 rounded-2xl flex items-center justify-center bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all duration-300" title="Remove Item"><Trash2 size={22} className="group-hover/btn:scale-110 transition-transform" /></button>
@@ -235,7 +235,7 @@ export default function Cart() {
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-2 h-2 rounded-full ${getPassBgColor(type)}`}></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{type}</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">{type}</span>
                       </div>
 
                       {/* SMALLER PURE COUNT */}
@@ -247,14 +247,14 @@ export default function Cart() {
                 </div>
 
                 <div className="flex justify-between items-end pt-2 mb-6">
-                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-1">Total Due</span>
+                  <span className="font-black text-[11px] uppercase tracking-widest text-slate-400 mb-1">Total Due</span>
                   <span className="font-bebas text-5xl text-salsa-pink leading-none">€{total}</span>
                 </div>
 
                 <button
                   onClick={handleCheckout}
                   disabled={isPaying}
-                  className="cursor-pointer w-full h-[56px] bg-slate-900 text-white font-black rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-50 mt-4"
+                  className="cursor-pointer w-full h-[56px] bg-slate-900 text-white font-black rounded-2xl hover:bg-salsa-pink hover:scale-105 transition-all flex items-center justify-center gap-3 text-[11px] uppercase tracking-widest shadow-xl disabled:opacity-50 mt-4"
                 >
                   {isPaying ? (
                     <Loader2 className="animate-spin" size={18} />
@@ -263,7 +263,7 @@ export default function Cart() {
                   )}
                 </button>
 
-                <div className="mt-5 flex items-center justify-center gap-2 text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-black text-slate-300 uppercase tracking-widest">
                   {total > 0 ? (
                     <><ShieldCheck size={12} className="text-emerald-400" /> Secure Checkout</>
                   ) : (

@@ -141,7 +141,7 @@ export default function Navbar() {
               </Link>
               
               {cartItems > 0 && (
-                <span className={`absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
+                <span className={`absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full text-[11px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
                   {cartItems}
                 </span>
               )}
@@ -191,7 +191,7 @@ export default function Navbar() {
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-black text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
-                      <p className="text-[10px] font-bold text-slate-500 truncate lowercase tracking-wide mt-0.5">{user.email}</p>
+                      <p className="text-[11px] font-bold text-slate-500 truncate lowercase tracking-wide mt-0.5">{user.email}</p>
                     </div>
                   </div>
                   

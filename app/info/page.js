@@ -30,7 +30,7 @@ export default function InfoPage() {
           }}
         />
         <div className="relative z-10 flex flex-col items-center animate-fade-in">
-          <span className="bg-salsa-mint/20 text-salsa-mint border border-salsa-mint/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
+          <span className="bg-salsa-mint/20 text-salsa-mint border border-salsa-mint/30 text-[11px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
             Everything You Need To Know
           </span>
           <h1 className="font-modak text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-2xl">
@@ -53,7 +53,7 @@ export default function InfoPage() {
       <section className="py-24 px-6 bg-white border-y border-gray-100">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em]">Schedule Preview</span>
+            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">Schedule Preview</span>
             <h2 className="font-bebas text-6xl text-gray-900 mt-2">The Daily Schedule</h2>
           </div>
 
@@ -118,7 +118,7 @@ export default function InfoPage() {
           </div>
           
           <div className="relative z-10 h-full p-6 md:p-10 flex flex-col justify-end pointer-events-none">
-            <span className="text-salsa-mint font-black text-[10px] uppercase tracking-[0.4em] mb-1 drop-shadow-md">The Venue</span>
+            <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-md">The Venue</span>
             <h3 className="font-bebas text-4xl md:text-5xl text-white drop-shadow-xl">Varna Free University</h3>
             <div className="mt-2 flex items-center gap-2 text-white/80 text-xs md:text-sm font-medium">
               <MapPin size={16} className="text-salsa-mint shrink-0" /> 
@@ -153,7 +153,7 @@ export default function InfoPage() {
           </div>
           
           <div className="relative z-10 h-full p-6 md:p-10 flex flex-col justify-end pointer-events-none">
-            <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em] mb-1 drop-shadow-md">Beach Fiesta</span>
+            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-md">Beach Fiesta</span>
             <h3 className="font-bebas text-4xl md:text-5xl text-white drop-shadow-xl">Kabakum Beach</h3>
             <div className="mt-2 flex items-center gap-2 text-white/80 text-xs md:text-sm font-medium">
               <MapPin size={16} className="text-salsa-pink shrink-0" /> Varna beach
@@ -166,7 +166,7 @@ export default function InfoPage() {
       {/* 4. FAQ ACCORDION */}
       <section className="py-24 px-6 max-w-4xl mx-auto">
         <div className="text-center mb-16">
-          <span className="text-salsa-mint font-black text-[10px] uppercase tracking-[0.4em]">Got Questions?</span>
+          <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em]">Got Questions?</span>
           <h2 className="font-bebas text-6xl text-gray-900 mt-2">Frequently Asked</h2>
         </div>
 

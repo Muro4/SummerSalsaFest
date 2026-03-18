@@ -482,20 +482,20 @@ export default function AmbassadorDashboard() {
 
                 <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span>
+                    <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span>
                     <span className="block text-xs font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span>
+                    <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span>
                     <span className="block text-xs font-black text-slate-900 uppercase">€{fullScreenTicket.price}</span>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
                     <div>
-                      <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span>
+                      <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span>
                       <span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span>
                     </div>
                     <div className="text-right">
-                      <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
+                      <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
                       <span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span>
                     </div>
                   </div>
@@ -509,16 +509,16 @@ export default function AmbassadorDashboard() {
 
               <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+                  <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                     {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
                   </span>
                 </div>
-                <span className="text-[10px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredHistory.length}</span>
+                <span className="text-[11px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredHistory.length}</span>
               </div>
 
               <div className="border-t border-gray-50 pt-4">
-                <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
+                <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
                   Attendee Email
                 </label>
                 <div className="relative flex items-center w-full">
@@ -529,12 +529,12 @@ export default function AmbassadorDashboard() {
                     placeholder="EMAIL"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[10px] uppercase tracking-widest font-montserrat"
+                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[11px] uppercase tracking-widest font-montserrat"
                   />
                   <button
                     onClick={handleSendTicketEmail}
                     disabled={sendingEmail}
-                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[10px] uppercase hover:bg-pink-600 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat shadow-sm"
+                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[11px] uppercase hover:bg-pink-600 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat shadow-sm"
                   >
                     {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}
                   </button>
@@ -542,8 +542,8 @@ export default function AmbassadorDashboard() {
               </div>
 
               <div className="flex md:hidden justify-between pt-3 border-t border-gray-100 mt-2">
-                <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-500 disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
-                <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredHistory.length - 1} className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-500 disabled:opacity-30">Next <ChevronRight size={14} /></button>
+                <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-500 disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
+                <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredHistory.length - 1} className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-500 disabled:opacity-30">Next <ChevronRight size={14} /></button>
               </div>
 
             </div>
@@ -558,14 +558,14 @@ export default function AmbassadorDashboard() {
         <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-30">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm">
+              <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm">
                 <Info size={14} /> Dashboard Guide
               </button>
             </div>
             <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Dashboard</h1>
           </div>
           <div className="flex flex-col items-end w-full md:w-auto z-20">
-            <label className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Festival Archive</label>
+            <label className="text-[11px] font-black text-slate-400 uppercase mb-2 tracking-widest">Festival Archive</label>
             <CustomDropdown
               value={selectedYear}
               onChange={setSelectedYear}
@@ -657,20 +657,20 @@ export default function AmbassadorDashboard() {
 
                   <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
+                      <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
                       <span className={`font-bebas text-3xl leading-none ${groupRows.length >= 100 ? 'text-red-500' : 'text-slate-900'}`}>{groupRows.length}/100</span>
                     </div>
 
                     <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                       <input type="number" min="1" max="100" maxLength={3} value={bulkAddCount} onChange={(e) => setBulkAddCount(e.target.value)} className="w-16 px-3 py-2 text-xs font-bold text-center outline-none bg-transparent text-slate-900 font-montserrat" />
-                      <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink hover:scale-105 transition-all duration-300 font-montserrat"><Plus size={14} /> Add Rows</button>
+                      <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[11px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink hover:scale-105 transition-all duration-300 font-montserrat"><Plus size={14} /> Add Rows</button>
                     </div>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto w-full flex-grow pb-40">
                   <table className="w-full text-left border-separate border-spacing-0 min-w-[800px] font-montserrat relative">
-                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
+                    <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                       <tr>
                         <th className="p-6 pl-10 font-bold w-20 border-b border-gray-100">
                           <div className="flex items-center gap-3">
@@ -715,7 +715,7 @@ export default function AmbassadorDashboard() {
                                 checked={selectedDrafts.includes(row.id)}
                                 readOnly
                               />
-                              <span className={`text-[10px] font-black w-6 text-right ${selectedDrafts.includes(row.id) ? 'text-pink-600' : 'text-slate-500'}`}>{index + 1}.</span>
+                              <span className={`text-[11px] font-black w-6 text-right ${selectedDrafts.includes(row.id) ? 'text-pink-600' : 'text-slate-500'}`}>{index + 1}.</span>
                             </div>
                           </td>
                           <td className="p-6 align-middle border-b border-gray-50">
@@ -773,10 +773,10 @@ export default function AmbassadorDashboard() {
 
                 <div className="p-8 bg-slate-50 border-t border-gray-100 flex justify-end items-center gap-8 shrink-0 mt-auto rounded-b-[3rem] relative z-10">
                   <div className="text-right">
-                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
+                    <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
                     <span className="block font-montserrat text-2xl font-black text-slate-900">€{draftTotal}</span>
                   </div>
-                  <button onClick={submitGroupToCart} disabled={groupRows.length === 0 || groupRows.some(r => !r.name)} className="cursor-pointer bg-salsa-pink text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all duration-300 tracking-widest text-[10px] uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed font-montserrat">
+                  <button onClick={submitGroupToCart} disabled={groupRows.length === 0 || groupRows.some(r => !r.name)} className="cursor-pointer bg-salsa-pink text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all duration-300 tracking-widest text-[11px] uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed font-montserrat">
                     Send to Cart <ArrowRight size={16} />
                   </button>
                 </div>
@@ -794,11 +794,11 @@ export default function AmbassadorDashboard() {
 
                   <div className="flex items-center gap-6">
                     <div className="flex flex-col md:flex-row items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Registered:</span>
+                      <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Registered:</span>
                       <span className="font-bebas text-4xl leading-none text-slate-900">{filteredHistory.length}</span>
                     </div>
                     <div className="flex flex-col md:flex-row items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Total Paid:</span>
+                      <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Total Paid:</span>
                       <span className="font-bebas text-4xl leading-none text-emerald-500">€{totalPaidRevenue}</span>
                     </div>
                   </div>
@@ -806,7 +806,7 @@ export default function AmbassadorDashboard() {
 
                 <div className="overflow-x-auto w-full flex-grow pb-40">
                   <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
-                    <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
+                    <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                       <tr>
                         <th className="p-6 pl-10 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
                         <th className="p-6 font-bold w-56 border-b border-gray-100">Pass Type</th>
@@ -821,7 +821,7 @@ export default function AmbassadorDashboard() {
                         <tr key={t.id} onClick={() => setFullScreenTicket(t)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
                           <td className="p-6 pl-10 align-middle border-b border-gray-50">
                             <div className="flex items-center gap-4 h-full">
-                              <span className="text-[10px] font-black text-slate-500 w-6 text-right group-hover:text-salsa-pink transition-colors">{i + 1}.</span>
+                              <span className="text-[11px] font-black text-slate-500 w-6 text-right group-hover:text-salsa-pink transition-colors">{i + 1}.</span>
                               <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide group-hover:text-salsa-pink transition-colors">{t.userName}</span>
                             </div>
                           </td>
@@ -837,9 +837,9 @@ export default function AmbassadorDashboard() {
                           <td className="p-6 pl-16 text-center align-middle font-montserrat border-b border-gray-50">
                             <div className="flex items-center justify-center h-full">
                               {t.emailSentCount > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full tracking-widest"><Mail size={12} /> {t.emailSentCount}</span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full tracking-widest"><Mail size={12} /> {t.emailSentCount}</span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-gray-300 px-3 py-1.5 tracking-widest"><Mail size={12} /> 0</span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black text-gray-300 px-3 py-1.5 tracking-widest"><Mail size={12} /> 0</span>
                               )}
                             </div>
                           </td>

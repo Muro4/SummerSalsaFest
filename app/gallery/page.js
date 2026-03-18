@@ -55,7 +55,7 @@ export default function GalleryPage() {
 
       {/* 1. GALLERY HEADER (With Staggered Fade-ins) */}
       <section className="pt-40 pb-16 px-6 text-center">
-        <span className="animate-fade-in delay-100 text-salsa-mint font-black text-[10px] uppercase tracking-[0.4em] mb-4 inline-block drop-shadow-sm">
+        <span className="animate-fade-in delay-100 text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em] mb-4 inline-block drop-shadow-sm">
           Memories
         </span>
         

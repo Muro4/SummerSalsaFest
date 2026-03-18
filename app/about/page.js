@@ -21,7 +21,7 @@ export default function AboutPage() {
         />
         
         <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto">
-          <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
+          <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[11px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
             Behind The Magic
           </span>
           <h1 className="animate-fade-in delay-300 font-modak text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-2xl mb-6">
@@ -47,7 +47,7 @@ export default function AboutPage() {
           {/* Left: Text Content */}
           <div className="flex-1 space-y-8 animate-fade-in delay-700">
             <div>
-              <span className="text-salsa-mint font-black text-[10px] uppercase tracking-[0.4em]">The Beginning</span>
+              <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em]">The Beginning</span>
               <h2 className="font-bebas text-5xl md:text-6xl text-gray-900 mt-2">From a beach party to the biggest in the Balkans</h2>
             </div>
             
@@ -99,7 +99,7 @@ export default function AboutPage() {
             <div key={i} className="flex flex-col items-center">
               <div className="mb-4 text-salsa-white/80">{stat.icon}</div>
               <h3 className="font-modak text-5xl md:text-7xl drop-shadow-md mb-2">{stat.number}</h3>
-              <p className="font-black text-[10px] uppercase tracking-[0.3em] opacity-90">{stat.label}</p>
+              <p className="font-black text-[11px] uppercase tracking-[0.3em] opacity-90">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -108,7 +108,7 @@ export default function AboutPage() {
       {/* 4. OUR VALUES */}
       <section className="py-32 px-6 max-w-7xl mx-auto bg-white">
         <div className="text-center mb-20">
-          <span className="text-salsa-pink font-black text-[10px] uppercase tracking-[0.4em]">The Vibe</span>
+          <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">The Vibe</span>
           <h2 className="font-bebas text-6xl text-gray-900 mt-2">What we stand for</h2>
           <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
         </div>

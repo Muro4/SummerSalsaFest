@@ -21,7 +21,7 @@ export default function Button({
 
   // --- SIZES ---
   const sizes = {
-    sm: "py-2 px-4 text-[10px] rounded-xl",
+    sm: "py-2 px-4 text-[11px] rounded-xl",
     md: "py-3 px-6 text-xs rounded-2xl",
     lg: "py-4 px-8 text-sm rounded-2xl",
     icon: "p-2 rounded-xl", // For buttons that are ONLY an icon
