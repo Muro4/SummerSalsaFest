@@ -6,7 +6,7 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import Button from "@/components/Button";
-import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
+import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -59,7 +59,9 @@ export default function Navbar() {
             setCartItems(totalItems);
           },
           (error) => {
-            console.log("Cart sync paused (Update Firestore rules to enable):", error.message);
+            // SILENT FAIL: If we lose permission during sign out, do not log an error
+            if (error.code === 'permission-denied') return;
+            console.warn("Cart sync issue:", error.message);
           }
         );
 
@@ -90,10 +92,18 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut(auth);
+  // THE FIX: Increased wait time so Next.js soft-navigation unmounts the old listeners fully
+  const handleSignOut = () => {
     setDropdownOpen(false);
     router.push("/login");
+    
+    setTimeout(async () => {
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Sign out error:", err);
+      }
+    }, 800); // 800ms guarantees the active page has unmounted and killed its listeners
   };
 
   const navBackgroundClass = isHome 
@@ -151,12 +161,11 @@ export default function Navbar() {
           {user ? (
             <div className="relative" ref={dropdownRef}>
               
-              {/* AVATAR BUTTON (Updated with Gradient Ring) */}
+              {/* AVATAR BUTTON (Gradient Ring) */}
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)} 
                 className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
               >
-                {/* Inner Wrapper ensures the gradient shows as a border */}
                 <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center transition-colors duration-300 ${isTransparent ? 'bg-slate-900/80 text-white' : 'bg-white text-slate-800'}`}>
                   {user.photoURL ? (
                     <img 
@@ -177,8 +186,6 @@ export default function Navbar() {
                   
                   {/* User Info Header */}
                   <div className="px-4 py-3 border-b border-gray-50 mb-3 flex items-center gap-3">
-                    
-                    {/* Dropdown Avatar (Matches Gradient Ring) */}
                     <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shrink-0">
                       <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center">
                         {user.photoURL ? (
@@ -196,26 +203,43 @@ export default function Navbar() {
                   </div>
                   
                   <div className="flex flex-col gap-1">
-                    <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className="w-full justify-start text-slate-600">
-                      My Account
-                    </Button>
+                    
+                    {/* ALL USERS GET MY ACCOUNT */}
+                    {(!userData?.role || userData?.role === 'user' || userData?.role === 'ambassador') && (
+                      <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className="w-full justify-start text-slate-600">
+                        My Account
+                      </Button>
+                    )}
 
+                    {/* ROLE: AMBASSADOR */}
                     {userData?.role === 'ambassador' && (
                       <Button href="/ambassador" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                        Dashboard
+                        Ambassador Dashboard
                       </Button>
                     )}
 
-                    {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
-                      <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
-                        Scanner
-                      </Button>
+                    {/* ROLE: ADMIN (Employees) */}
+                    {userData?.role === 'admin' && (
+                      <>
+                        <Button href="/admin/tickets" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Ticket} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                          Tickets Database
+                        </Button>
+                        <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                          Gate Scanner
+                        </Button>
+                      </>
                     )}
 
+                    {/* ROLE: SUPERADMIN (Organizers) */}
                     {userData?.role === 'superadmin' && (
-                      <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                        Admin Panel
-                      </Button>
+                      <>
+                        <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
+                          Master Dashboard
+                        </Button>
+                        <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                          Gate Scanner
+                        </Button>
+                      </>
                     )}
 
                     <div className="h-px bg-gray-100 w-full my-2" />

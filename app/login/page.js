@@ -19,7 +19,6 @@ function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
   const reqs = [
     { label: "8+ Characters", met: passReqs.length },
     { label: "Uppercase Letter", met: passReqs.upper },
-    { label: "Lowercase Letter", met: passReqs.lower },
     { label: "Number", met: passReqs.number },
     { label: "Special Symbol", met: passReqs.special },
   ];
@@ -34,7 +33,6 @@ function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {reqs.map((req, idx) => (
-              // Bumped to text-[11px] and made unmet conditions red
               <div key={idx} className={`flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${req.met ? 'text-emerald-600' : 'text-red-500'}`}>
                 {req.met ? <CheckCircle2 size={16} className="shrink-0 text-emerald-500" /> : <Circle size={16} className="shrink-0 text-red-400" />}
                 <span className="truncate">{req.label}</span>
@@ -232,13 +230,14 @@ function LoginContent() {
     setIdentifier("");
   };
 
+  // Removed the rogue JSX comment from outside the div to fix the build error
   return (
-    <div className="relative w-full max-w-4xl min-h-[750px] md:h-[700px] bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-16 md:mt-0">
+    <div className="relative w-full max-w-4xl min-h-[750px] md:min-h-[600px] md:h-[clamp(600px,90vh,700px)] bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-16 md:mt-0">
       
       {/* =========================================
-          LOGIN FORM (Visible on Mobile if isLogin)
+          LOGIN FORM
       ========================================= */}
-      <div className={`${isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 md:p-12 absolute top-0 md:left-0 h-full z-10 bg-white md:bg-transparent`}>
+      <div className={`${isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-12 absolute top-0 md:left-0 h-full z-10 bg-white md:bg-transparent`}>
         <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide">Login</h1>
         
         <form onSubmit={handleLogin} className="space-y-5 relative z-10">
@@ -279,7 +278,6 @@ function LoginContent() {
             Join with Google
           </Button>
           
-          {/* Mobile Only Toggle */}
           <div className="mt-8 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden">
             New here?
             <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
@@ -290,16 +288,18 @@ function LoginContent() {
       </div>
 
       {/* =========================================
-          SIGN UP FORM (Visible on Mobile if !isLogin)
+          SIGN UP FORM 
       ========================================= */}
-      <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 md:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
+      <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
+        {/* Adjusted text size slightly on smaller screens to prevent tight wrapping issues */}
         <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">Create Account</h1>
         
-        <form onSubmit={handleSignUp} className="space-y-3 relative z-10 flex flex-col h-full justify-center">
+        {/* Removed flex, flex-col, h-full, and justify-center so it behaves identically to the Login form */}
+        <form onSubmit={handleSignUp} className="space-y-3 relative z-10">
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Full Name</label>
             <div className="relative flex items-center">
-              <input required type="text" maxLength={20} value={name} onChange={e => setName(e.target.value)} className="input-standard pl-12 !py-3.5" />
+              <input required type="text" maxLength={30} value={name} onChange={e => setName(e.target.value)} className="input-standard pl-12 !py-3.5" />
               <UserIcon className="absolute left-4 text-gray-500" size={18} />
             </div>
           </div>
@@ -333,7 +333,6 @@ function LoginContent() {
               </div>
             </div>
             
-            {/* The Accordion Checklist */}
             <PasswordAccordion passReqs={passReqs} isFocused={passwordFocused} passwordLength={password.length} />
           </div>
 
@@ -346,19 +345,23 @@ function LoginContent() {
           {/* THE MAGIC DISAPPEARING GOOGLE BUTTON */}
           <div className={`grid transition-all duration-500 ease-in-out ${hideSocials ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
             <div className="overflow-hidden">
-              <div className="relative mb-4 mt-4 text-center">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+              
+              {/* FIX: Added a p-1 wrapper here so the button's hover shadow/scale doesn't get clipped by overflow-hidden */}
+              <div className="p-1">
+                <div className="relative mb-4 mt-3 text-center">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                  <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+                </div>
+
+                <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
+                  Join with Google
+                </Button>
               </div>
 
-              <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
-                Join with Google
-              </Button>
             </div>
           </div>
           
-          {/* Mobile Only Toggle */}
           <div className={`mt-4 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden transition-opacity duration-300 ${hideSocials ? 'opacity-0' : 'opacity-100'}`}>
             Already have an account?
             <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
@@ -369,14 +372,14 @@ function LoginContent() {
       </div>
 
       {/* =========================================
-          THE MAGIC SLIDING OVERLAY (Mint Gradient)
+          THE MAGIC SLIDING OVERLAY
       ========================================= */}
       <div className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full z-30 transition-transform duration-700 ease-in-out ${isLogin ? 'translate-x-full' : 'translate-x-0'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-teal-100 to-salsa-mint shadow-2xl">
           <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #0a0024 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
         </div>
         
-        <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-12">
+        <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 lg:p-12">
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-12 transition-all duration-700 ${isLogin ? 'opacity-100 translate-x-0 delay-300 pointer-events-auto' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
             <h2 className="font-bebas text-6xl mb-4 tracking-wide text-slate-900 leading-none">Welcome Back!</h2>
             <p className="font-bold text-slate-800 leading-relaxed mb-8">
