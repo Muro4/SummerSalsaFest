@@ -245,7 +245,7 @@ function LoginContent() {
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email or Name</label>
             <div className="relative flex items-center">
-              <input required type="text" maxLength={150} value={identifier} onChange={e => setIdentifier(e.target.value)} className="input-standard pl-12" />
+              <input required type="text" maxLength={30} value={identifier} onChange={e => setIdentifier(e.target.value)} className="input-standard pl-12" />
               <UserIcon className="absolute left-4 text-gray-500" size={18} />
             </div>
           </div>
@@ -253,7 +253,7 @@ function LoginContent() {
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
             <div className="relative flex items-center">
-              <input required type={showPassword ? "text" : "password"} maxLength={100} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
+              <input required type={showPassword ? "text" : "password"} maxLength={50} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
               <Lock className="absolute left-4 text-gray-500" size={18} />
               <div className="absolute right-1 top-1 bottom-1 w-10 bg-white flex items-center justify-center rounded-xl z-10">
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer text-gray-500 hover:text-slate-900 transition">
@@ -299,7 +299,7 @@ function LoginContent() {
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Full Name</label>
             <div className="relative flex items-center">
-              <input required type="text" maxLength={100} value={name} onChange={e => setName(e.target.value)} className="input-standard pl-12 !py-3.5" />
+              <input required type="text" maxLength={20} value={name} onChange={e => setName(e.target.value)} className="input-standard pl-12 !py-3.5" />
               <UserIcon className="absolute left-4 text-gray-500" size={18} />
             </div>
           </div>
@@ -307,7 +307,7 @@ function LoginContent() {
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
             <div className="relative flex items-center">
-              <input required type="email" maxLength={100} value={email} onChange={e => setEmail(e.target.value)} className={`input-standard pl-12 !py-3.5 ${isEmailInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} />
+              <input required type="email" maxLength={30} value={email} onChange={e => setEmail(e.target.value)} className={`input-standard pl-12 !py-3.5 ${isEmailInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} />
               <Mail className={`absolute left-4 ${isEmailInvalid ? 'text-red-400' : 'text-gray-500'}`} size={18} />
             </div>
           </div>
@@ -318,7 +318,7 @@ function LoginContent() {
               <input 
                 required 
                 type={showPassword ? "text" : "password"} 
-                maxLength={100} 
+                maxLength={50} 
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
                 onFocus={() => setPasswordFocused(true)}
