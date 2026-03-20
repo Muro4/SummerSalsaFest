@@ -5,12 +5,13 @@ import {
   signInWithEmailAndPassword, 
   signInWithPopup, 
   createUserWithEmailAndPassword,
-  updateProfile 
+  updateProfile,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/Button";
-import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft, Loader2, Key } from "lucide-react";
 
 // --- DYNAMIC PASSWORD ACCORDION ---
 function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
@@ -54,6 +55,8 @@ function LoginContent() {
 
   // Default to Login, unless the URL says 'signup' or they are a guest
   const [isLogin, setIsLogin] = useState(urlMode !== 'signup');
+  const [isResetMode, setIsResetMode] = useState(false);
+  
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   
@@ -65,7 +68,15 @@ function LoginContent() {
   
   // Status State
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  
+  // Real-time onBlur Validation States
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  
   const [loading, setLoading] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
 
   // --- AUTO-DETECT GUESTS ---
   useEffect(() => {
@@ -73,6 +84,15 @@ function LoginContent() {
       setIsLogin(false);
     }
   }, [urlMode]);
+
+  // Handle Cooldown Timer
+  useEffect(() => {
+    let timer;
+    if (resetCooldown > 0) {
+      timer = setInterval(() => setResetCooldown((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resetCooldown]);
 
   // --- REGEX & VALIDATION ---
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,14 +112,38 @@ function LoginContent() {
   const isPasswordValid = passwordScore === 5;
   
   const isPasswordInvalid = password.length > 0 && !isPasswordValid && !isLogin;
-  const isEmailInvalid = email.length > 0 && !emailRegex.test(email) && !isLogin;
 
   // The Magic Trigger: Hides the Google Button when user starts typing password
   const hideSocials = passwordFocused || password.length > 0;
 
+  // --- ONBLUR HANDLERS ---
+  const handleNameBlur = (e) => {
+    const val = e.target.value.trim();
+    if (val !== "" && val.length < 2) {
+      setNameError("Name must be at least 2 characters.");
+    }
+  };
+
+  const handleEmailBlur = (e) => {
+    const val = e.target.value.trim();
+    if (val !== "" && !emailRegex.test(val)) {
+      setEmailError("Please enter a valid email address.");
+    }
+  };
+
   const handlePasswordBlur = () => {
     setTimeout(() => setPasswordFocused(false), 150);
+    if (password.length > 0 && !isPasswordValid) {
+      setPasswordError("Please meet all password requirements.");
+    }
   };
+
+  // Auto-clear password error when it becomes valid
+  useEffect(() => {
+    if (passwordError && isPasswordValid) {
+      setPasswordError("");
+    }
+  }, [isPasswordValid, passwordError]);
 
   // --- FIRESTORE SYNC ---
   const syncUserToFirestore = async (user, displayName) => {
@@ -166,6 +210,7 @@ function LoginContent() {
     try {
       let loginEmail = identifier.trim();
 
+      // If they typed a name instead of an email, look it up in Firestore
       if (!emailRegex.test(loginEmail)) {
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("displayName", "==", loginEmail));
@@ -198,15 +243,28 @@ function LoginContent() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
+    setEmailError("");
+    setNameError("");
+    setPasswordError("");
     
-    if (!emailRegex.test(email)) return setError("Please enter a valid email address.");
-    if (!isPasswordValid) return setError("Please fulfill all password requirements.");
+    if (name.trim().length < 2) {
+      setNameError("Name must be at least 2 characters.");
+      return;
+    }
+    if (!emailRegex.test(email.trim())) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    if (!isPasswordValid) {
+      setPasswordError("Please fulfill all password requirements.");
+      return;
+    }
 
     setLoading(true);
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(res.user, { displayName: name });
-      await syncUserToFirestore(res.user, name);
+      await updateProfile(res.user, { displayName: name.trim() });
+      await syncUserToFirestore(res.user, name.trim());
       
       const transferred = await transferGuestTickets(res.user.uid);
       if (transferred) {
@@ -221,97 +279,212 @@ function LoginContent() {
     }
   };
 
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccessMsg("");
+
+    const targetEmail = isLogin ? identifier.trim() : email.trim();
+
+    if (!targetEmail || !emailRegex.test(targetEmail)) {
+      setError("Please enter a valid email address to reset your password.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, targetEmail);
+      setSuccessMsg("Check your inbox! We've sent you a password reset link.");
+      setResetCooldown(60);
+    } catch (err) {
+      console.error(err);
+      setError(err.code === 'auth/user-not-found' ? "No account found with this email." : "Failed to send reset email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleMode = () => {
     setIsLogin(!isLogin);
+    setIsResetMode(false);
     setError("");
+    setSuccessMsg("");
+    setEmailError("");
+    setNameError("");
+    setPasswordError("");
     setPassword("");
     setEmail("");
     setName("");
     setIdentifier("");
   };
 
-  // Removed the rogue JSX comment from outside the div to fix the build error
   return (
     <div className="relative w-full max-w-4xl min-h-[750px] md:min-h-[600px] md:h-[clamp(600px,90vh,700px)] bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-16 md:mt-0">
       
       {/* =========================================
-          LOGIN FORM
+          LOGIN / RESET FORM
       ========================================= */}
       <div className={`${isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-12 absolute top-0 md:left-0 h-full z-10 bg-white md:bg-transparent`}>
-        <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide">Login</h1>
         
-        <form onSubmit={handleLogin} className="space-y-5 relative z-10">
-          <div className="space-y-1">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email or Name</label>
-            <div className="relative flex items-center">
-              <input required type="text" maxLength={30} value={identifier} onChange={e => setIdentifier(e.target.value)} className="input-standard pl-12" />
-              <UserIcon className="absolute left-4 text-gray-500" size={18} />
-            </div>
-          </div>
-          
-          <div className="space-y-1">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
-            <div className="relative flex items-center">
-              <input required type={showPassword ? "text" : "password"} maxLength={50} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
-              <Lock className="absolute left-4 text-gray-500" size={18} />
-              <div className="absolute right-1 top-1 bottom-1 w-10 bg-white flex items-center justify-center rounded-xl z-10">
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer text-gray-500 hover:text-slate-900 transition">
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        {!isResetMode ? (
+          <div className="animate-in fade-in zoom-in-95 duration-300">
+            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide">Login</h1>
+            
+            <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email or Name</label>
+                <div className="relative flex items-center">
+                  <input required type="text" maxLength={30} value={identifier} onChange={e => setIdentifier(e.target.value)} className="input-standard pl-12 !normal-case" />
+                  <UserIcon className="absolute left-4 text-gray-500" size={18} />
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between items-end pr-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
+                  <button type="button" onClick={() => { setIsResetMode(true); setError(""); }} className="text-[10px] font-bold text-salsa-pink hover:underline uppercase tracking-widest cursor-pointer">
+                    Forgot?
+                  </button>
+                </div>
+                <div className="relative flex items-center">
+                  <input required type={showPassword ? "text" : "password"} maxLength={50} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
+                  <Lock className="absolute left-4 text-gray-500" size={18} />
+                  <div className="absolute right-1 top-1 bottom-1 w-10 bg-white flex items-center justify-center rounded-xl z-10">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer text-gray-500 hover:text-slate-900 transition">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {error && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100">{error}</p>}
+              
+              <Button type="submit" variant="primary" className="w-full mt-4 !py-4" disabled={loading} isLoading={loading}>
+                {loading ? "Authenticating..." : "Login"}
+              </Button>
+
+              <div className="relative mb-6 mt-6 text-center">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+              </div>
+
+              <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
+                Join with Google
+              </Button>
+              
+              <div className="mt-8 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden">
+                New here?
+                <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
+                  Sign Up
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-
-          {error && isLogin && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl">{error}</p>}
-          
-          <Button type="submit" variant="primary" className="w-full mt-4 !py-4" disabled={loading} isLoading={loading}>
-            {loading ? "Authenticating..." : "Login"}
-          </Button>
-
-          <div className="relative mb-6 mt-6 text-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
-          </div>
-
-          <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
-            Join with Google
-          </Button>
-          
-          <div className="mt-8 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden">
-            New here?
-            <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
-              Sign Up
+        ) : (
+          <div className="animate-in fade-in slide-in-from-left-4 duration-300">
+            <button onClick={() => { setIsResetMode(false); setError(""); setSuccessMsg(""); }} className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors cursor-pointer">
+              <ArrowLeft size={14} /> Back to Login
             </button>
+            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-wide leading-none">Reset Password</h1>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-8 leading-relaxed">Enter your email and we'll send you a link to get back into your account.</p>
+
+            <form onSubmit={handlePasswordReset} className="space-y-5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
+                <div className="relative flex items-center">
+                  <input 
+                    required 
+                    type="email" 
+                    maxLength={50} 
+                    value={identifier} 
+                    onChange={e => setIdentifier(e.target.value)} 
+                    placeholder="email@example.com"
+                    className="input-standard pl-12 !normal-case" 
+                  />
+                  <Mail className="absolute left-4 text-gray-500" size={18} />
+                </div>
+              </div>
+
+              {error && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100">{error}</p>}
+              {successMsg && <p className="text-emerald-600 text-[11px] font-black tracking-widest uppercase text-center bg-emerald-50 p-3 rounded-xl border border-emerald-100 flex items-center justify-center gap-2"><CheckCircle2 size={16}/> {successMsg}</p>}
+
+              <button 
+                type="submit" 
+                disabled={loading || resetCooldown > 0} 
+                className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-salsa-pink transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                {resetCooldown > 0 ? `Wait ${resetCooldown}s` : "Send Reset Link"}
+              </button>
+            </form>
           </div>
-        </form>
+        )}
       </div>
 
       {/* =========================================
           SIGN UP FORM 
       ========================================= */}
       <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
-        {/* Adjusted text size slightly on smaller screens to prevent tight wrapping issues */}
         <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">Create Account</h1>
         
-        {/* Removed flex, flex-col, h-full, and justify-center so it behaves identically to the Login form */}
         <form onSubmit={handleSignUp} className="space-y-3 relative z-10">
+          
+          {/* Name Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Full Name</label>
             <div className="relative flex items-center">
-              <input required type="text" maxLength={30} value={name} onChange={e => setName(e.target.value)} className="input-standard pl-12 !py-3.5" />
-              <UserIcon className="absolute left-4 text-gray-500" size={18} />
+              <input 
+                required 
+                type="text" 
+                maxLength={30} 
+                value={name} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setName(val);
+                  if (nameError && val.trim().length >= 2) setNameError("");
+                }} 
+                onBlur={handleNameBlur}
+                className={`input-standard pl-12 !py-3.5 !normal-case ${nameError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
+              />
+              <UserIcon className={`absolute left-4 ${nameError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
             </div>
+            {nameError && (
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-2 animate-in fade-in slide-in-from-top-1">
+                {nameError}
+              </p>
+            )}
           </div>
 
+          {/* Email Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
             <div className="relative flex items-center">
-              <input required type="email" maxLength={30} value={email} onChange={e => setEmail(e.target.value)} className={`input-standard pl-12 !py-3.5 ${isEmailInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} />
-              <Mail className={`absolute left-4 ${isEmailInvalid ? 'text-red-400' : 'text-gray-500'}`} size={18} />
+              <input 
+                required 
+                type="email" 
+                maxLength={50} 
+                value={email} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEmail(val);
+                  if (emailError && (emailRegex.test(val.trim()) || val === "")) {
+                    setEmailError("");
+                  }
+                }} 
+                onBlur={handleEmailBlur}
+                className={`input-standard pl-12 !py-3.5 !normal-case ${emailError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
+              />
+              <Mail className={`absolute left-4 ${emailError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
             </div>
+            {emailError && (
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-2 animate-in fade-in slide-in-from-top-1">
+                {emailError}
+              </p>
+            )}
           </div>
           
+          {/* Password Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Create Password</label>
             <div className="relative flex items-center">
@@ -323,9 +496,9 @@ function LoginContent() {
                 onChange={e => setPassword(e.target.value)} 
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={handlePasswordBlur}
-                className={`input-standard pl-12 pr-12 !normal-case !py-3.5 ${isPasswordInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
+                className={`input-standard pl-12 pr-12 !normal-case !py-3.5 ${passwordError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
               />
-              <Lock className={`absolute left-4 ${isPasswordInvalid ? 'text-red-400' : 'text-gray-500'}`} size={18} />
+              <Lock className={`absolute left-4 ${passwordError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
               <div className="absolute right-1 top-1 bottom-1 w-10 bg-white flex items-center justify-center rounded-xl z-10">
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer text-gray-500 hover:text-slate-900 transition">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -333,20 +506,24 @@ function LoginContent() {
               </div>
             </div>
             
+            {passwordError && (
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-2 mt-1 animate-in fade-in slide-in-from-top-1">
+                {passwordError}
+              </p>
+            )}
+
             <PasswordAccordion passReqs={passReqs} isFocused={passwordFocused} passwordLength={password.length} />
           </div>
 
-          {error && !isLogin && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl mt-4">{error}</p>}
+          {error && !isLogin && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100 mt-4">{error}</p>}
           
-          <Button type="submit" variant="primary" className="w-full mt-2 !py-4" disabled={loading || !isPasswordValid} isLoading={loading}>
+          <Button type="submit" variant="primary" className="w-full mt-2 !py-4" disabled={loading || !isPasswordValid || !!emailError || !!nameError} isLoading={loading}>
             {loading ? "Creating..." : "Sign Up"}
           </Button>
 
           {/* THE MAGIC DISAPPEARING GOOGLE BUTTON */}
           <div className={`grid transition-all duration-500 ease-in-out ${hideSocials ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
             <div className="overflow-hidden">
-              
-              {/* FIX: Added a p-1 wrapper here so the button's hover shadow/scale doesn't get clipped by overflow-hidden */}
               <div className="p-1">
                 <div className="relative mb-4 mt-3 text-center">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
@@ -358,7 +535,6 @@ function LoginContent() {
                   Join with Google
                 </Button>
               </div>
-
             </div>
           </div>
           
