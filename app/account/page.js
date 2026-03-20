@@ -8,11 +8,10 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
-import Button from "@/components/Button";
 import {
   Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
   User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
-  ChevronLeft, ChevronRight, Send, Filter
+  ChevronLeft, ChevronRight, Send, Filter, Sparkles, Shield
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
@@ -50,7 +49,6 @@ const formatDate = (isoString) => {
   };
 };
 
-// --- MAIN PAGE ---
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState("tickets");
   const [userData, setUserData] = useState(null);
@@ -66,15 +64,14 @@ export default function AccountPage() {
   const [resetCooldown, setResetCooldown] = useState(0);
   const [selectedYear, setSelectedYear] = useState("2026");
 
-  // Search & Filter State
   const [ticketSearch, setTicketSearch] = useState("");
   const [passFilter, setPassFilter] = useState("all");
 
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
-
-  // Email Sending State
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  const [hasApplied, setHasApplied] = useState(false);
 
   const router = useRouter();
   const { showPopup } = usePopup();
@@ -98,6 +95,15 @@ export default function AccountPage() {
           setEditNameValue(profile.displayName || "");
           setEditAmbNameValue(profile.ambassadorDisplayName || "");
         }
+
+        // Check if user has already applied
+        try {
+          const appDoc = await getDoc(doc(db, "ambassador_requests", user.uid));
+          if (appDoc.exists()) setHasApplied(true);
+        } catch (err) {
+          console.warn("Could not fetch request status:", err.message);
+        }
+
         const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
         unsubTickets = onSnapshot(q, (snap) => {
           setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -130,7 +136,7 @@ export default function AccountPage() {
       await setDoc(doc(db, "users", auth.currentUser.uid), { ambassadorDisplayName: editAmbNameValue }, { merge: true });
       setUserData(prev => ({ ...prev, ambassadorDisplayName: editAmbNameValue }));
       setIsEditingAmbName(false);
-      showPopup({ type: "success", title: "Saved!", message: "Ambassador display name updated.", confirmText: "Done" });
+      showPopup({ type: "success", title: "Saved!", message: "Guest Dancer tag updated.", confirmText: "Done" });
     } catch (e) { showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" }); }
     setLoading(false);
   };
@@ -387,6 +393,7 @@ export default function AccountPage() {
         <div className="relative min-h-[500px] w-full">
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full z-0">
 
+            {/* TICKETS TAB */}
             {activeTab === "tickets" && (
               <div>
 
@@ -451,59 +458,118 @@ export default function AccountPage() {
               </div>
             )}
 
+            {/* SETTINGS TAB */}
             {activeTab === "settings" && (
               <div className="grid lg:grid-cols-2 gap-8 max-w-6xl">
-                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                
+                {/* 1. Profile Details */}
+                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit">
                   <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Profile Details</h2>
+                  
                   <div className="space-y-4 relative z-10">
-                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
-                      <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18} /></div>
-                        <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
-                          {isEditingName ? <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
-                            : <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>}
+                    
+                    {/* ROW 1: Account Holder (Editable Display Name) */}
+                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18} /></div>
+                        <div>
+                          <span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Account Holder</span>
+                          {isEditingName ? (
+                            <input type="text" value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
+                          ) : (
+                            <span className="text-xs font-bold uppercase text-slate-900">{userData?.displayName}</span>
+                          )}
                         </div>
                       </div>
-                      {isEditingName ? <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
-                        : <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                      {isEditingName ? (
+                        <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md"><Save size={14} /> Save</button>
+                      ) : (
+                        <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all"><Edit2 size={14} /> Edit</button>
+                      )}
                     </div>
 
-                    {userData?.role === 'ambassador' && (
-                      <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
-                        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500"><Users size={18} /></div>
-                          <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Ambassador Tag</span>
-                            {isEditingAmbName ? <input type="text" value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat shadow-inner" autoFocus />
-                              : <span className="text-xs font-bold uppercase text-slate-900">{userData?.ambassadorDisplayName || "Not Set"}</span>}
+                    {/* ROW 2: Email Address */}
+                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18} /></div>
+                        <div>
+                          <span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Email Address</span>
+                          <span className="text-xs font-bold text-slate-900">{userData?.email}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm border border-emerald-100 self-start sm:self-auto">Verified</span>
+                    </div>
+
+                    {/* ROW 3: Account Role (Plus Apply CTA for users) */}
+                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-500"><Shield size={18} /></div>
+                        <div>
+                          <span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Account Role</span>
+                          <span className={`inline-block text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md ${userData?.role === 'ambassador' || userData?.role === 'superadmin' ? 'bg-salsa-pink/10 text-salsa-pink' : 'bg-slate-200 text-slate-600'}`}>
+                            {userData?.role === 'ambassador' ? 'Guest Dancer' : userData?.role === 'superadmin' ? 'Super Admin' : 'Attendee'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Guest Dancer Application Button (Only for normal users) */}
+                      {userData?.role === 'user' && (
+                        hasApplied ? (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-100 self-start sm:self-auto">
+                            <Clock size={14} className="text-amber-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">Review Pending</span>
+                          </div>
+                        ) : (
+                          <Link href="/apply" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-salsa-pink hover:shadow-lg transition-all flex items-center gap-2 self-start sm:self-auto">
+                            <Sparkles size={14} /> Apply as Guest Dancer
+                          </Link>
+                        )
+                      )}
+                    </div>
+
+                    {/* ROW 4: Guest Dancer Tag (Only for approved ambassadors) */}
+                    {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
+                      <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500"><Users size={18} /></div>
+                          <div>
+                            <span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Guest Dancer Tag</span>
+                            {isEditingAmbName ? (
+                              <input type="text" value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
+                            ) : (
+                              <span className="text-xs font-bold uppercase text-slate-900">{userData?.ambassadorDisplayName || "Not Set"}</span>
+                            )}
                           </div>
                         </div>
-                        {isEditingAmbName ? <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all font-montserrat shadow-md cursor-pointer"><Save size={14} /> Save</button>
-                          : <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all font-montserrat cursor-pointer"><Edit2 size={14} /> Edit</button>}
+                        {isEditingAmbName ? (
+                          <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[11px] font-black px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md"><Save size={14} /> Save</button>
+                        ) : (
+                          <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 px-3 py-2 rounded-lg text-[11px] font-black flex items-center gap-2 transition-all"><Edit2 size={14} /> Edit</button>
+                        )}
                       </div>
                     )}
+                  </div>
+                </div>
 
-                    <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 hover:border-gray-200 transition-colors">
-                      <div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400"><Mail size={18} /></div>
-                        <div><span className="block text-[11px] font-black text-slate-400 uppercase mb-1">Email Address</span><span className="text-xs font-bold text-slate-900">{userData?.email}</span></div>
-                      </div>
-                      <span className="text-[11px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase shadow-sm">Verified</span>
+                {/* 2. Security */}
+                <div className="flex flex-col gap-8">
+                  <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
+                    <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Security</h2>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <button onClick={handleResetPassword} disabled={resetCooldown > 0} className={`flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all duration-300 cursor-pointer ${resetCooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-900 hover:shadow-md hover:-translate-y-1'}`}>
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 text-slate-600 shadow-sm"><Key size={18} /></div>
+                        <span className="text-xs font-bold uppercase mb-1 font-montserrat">{resetCooldown > 0 ? `Reset (${resetCooldown}s)` : "Reset Password"}</span>
+                        <span className="text-[11px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
+                      </button>
+                      <button onClick={handleSignOut} className="flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:border-red-500 hover:bg-red-50 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-400 mb-4 shadow-sm"><LogOut size={18} /></div>
+                        <span className="text-xs font-bold uppercase text-red-600 mb-1 font-montserrat">Sign Out</span>
+                        <span className="text-[11px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] h-fit hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all duration-500">
-                  <h2 className="font-bebas text-4xl md:text-5xl mb-8 uppercase text-slate-900">Security</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <button onClick={handleResetPassword} disabled={resetCooldown > 0} className={`flex flex-col items-start p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all duration-300 cursor-pointer ${resetCooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-900 hover:shadow-md hover:-translate-y-1'}`}>
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 text-slate-600 shadow-sm"><Key size={18} /></div>
-                      <span className="text-xs font-bold uppercase mb-1 font-montserrat">{resetCooldown > 0 ? `Reset (${resetCooldown}s)` : "Reset Password"}</span>
-                      <span className="text-[11px] font-medium text-slate-500 text-left font-montserrat">Request recovery link</span>
-                    </button>
-                    <button onClick={handleSignOut} className="flex flex-col items-start p-6 bg-red-50/50 rounded-3xl border border-red-100 hover:border-red-500 hover:bg-red-50 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-red-400 mb-4 shadow-sm"><LogOut size={18} /></div>
-                      <span className="text-xs font-bold uppercase text-red-600 mb-1 font-montserrat">Sign Out</span>
-                      <span className="text-[11px] font-medium text-red-400/80 font-montserrat">Log out of your device</span>
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
           </div>

@@ -97,22 +97,34 @@ export default function AmbassadorDashboard() {
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const uDoc = await getDoc(doc(db, "users", user.uid));
-        const profile = uDoc.data();
-        if (profile?.role !== 'ambassador') { router.push("/account"); return; }
+        
+        // 1. Check if they are an Ambassador OR a Superadmin
+        if (uDoc.exists() && (uDoc.data().role === 'ambassador' || uDoc.data().role === 'superadmin')) {
+          const profile = uDoc.data();
+          setUserData(profile);
+          
+          // 2. Fetch their roster data
+          const rosterDoc = await getDoc(doc(db, "rosters", user.uid));
+          if (rosterDoc.exists() && rosterDoc.data().members) {
+            setGroupRows(rosterDoc.data().members);
+          } else {
+            setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
+          }
 
-        setUserData(profile);
-        const rosterDoc = await getDoc(doc(db, "rosters", user.uid));
-        if (rosterDoc.exists() && rosterDoc.data().members) setGroupRows(rosterDoc.data().members);
-        else setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
+          // 3. Listen for their sold tickets
+          const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
+          unsubTickets = onSnapshot(q, (snap) => {
+            setPaidTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+          });
 
-        const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
-        unsubTickets = onSnapshot(q, (snap) => {
-          setPaidTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setLoading(false);
-        });
+        } else {
+          // If they are logged in but NOT an ambassador/superadmin, kick them to home
+          router.push("/"); 
+        }
       } else {
-        unsubTickets();
-        router.push("/login");
+        // If they are not logged in at all, kick them to login
+        router.push("/login"); 
       }
     });
     return () => { unsubAuth(); unsubTickets(); };

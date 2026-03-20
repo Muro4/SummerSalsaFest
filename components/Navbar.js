@@ -44,7 +44,6 @@ export default function Navbar() {
           setUserData(uDoc.data());
         }
 
-        // Clean up any lingering listeners before making a new one
         if (unsubCart) unsubCart();
 
         // Listen for Cart Items safely
@@ -59,14 +58,12 @@ export default function Navbar() {
             setCartItems(totalItems);
           },
           (error) => {
-            // SILENT FAIL: If we lose permission during sign out, do not log an error
             if (error.code === 'permission-denied') return;
             console.warn("Cart sync issue:", error.message);
           }
         );
 
       } else {
-        // Kill the listener IMMEDIATELY when signing out
         if (unsubCart) {
           unsubCart();
           unsubCart = null;
@@ -92,7 +89,6 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // THE FIX: Increased wait time so Next.js soft-navigation unmounts the old listeners fully
   const handleSignOut = () => {
     setDropdownOpen(false);
     router.push("/login");
@@ -103,7 +99,7 @@ export default function Navbar() {
       } catch (err) {
         console.error("Sign out error:", err);
       }
-    }, 800); // 800ms guarantees the active page has unmounted and killed its listeners
+    }, 800); 
   };
 
   const navBackgroundClass = isHome 
@@ -182,7 +178,7 @@ export default function Navbar() {
 
               {/* DROPDOWN MENU */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-4 w-60 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-4 w-64 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                   
                   {/* User Info Header */}
                   <div className="px-4 py-3 border-b border-gray-50 mb-3 flex items-center gap-3">
@@ -204,42 +200,37 @@ export default function Navbar() {
                   
                   <div className="flex flex-col gap-1">
                     
-                    {/* ALL USERS GET MY ACCOUNT */}
-                    {(!userData?.role || userData?.role === 'user' || userData?.role === 'ambassador') && (
-                      <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className="w-full justify-start text-slate-600">
-                        My Account
-                      </Button>
-                    )}
+                    {/* 1. ALL USERS GET MY ACCOUNT */}
+                    <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className="w-full justify-start text-slate-600">
+                      My Account
+                    </Button>
 
-                    {/* ROLE: AMBASSADOR */}
-                    {userData?.role === 'ambassador' && (
+                    {/* 2. AMBASSADOR & SUPERADMIN: Ambassador Dashboard */}
+                    {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
                       <Button href="/ambassador" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                        Ambassador Dashboard
+                        Ambassador
                       </Button>
                     )}
 
-                    {/* ROLE: ADMIN (Employees) */}
+                    {/* 3. ADMIN: Tickets Database */}
                     {userData?.role === 'admin' && (
-                      <>
-                        <Button href="/admin/tickets" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Ticket} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
-                          Tickets Database
-                        </Button>
-                        <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
-                          Gate Scanner
-                        </Button>
-                      </>
+                      <Button href="/admin/tickets" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Ticket} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                        Tickets Database
+                      </Button>
                     )}
 
-                    {/* ROLE: SUPERADMIN (Organizers) */}
+                    {/* 4. ADMIN & SUPERADMIN: Gate Scanner */}
+                    {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
+                      <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
+                        Gate Scanner
+                      </Button>
+                    )}
+
+                    {/* 5. SUPERADMIN: Master Dashboard */}
                     {userData?.role === 'superadmin' && (
-                      <>
-                        <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                          Master Dashboard
-                        </Button>
-                        <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className="w-full justify-start text-indigo-600 hover:bg-indigo-50">
-                          Gate Scanner
-                        </Button>
-                      </>
+                      <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
+                        Admin Panel
+                      </Button>
                     )}
 
                     <div className="h-px bg-gray-100 w-full my-2" />
