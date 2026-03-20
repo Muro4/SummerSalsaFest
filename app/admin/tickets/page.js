@@ -34,42 +34,46 @@ const getPassStyle = (type) => {
   return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 };
 
-// --- SPACIOUS STATUS SLIDER (Tailwind-Safe Colors & Transforms) ---
-function StatusSlider({ originalStatus, currentStatus, onChange }) {
-  const isLocked = originalStatus === 'used' || originalStatus === 'pending';
+// --- TEXT-BASED STATUS TOGGLE (Slot Machine Animation) ---
+function StatusToggle({ originalStatus, currentStatus, onChange }) {
+  const isPending = originalStatus === 'pending';
+  const isAlreadyUsed = originalStatus === 'used';
 
-  if (originalStatus === 'pending') {
+  // 1. Locked: Pending Payment (Gray)
+  if (isPending) {
     return (
-      <div className="flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-4 py-2.5 rounded-full border border-amber-100 w-full max-w-[240px] sm:mx-0 mx-auto">
-        <AlertTriangle size={16} /> Pending Payment
+      <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-slate-400 opacity-60 w-24">
+        <AlertTriangle size={16} /> Pending
       </div>
     );
   }
 
+  // 2. Locked: Already Used / Committed (Gray)
+  if (isAlreadyUsed) {
+    return (
+      <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-slate-400 opacity-60 w-24">
+        <XCircle size={16} /> Used
+      </div>
+    );
+  }
+
+  // 3. Interactive: Active / Staged as Used
   return (
-    <div className={`relative flex items-center bg-slate-100 rounded-full p-1.5 w-full max-w-[240px] sm:mx-0 mx-auto ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
-      {/* Background sliding pill - using translate-x to ensure Tailwind doesn't purge it */}
-      <div 
-        className={`absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-0.375rem)] rounded-full shadow-md transition-all duration-300 ease-out ${currentStatus === 'used' ? 'translate-x-full bg-slate-800' : 'translate-x-0 bg-emerald-500'}`} 
-      />
-      
-      <button 
-        type="button"
-        onClick={() => !isLocked && onChange('active')}
-        disabled={isLocked}
-        className={`relative z-10 w-1/2 text-[11px] font-black tracking-widest uppercase py-2.5 text-center transition-colors duration-300 ${currentStatus === 'active' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
-      >
-        Active
-      </button>
-      <button 
-        type="button"
-        onClick={() => !isLocked && onChange('used')}
-        disabled={isLocked}
-        className={`relative z-10 w-1/2 text-[11px] font-black tracking-widest uppercase py-2.5 text-center transition-colors duration-300 ${currentStatus === 'used' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
-      >
-        Used
-      </button>
-    </div>
+    <button 
+      type="button"
+      onClick={() => onChange(currentStatus === 'active' ? 'used' : 'active')}
+      className="relative block h-6 w-24 overflow-hidden outline-none cursor-pointer hover:opacity-80 active:scale-95 transition-transform"
+    >
+      {/* Active State (Emerald) */}
+      <div className={`absolute inset-0 flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-emerald-500 transition-all duration-300 ease-in-out ${currentStatus === 'active' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+        <CheckCircle2 size={16} /> Active
+      </div>
+
+      {/* Staged 'Used' State (Orange with X) */}
+      <div className={`absolute inset-0 flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-orange-500 transition-all duration-300 ease-in-out ${currentStatus === 'used' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
+        <XCircle size={16} /> Used
+      </div>
+    </button>
   );
 }
 
@@ -175,18 +179,22 @@ export default function AdminTicketsReadOnly() {
   // --- CONFIRMATION POPUP ---
   const confirmSave = () => {
     const changesCount = Object.keys(stagedChanges).length;
-    let usedCount = 0;
-    let activeCount = 0;
+    let details = [];
     
-    Object.values(stagedChanges).forEach(status => {
-      if (status === 'used') usedCount++;
-      if (status === 'active') activeCount++;
+    Object.entries(stagedChanges).forEach(([id, status]) => {
+      const t = data.tickets.find(ticket => ticket.id === id);
+      if (t) details.push(`• ${t.userName}: ${status.toUpperCase()}`);
     });
+
+    let detailsStr = details.slice(0, 5).join('\n');
+    if (details.length > 5) {
+      detailsStr += `\n...and ${details.length - 5} more`;
+    }
 
     showPopup({
       type: "info",
       title: "Confirm Changes",
-      message: `You are about to modify ${changesCount} ticket${changesCount > 1 ? 's' : ''}.\n(Marking Used: ${usedCount} | Marking Active: ${activeCount})`,
+      message: `You are modifying ${changesCount} ticket${changesCount > 1 ? 's' : ''}.\n\nChanges:\n${detailsStr}`,
       confirmText: "Save Changes",
       cancelText: "Cancel",
       onConfirm: saveChanges
@@ -240,12 +248,12 @@ export default function AdminTicketsReadOnly() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10">
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6 relative z-50">
           <div>
             <h1 className="font-bebas text-5xl md:text-7xl leading-none text-slate-900 uppercase">Tickets Overview</h1>
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Staff Check-in Portal</p>
           </div>
-          <div className="flex flex-col items-start md:items-end z-20 w-full md:w-auto">
+          <div className="flex flex-col items-start md:items-end z-50 w-full md:w-auto">
             <label className="text-[12px] font-black text-slate-400 uppercase mb-2 tracking-widest hidden md:block">Event Archive</label>
             <div className="w-full md:w-auto">
               <CustomDropdown
@@ -262,10 +270,10 @@ export default function AdminTicketsReadOnly() {
           </div>
         </div>
 
-        {/* CONTROLS AREA (1:1 with Superadmin Layout) */}
+        {/* CONTROLS AREA */}
         
         {/* ROW 1: DESKTOP ACTION BUTTONS ON TOP */}
-        <div className="hidden md:flex justify-end items-center gap-3 w-full mb-4 z-30 relative">
+        <div className="hidden md:flex justify-end items-center gap-3 w-full mb-4 z-40 relative">
           <Button
             variant="outline"
             size="icon"
@@ -295,10 +303,10 @@ export default function AdminTicketsReadOnly() {
           </Button>
         </div>
 
-        {/* ROW 2: SEARCH BAR (Fills available space) + FILTERS */}
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-8 z-20 relative w-full">
+        {/* ROW 2: SEARCH BAR + FILTERS */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-8 z-30 relative w-full">
           
-          {/* SEARCH BAR (flex-grow so it expands) */}
+          {/* SEARCH BAR */}
           <div className="relative flex-grow group w-full lg:min-w-[400px]">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
             <input 
@@ -312,7 +320,7 @@ export default function AdminTicketsReadOnly() {
           
           {/* FILTERS */}
           <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto shrink-0">
-            <div className="relative w-full sm:w-auto z-30">
+            <div className="relative w-full sm:w-auto z-40">
               <CustomDropdown
                 icon={Filter}
                 value={statusFilter}
@@ -320,14 +328,14 @@ export default function AdminTicketsReadOnly() {
                 options={[
                   { label: 'All Statuses', value: 'all' },
                   { label: 'Active', value: 'active', textColor: 'text-emerald-500' },
-                  { label: 'Used', value: 'used', textColor: 'text-slate-400' },
-                  { label: 'Pending', value: 'pending', textColor: 'text-amber-500' }
+                  { label: 'Used', value: 'used', textColor: 'text-orange-500' },
+                  { label: 'Pending', value: 'pending', textColor: 'text-slate-400' }
                 ]}
                 variant="filter"
               />
             </div>
             
-            <div className="relative w-full sm:w-auto z-20">
+            <div className="relative w-full sm:w-auto z-30">
               <CustomDropdown
                 icon={Ticket}
                 value={passFilter}
@@ -359,18 +367,18 @@ export default function AdminTicketsReadOnly() {
                 
                 {/* Header Info */}
                 <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight truncate">{t.userName}</span>
-                    <span className="block text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest font-mono">ID: {t.ticketID}</span>
+                  <div className="flex-1 min-w-0 pr-2">
+                    <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest break-words whitespace-normal">{t.userName}</span>
+                    <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono">ID: {t.ticketID}</span>
                   </div>
-                  {/* Made pass pill appropriately sized for mobile */}
-                  <span className={`shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
+                  {/* Pass Pill */}
+                  <span className={`shrink-0 inline-flex items-center justify-center px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
                     {t.passType}
                   </span>
                 </div>
 
-                {/* Ambassador Row (Dotted Line Design) */}
-                <div className="flex items-center w-full mt-2">
+                {/* Left-Aligned Ambassador Row (Dotted Line Design) */}
+                <div className="flex items-center w-full mt-1">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Ambassador</span>
                   <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
@@ -379,9 +387,10 @@ export default function AdminTicketsReadOnly() {
                   </span>
                 </div>
                 
-                {/* The Interactive Status Slider */}
-                <div className="pt-4 border-t border-gray-50 mt-1 w-full">
-                  <StatusSlider 
+                {/* The Interactive Status Toggle */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-1 w-full">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
+                  <StatusToggle 
                     originalStatus={t.status}
                     currentStatus={displayStatus}
                     onChange={(newStat) => handleStatusChange(t.id, newStat)}
@@ -411,7 +420,8 @@ export default function AdminTicketsReadOnly() {
                   <th className="p-6 font-bold w-40 border-b border-gray-100">Ticket ID</th>
                   <th className="p-6 font-bold w-48 border-b border-gray-100">Pass Type</th>
                   <th className="p-6 font-bold text-center w-24 border-b border-gray-100">Price</th>
-                  <th className="p-6 pr-10 font-bold text-right w-72 rounded-tr-[3rem] border-b border-gray-100">Check-in Status</th>
+                  {/* Centered Check-in Status Column */}
+                  <th className="p-6 font-bold text-center w-64 rounded-tr-[3rem] border-b border-gray-100">Check-in Status</th>
                 </tr>
               </thead>
               <tbody className="uppercase text-xs">
@@ -431,18 +441,16 @@ export default function AdminTicketsReadOnly() {
                         )}
                       </td>
                       
-                      <td className="p-6 align-middle truncate max-w-[200px] border-b border-gray-50">
-                        <span className="block text-base font-bold font-montserrat text-slate-900">{t.userName}</span>
+                      <td className="p-6 align-middle border-b border-gray-50 max-w-[250px]">
+                        <span className="block text-base font-bold font-montserrat text-slate-900 tracking-wider break-words whitespace-normal leading-snug">{t.userName}</span>
                       </td>
 
-                      {/* NEW TICKET ID COLUMN */}
                       <td className="p-6 align-middle border-b border-gray-50">
                         <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest font-mono">{t.ticketID}</span>
                       </td>
 
                       <td className="p-6 align-middle border-b border-gray-50">
-                        {/* Enlarged desktop pass pill */}
-                        <span className={`inline-flex items-center justify-center px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest ${getPassStyle(t.passType)}`}>
+                        <span className={`inline-flex items-center justify-center px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest ${getPassStyle(t.passType)}`}>
                           {t.passType}
                         </span>
                       </td>
@@ -451,9 +459,10 @@ export default function AdminTicketsReadOnly() {
                         €{t.price}
                       </td>
                       
-                      <td className="p-6 pr-10 align-middle border-b border-gray-50">
-                        <div className="flex justify-end">
-                          <StatusSlider 
+                      {/* Centered Desktop Toggle */}
+                      <td className="p-6 align-middle border-b border-gray-50">
+                        <div className="flex justify-center">
+                          <StatusToggle 
                             originalStatus={t.status}
                             currentStatus={displayStatus}
                             onChange={(newStat) => handleStatusChange(t.id, newStat)}
