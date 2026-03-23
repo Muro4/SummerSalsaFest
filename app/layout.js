@@ -1,6 +1,8 @@
 import { Modak, Bebas_Neue, Montserrat } from "next/font/google";
 import "./globals.css";
 import { PopupProvider } from '@/components/PopupProvider'; 
+import CookieBanner from "@/components/CookieBanner";
+import Analytics from "@/components/Analytics";
 
 
 
@@ -33,6 +35,8 @@ export default function RootLayout({ children }) {
         <PopupProvider>
           {children}
         </PopupProvider>
+        <CookieBanner />
+        <Analytics />
       </body>
     </html>
   );
