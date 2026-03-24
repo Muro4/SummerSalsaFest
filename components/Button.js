@@ -15,36 +15,27 @@ export default function Button({
   className = "",
   title,
 }) {
-  // --- BASE STYLES ---
-  // Applies the standard font, tracking, and our custom 'btn-interact' click animation
-  const baseStyles = "inline-flex items-center justify-center gap-2 font-black uppercase tracking-widest outline-none disabled:opacity-50 disabled:cursor-not-allowed btn-interact font-montserrat whitespace-nowrap";
+  // THE FIX: Completely removed `btn-interact` to stop the jumping position.
+  // Using `transition-all duration-300` creates a perfectly smooth color fade.
+  const baseStyles = "inline-flex items-center justify-center gap-2 font-montserrat uppercase outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-all duration-300 font-black";
 
   // --- SIZES ---
   const sizes = {
-    sm: "py-2 px-4 text-[11px] rounded-xl",
-    md: "py-3 px-6 text-xs rounded-2xl",
-    lg: "py-4 px-8 text-sm rounded-2xl",
-    icon: "p-2 rounded-xl", // For buttons that are ONLY an icon
+    sm: "py-2 px-4 text-[11px] rounded-xl tracking-widest",
+    md: "py-3 px-6 text-xs rounded-2xl tracking-widest",
+    lg: "py-4 px-8 text-sm rounded-2xl tracking-widest",
+    icon: "p-2 rounded-xl",
+    sliderTab: "w-full py-3 text-[12px] rounded-xl tracking-[0.1em]",
+    subSliderTab: "w-full py-2 text-[11px] rounded-[10px] tracking-[0.1em]",
   };
 
-  // --- VARIANTS (The Visual Hierarchy) ---
+  // --- VARIANTS ---
   const variants = {
-    // Tier 1: The main action (Buy Pass, Save Changes)
     primary: "bg-salsa-pink text-white shadow-md hover:bg-[#d03a78] hover:shadow-lg",
-    
-    // Tier 2: Secondary actions (Cancel, Go Back)
     secondary: "bg-slate-800 text-white shadow-md hover:bg-slate-700 hover:shadow-lg",
-    
-    // Tier 3: Subtle actions (Ghost buttons, filters)
     ghost: "bg-transparent text-slate-500 hover:text-slate-800",
-    
-    // Tier 4: Outlined buttons for high contrast without heavy background
     outline: "bg-transparent border-2 border-slate-200 text-slate-800 hover:border-slate-800",
-    
-    // Danger: Delete, Remove, Sign Out
     danger: "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white",
-    
-    // Action Icons: The new soft black icons that colorize on hover
     actionIcon: "bg-transparent text-slate-800 hover:bg-slate-50 hover:text-salsa-pink",
   };
 
@@ -52,14 +43,13 @@ export default function Button({
 
   const InnerContent = () => (
     <>
-      {isLoading && <Loader2 size={size === 'sm' ? 14 : 16} className="animate-spin" />}
-      {!isLoading && Icon && iconPosition === "left" && <Icon size={size === 'sm' ? 14 : 16} />}
-      {children}
-      {!isLoading && Icon && iconPosition === "right" && <Icon size={size === 'sm' ? 14 : 16} />}
+      {isLoading && <Loader2 size={size === 'subSliderTab' ? 14 : 16} className="animate-spin" />}
+      {!isLoading && Icon && iconPosition === "left" && <Icon size={size === 'subSliderTab' ? 14 : 16} />}
+      <span>{children}</span>
+      {!isLoading && Icon && iconPosition === "right" && <Icon size={size === 'subSliderTab' ? 14 : 16} />}
     </>
   );
 
-  // If an href is provided, render a Next.js Link
   if (href) {
     return (
       <Link href={href} className={combinedClasses} title={title}>
@@ -68,7 +58,6 @@ export default function Button({
     );
   }
 
-  // Otherwise, render a standard HTML button
   return (
     <button
       type={type}
