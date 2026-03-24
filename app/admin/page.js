@@ -17,7 +17,7 @@ import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2 } from "l
 
 export default function AdminDashboard() {
    const [activeTab, setActiveTab] = useState("analytics");
-   const [data, setData] = useState({ users: [], tickets: [] });
+   const [data, setData] = useState({ users: [], tickets: [], requests: [] });
    const [loading, setLoading] = useState(true);
    const [isAdmin, setIsAdmin] = useState(false);
    const [saving, setSaving] = useState(false);
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
       let unsubUsers = () => { };
       let unsubTickets = () => { };
       let unsubMessages = () => { }; 
+      let unsubRequests = () => { }; 
 
       const unsubAuth = auth.onAuthStateChanged(async (user) => {
          if (user) {
@@ -43,11 +44,19 @@ export default function AdminDashboard() {
                setIsAdmin(true);
                unsubUsers = onSnapshot(collection(db, "users"), (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })));
                unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); });
+               
+               // Count Unread Messages
                unsubMessages = onSnapshot(collection(db, "contact_messages"), (mS) => setUnreadInboxCount(mS.docs.filter(d => d.data().status === "unread").length));
+               
+               // Fetch Pending Requests (Passed down to InboxManager)
+               unsubRequests = onSnapshot(collection(db, "ambassador_requests"), (rS) => {
+                  setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) }));
+               });
+
             } else { router.push("/"); }
-         } else { unsubUsers(); unsubTickets(); unsubMessages(); router.push("/login"); }
+         } else { unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); router.push("/login"); }
       });
-      return () => { unsubAuth(); unsubUsers(); unsubTickets(); unsubMessages(); };
+      return () => { unsubAuth(); unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); };
    }, [router]);
 
    // --- BROWSER REFRESH & IN-APP NAVIGATION PROTECTOR ---
@@ -98,11 +107,15 @@ export default function AdminDashboard() {
    const effectiveTickets = data.tickets.map(t => history[historyIndex]?.[`tickets_${t.id}`] ? { ...t, ...history[historyIndex][`tickets_${t.id}`] } : t).filter(t => !t._deleted);
    const effectiveUsers = data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
 
+   // Unified Notification Counter
+   const totalInboxNotifications = unreadInboxCount + data.requests.length;
+
    if (!isAdmin || loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
    return (
       <main className="min-h-screen bg-salsa-white font-montserrat pt-32 pb-40 select-none relative">
          <Navbar />
+         {/* THE FIX: Reverted back to max-w-7xl to restore your grid alignment! */}
          <div className="max-w-7xl mx-auto px-4 md:px-6">
 
             {/* HEADER */}
@@ -130,16 +143,16 @@ export default function AdminDashboard() {
                      }}
                   />
                   
-                  <Button variant="ghost" size="sliderTab" icon={BarChart3} onClick={() => setActiveTab("analytics")} className={`relative z-10 ${activeTab === 'analytics' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Analytics</Button>
+                  <Button variant="ghost" size="sliderTab" icon={BarChart3} onClick={() => setActiveTab("analytics")} className={`relative z-10 ${activeTab === 'analytics' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Analytics</Button>
                   
-                  <Button variant="ghost" size="sliderTab" icon={Mail} onClick={() => setActiveTab("inbox")} className={`relative z-10 ${activeTab === 'inbox' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>
+                  <Button variant="ghost" size="sliderTab" icon={Mail} onClick={() => setActiveTab("inbox")} className={`relative z-10 ${activeTab === 'inbox' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>
                      Inbox
-                     {unreadInboxCount > 0 && <span className="bg-salsa-pink text-white text-[10px] px-1.5 py-0.5 rounded-full leading-none font-bold animate-pulse tracking-normal absolute top-1.5 right-2 lg:right-3">{unreadInboxCount}</span>}
+                     {totalInboxNotifications > 0 && <span className="bg-salsa-pink text-white text-[10px] px-1.5 py-0.5 rounded-full leading-none font-bold animate-pulse tracking-normal absolute top-1.5 right-2 lg:right-3">{totalInboxNotifications}</span>}
                   </Button>
                   
-                  <Button variant="ghost" size="sliderTab" icon={Ticket} onClick={() => setActiveTab("tickets")} className={`relative z-10 ${activeTab === 'tickets' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Tickets</Button>
+                  <Button variant="ghost" size="sliderTab" icon={Ticket} onClick={() => setActiveTab("tickets")} className={`relative z-10 ${activeTab === 'tickets' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Tickets</Button>
                   
-                  <Button variant="ghost" size="sliderTab" icon={UserCog} onClick={() => setActiveTab("users")} className={`relative z-10 ${activeTab === 'users' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Users</Button>
+                  <Button variant="ghost" size="sliderTab" icon={UserCog} onClick={() => setActiveTab("users")} className={`relative z-10 ${activeTab === 'users' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Users</Button>
                </div>
 
                {/* --- DESKTOP ACTION BUTTONS --- */}
@@ -161,7 +174,7 @@ export default function AdminDashboard() {
             {/* MAIN CONTENT AREA */}
             <div className="relative w-full z-10">
                {activeTab === 'analytics' && <AnalyticsTab tickets={effectiveTickets} />}
-               {activeTab === 'inbox' && <InboxManager />}
+               {activeTab === 'inbox' && <InboxManager requests={data.requests} />} 
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'users' && <UsersTab users={effectiveUsers} currentUserId={auth.currentUser?.uid} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
             </div>

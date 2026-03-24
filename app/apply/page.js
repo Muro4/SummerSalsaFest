@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import { 
-  Loader2, ArrowLeft, Send, Tag, Phone, 
-  MessageSquare, Star, AtSign
+  Loader2, ArrowLeft, Send, Phone, 
+  MessageSquare, AtSign, Mail
 } from "lucide-react";
 import Link from "next/link";
 
@@ -20,11 +20,13 @@ export default function ApplyPage() {
   const [formData, setFormData] = useState({
     guestDancerTag: "",
     email: "",
-    promoCode: "",
     phone: "",
     motivation: "",
     mainStyle: ""
   });
+
+  // Validation State
+  const [errors, setErrors] = useState({});
 
   const router = useRouter();
   const { showPopup } = usePopup();
@@ -34,7 +36,7 @@ export default function ApplyPage() {
       if (currentUser) {
         setUser(currentUser);
         
-        // Auto-fill email
+        // Auto-fill email, but keep it editable
         setFormData(prev => ({ ...prev, email: currentUser.email || "" }));
 
         try {
@@ -45,7 +47,7 @@ export default function ApplyPage() {
              return;
           }
 
-          // Check if already applied (Wrapped in try/catch to fix the Firebase Permission Error)
+          // Check if already applied
           const appDoc = await getDoc(doc(db, "ambassador_requests", currentUser.uid));
           if (appDoc.exists()) {
              showPopup({ type: "info", title: "Pending", message: "You have already applied.", confirmText: "Go Back", onConfirm: () => router.push("/account") });
@@ -64,49 +66,76 @@ export default function ApplyPage() {
     return () => unsub();
   }, [router, showPopup]);
 
+  // --- VALIDATION ENGINE ---
+  const validateField = (name, value) => {
+    const trimmed = value.trim();
+    if (name === "guestDancerTag") {
+      if (!trimmed) return "Tag is required.";
+      if (trimmed.length < 2) return "Must be at least 2 characters.";
+    }
+    if (name === "email") {
+      if (!trimmed) return "Email is required.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Enter a valid email.";
+    }
+    if (name === "phone") {
+      if (!trimmed) return "Phone is required.";
+      if (trimmed.length < 5) return "Enter a valid phone number.";
+    }
+    if (name === "motivation") {
+      if (!trimmed) return "Motivation is required.";
+      if (trimmed.length < 10) return "Please write at least 10 characters.";
+    }
+    return "";
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const errorMsg = validateField(name, value);
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    // Real-time validation formatting
-    if (name === "promoCode") {
-      // Only alphanumeric, forced to uppercase
-      const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-      setFormData(prev => ({ ...prev, [name]: cleaned }));
-      return;
-    }
-
+    let cleaned = value;
     if (name === "phone") {
       // Only numbers, spaces, plus, and hyphens
-      const cleaned = value.replace(/[^0-9+\s\-]/g, "");
-      setFormData(prev => ({ ...prev, [name]: cleaned }));
-      return;
+      cleaned = value.replace(/[^0-9+\s\-]/g, "");
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: cleaned }));
+
+    // Clear error as they type
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Final Validation Checks
-    if (!formData.guestDancerTag.trim() || !formData.promoCode.trim() || !formData.phone.trim() || !formData.motivation.trim() || !formData.mainStyle) {
-      showPopup({ type: "error", title: "Missing Info", message: "Please fill out all fields before submitting.", confirmText: "Okay" });
-      return;
-    }
+    // Final Validation Check before Submission
+    const newErrors = {};
+    Object.keys(formData).forEach(key => {
+      if (key !== "mainStyle") {
+        const err = validateField(key, formData[key]);
+        if (err) newErrors[key] = err;
+      }
+    });
+    if (!formData.mainStyle) newErrors.mainStyle = "Please select a main dance style.";
 
-    if (formData.guestDancerTag.length > 20) {
-      showPopup({ type: "error", title: "Tag Too Long", message: "Your Guest Dancer Tag cannot exceed 20 characters.", confirmText: "Okay" });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      showPopup({ type: "error", title: "Invalid Input", message: "Please fix the highlighted errors before submitting.", confirmText: "Okay" });
       return;
     }
 
     setSubmitting(true);
     try {
-      // Save directly to ambassador_requests
       await setDoc(doc(db, "ambassador_requests", user.uid), {
         userId: user.uid,
         name: formData.guestDancerTag.trim(),
         email: formData.email.trim(),
-        promoCode: formData.promoCode.trim(),
         phone: formData.phone.trim(),
         pitch: formData.motivation.trim(),
         mainStyle: formData.mainStyle,
@@ -122,7 +151,7 @@ export default function ApplyPage() {
         onConfirm: () => router.push("/account")
       });
     } catch (err) {
-      showPopup({ type: "error", title: "Error", message: err.message, confirmText: "Close" });
+      showPopup({ type: "error", title: "Submission Failed", message: err.message, confirmText: "Close" });
       setSubmitting(false);
     }
   };
@@ -152,46 +181,22 @@ export default function ApplyPage() {
 
           <div className="space-y-6">
             
-            {/* Tag & Email Row */}
+            {/* Tag & Phone Row */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guest Dancer Tag</label>
                 <div className="relative flex items-center">
                   <AtSign className="absolute left-4 text-slate-400" size={16} />
                   <input 
-                    type="text" name="guestDancerTag" placeholder="E.G. SALSA KING" required
+                    type="text" name="guestDancerTag" placeholder="e.g. Salsa King"
                     maxLength={20}
-                    value={formData.guestDancerTag} onChange={handleInputChange}
-                    className="w-full bg-transparent border-2 border-gray-200 text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none focus:border-slate-900 transition-colors text-[11px] uppercase tracking-widest"
+                    value={formData.guestDancerTag} 
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full bg-gray-50 border ${errors.guestDancerTag ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                <div className="relative flex items-center">
-                  <input 
-                    type="email" name="email" readOnly
-                    value={formData.email}
-                    className="w-full bg-gray-50 border-2 border-transparent text-slate-400 font-bold rounded-2xl px-4 py-4 outline-none cursor-not-allowed text-[11px] uppercase tracking-widest"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Promo Code & Phone Row */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Desired Promo Code</label>
-                <div className="relative flex items-center">
-                  <Tag className="absolute left-4 text-slate-400" size={16} />
-                  <input 
-                    type="text" name="promoCode" placeholder="E.G. DANCE2026" required
-                    maxLength={15}
-                    value={formData.promoCode} onChange={handleInputChange}
-                    className="w-full bg-transparent border-2 border-gray-200 text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none focus:border-slate-900 transition-colors text-[11px] uppercase tracking-widest"
-                  />
-                </div>
+                {errors.guestDancerTag && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-2 animate-in fade-in">{errors.guestDancerTag}</p>}
               </div>
 
               <div className="space-y-2">
@@ -199,38 +204,64 @@ export default function ApplyPage() {
                 <div className="relative flex items-center">
                   <Phone className="absolute left-4 text-slate-400" size={16} />
                   <input 
-                    type="tel" name="phone" placeholder="+123 456 789" required
+                    type="tel" name="phone" placeholder="+123 456 789"
                     maxLength={20}
-                    value={formData.phone} onChange={handleInputChange}
-                    className="w-full bg-transparent border-2 border-gray-200 text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none focus:border-slate-900 transition-colors text-[11px] uppercase tracking-widest"
+                    value={formData.phone} 
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full bg-gray-50 border ${errors.phone ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
                   />
                 </div>
+                {errors.phone && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-2 animate-in fade-in">{errors.phone}</p>}
               </div>
             </div>
 
-            {/* Dance Style - Vertical on mobile, horizontal on desktop */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Main Dance Style</label>
+            {/* Email Row (Full Width) */}
+            <div className="space-y-2 pt-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-4 text-slate-400" size={16} />
+                <input 
+                  type="email" name="email" placeholder="email@example.com"
+                  maxLength={50}
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full bg-gray-50 border ${errors.email ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
+                />
+              </div>
+              {errors.email && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-2 animate-in fade-in">{errors.email}</p>}
+            </div>
+
+            {/* Dance Style */}
+            <div className="space-y-3 pt-2">
+              <div className="flex justify-between items-end ml-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Dance Style</label>
+              </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 {["Bachata", "Zouk", "Salsa", "Kizomba"].map((style) => (
                   <button
                     key={style}
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, mainStyle: style }))}
-                    className={`flex-1 py-3.5 px-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 border-2 cursor-pointer
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, mainStyle: style }));
+                      setErrors(prev => ({ ...prev, mainStyle: "" }));
+                    }}
+                    className={`flex-1 py-3.5 px-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 border cursor-pointer
                       ${formData.mainStyle === style 
                         ? 'border-salsa-pink bg-salsa-pink text-white shadow-md' 
-                        : 'border-gray-200 bg-transparent text-slate-400 hover:border-gray-300 hover:text-slate-600'
+                        : 'border-gray-200 bg-transparent text-slate-400 hover:border-slate-300 hover:text-slate-600'
                       }`}
                   >
                     {style}
                   </button>
                 ))}
               </div>
+              {errors.mainStyle && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-2 animate-in fade-in">{errors.mainStyle}</p>}
             </div>
 
-            {/* Motivation Textarea with larger counter */}
-            <div className="space-y-2">
+            {/* Motivation Textarea */}
+            <div className="space-y-2 pt-2">
               <div className="flex justify-between items-end ml-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Why do you want to join us?</label>
                 <span className={`text-[11px] font-bold ${formData.motivation.length >= 300 ? 'text-red-500' : 'text-slate-400'}`}>
@@ -240,12 +271,15 @@ export default function ApplyPage() {
               <div className="relative w-full">
                 <MessageSquare className="absolute left-4 top-4 text-slate-400" size={16} />
                 <textarea 
-                  name="motivation" placeholder="TELL US ABOUT YOUR SCENE..." required
+                  name="motivation" placeholder="Tell us about your scene..."
                   maxLength={300}
-                  value={formData.motivation} onChange={handleInputChange}
-                  className="w-full min-h-[150px] max-h-[250px] resize-y bg-transparent border-2 border-gray-200 text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none focus:border-slate-900 transition-colors text-[11px] uppercase tracking-widest leading-relaxed"
+                  value={formData.motivation} 
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full min-h-[150px] max-h-[250px] resize-y bg-gray-50 border ${errors.motivation ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide leading-relaxed`}
                 />
               </div>
+              {errors.motivation && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-2 animate-in fade-in">{errors.motivation}</p>}
             </div>
 
             {/* Submit Button */}
