@@ -35,7 +35,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                   options={[
                      { label: 'All Roles', value: 'all', isPill: true, colorClass: getRoleStyle('all') },
                      { label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') },
-                     { label: 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
+                     { label: 'Guest Dancer', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
                      { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
                      { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
                   ]}
@@ -51,7 +51,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
                         <th className="p-6 pl-10 font-bold w-1/4 rounded-tl-[3rem] border-b border-gray-100">Name</th>
-                        <th className="p-6 font-bold w-48 border-b border-gray-100">Ambassador Tag</th>
+                        <th className="p-6 font-bold w-48 border-b border-gray-100">Guest Dancer Tag</th>
                         <th className="p-6 font-bold w-1/4 border-b border-gray-100">Email</th>
                         <th className="p-6 pl-16 text-left font-bold w-56 rounded-tr-[3rem] border-b border-gray-100">Role</th>
                      </tr>
@@ -76,7 +76,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                                        value={displayRole}
                                        onChange={(val) => onStageChange('users', u.id, { role: val })}
                                        disabled={isMySuperAdmin} title={isMySuperAdmin ? "You cannot demote yourself" : "Stage User Role Change"} hideChevron={isMySuperAdmin}
-                                       options={[{ label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') }, { label: 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }]}
+                                       options={[{ label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') }, { label: 'Guest Dancer', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }]}
                                        variant="pill"
                                     />
                                  </div>
@@ -103,7 +103,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                         <span className="block text-sm font-bold text-slate-500 lowercase mt-0.5">{u.email}</span>
                      </div>
                      <div className="flex items-center w-full relative z-10">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Amb. Tag</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">G.D. Tag</span>
                         <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
                         <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
                            <Users size={12} className="text-slate-400" />
@@ -115,7 +115,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                         <div className="scale-[0.85] origin-right">
                            <CustomDropdown
                               value={displayRole} onChange={(val) => onStageChange('users', u.id, { role: val })} disabled={isMySuperAdmin} hideChevron={isMySuperAdmin}
-                              options={[{ label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') }, { label: 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }]}
+                              options={[{ label: 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') }, { label: 'Guest Dancer', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, { label: 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, { label: 'SuperAdmin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }]}
                               variant="pill"
                            />
                         </div>

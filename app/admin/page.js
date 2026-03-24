@@ -107,15 +107,17 @@ export default function AdminDashboard() {
    const effectiveTickets = data.tickets.map(t => history[historyIndex]?.[`tickets_${t.id}`] ? { ...t, ...history[historyIndex][`tickets_${t.id}`] } : t).filter(t => !t._deleted);
    const effectiveUsers = data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
 
+   // THE FIX: Only count requests that are specifically 'pending'
+   const pendingRequestsCount = data.requests.filter(r => (r.status || 'pending') === 'pending').length;
+   
    // Unified Notification Counter
-   const totalInboxNotifications = unreadInboxCount + data.requests.length;
+   const totalInboxNotifications = unreadInboxCount + pendingRequestsCount;
 
    if (!isAdmin || loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
    return (
       <main className="min-h-screen bg-salsa-white font-montserrat pt-32 pb-40 select-none relative">
          <Navbar />
-         {/* THE FIX: Reverted back to max-w-7xl to restore your grid alignment! */}
          <div className="max-w-7xl mx-auto px-4 md:px-6">
 
             {/* HEADER */}

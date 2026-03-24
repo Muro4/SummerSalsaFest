@@ -74,7 +74,7 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
          <div className="flex flex-col xl:flex-row gap-4 relative z-40">
             <div className="relative flex-grow group w-full lg:min-w-[400px]">
                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
-               <input type="text" value={searchTerm} placeholder="SEARCH BY NAME, ID, OR AMBASSADOR..." className="input-standard w-full" onChange={e => setSearchTerm(e.target.value)} />
+               <input type="text" value={searchTerm} placeholder="SEARCH BY NAME, ID, OR GUEST DANCER..." className="input-standard w-full" onChange={e => setSearchTerm(e.target.value)} />
             </div>
             
             {/* REORDERED FILTERS: Pass Type -> Status -> Year */}
@@ -101,7 +101,7 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
+                        <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Guest Dancer</th>
                         <th className="p-6 font-bold w-1/3 border-b border-gray-100">Attendee Name</th>
                         <th className="p-6 font-bold w-48 border-b border-gray-100">Pass Type</th>
                         <th className="p-6 font-bold text-center w-40 border-b border-gray-100">Status</th>
@@ -191,7 +191,7 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                      </div>
 
                      <div className="flex items-center w-full mt-1 relative z-10">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Ambassador</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Guest Dancer</span>
                         <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
                         <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
                            <Users size={12} className="text-slate-400" />

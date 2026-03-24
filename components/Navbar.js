@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot, updateDoc } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import Button from "@/components/Button";
+import { usePopup } from "@/components/PopupProvider";
 import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
 
 export default function Navbar() {
@@ -20,6 +21,7 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { showPopup } = usePopup();
   
   const isHome = pathname === "/";
   const isTransparent = isHome && !scrolled;
@@ -41,7 +43,35 @@ export default function Navbar() {
         // Fetch User Role Data
         const uDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (uDoc.exists()) {
-          setUserData(uDoc.data());
+          const data = uDoc.data();
+          setUserData(data);
+
+          // ONE-TIME APPLICATION NOTIFICATION CHECK
+          if (
+            (data.applicationStatus === "approved" || data.applicationStatus === "rejected") && 
+            !data.applicationNotified
+          ) {
+            // Update Firestore immediately so it doesn't fire twice
+            updateDoc(doc(db, "users", currentUser.uid), { applicationNotified: true }).catch(console.error);
+
+            if (data.applicationStatus === "approved") {
+              showPopup({
+                type: "success",
+                title: "Application Approved!",
+                message: "Congratulations! You have been approved as a Guest Dancer. You can now access your Ambassador Dashboard.",
+                confirmText: "Go to Dashboard",
+                cancelText: "Dismiss",
+                onConfirm: () => router.push("/ambassador")
+              });
+            } else if (data.applicationStatus === "rejected") {
+              showPopup({
+                type: "info",
+                title: "Application Update",
+                message: "Thank you for applying. Unfortunately, we are unable to accept your Guest Dancer application at this time.",
+                confirmText: "Okay"
+              });
+            }
+          }
         }
 
         if (unsubCart) unsubCart();
@@ -77,7 +107,7 @@ export default function Navbar() {
       unsubAuth();
       if (unsubCart) unsubCart(); 
     };
-  }, []);
+  }, [router, showPopup]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -207,8 +237,8 @@ export default function Navbar() {
 
                     {/* 2. AMBASSADOR & SUPERADMIN: Ambassador Dashboard */}
                     {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
-                      <Button href="/ambassador" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
-                        Ambassador
+                      <Button href="/guest-dancer" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className="w-full justify-start text-salsa-pink hover:bg-salsa-pink/10">
+                        Dashboard
                       </Button>
                     )}
 

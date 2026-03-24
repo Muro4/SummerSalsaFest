@@ -312,7 +312,7 @@ export default function AdminTicketsReadOnly() {
             <input 
               type="text" 
               value={searchTerm || ""}
-              placeholder="SEARCH BY NAME, ID, OR AMBASSADOR..." 
+              placeholder="SEARCH BY NAME, ID, OR GUEST DANCER..." 
               className="input-standard w-full" 
               onChange={e => setSearchTerm(e.target.value)} 
             />
@@ -379,7 +379,7 @@ export default function AdminTicketsReadOnly() {
 
                 {/* Left-Aligned Ambassador Row (Dotted Line Design) */}
                 <div className="flex items-center w-full mt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Ambassador</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">Guest Dancer</span>
                   <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
                     <Users size={12} className="text-slate-400" />
@@ -415,7 +415,7 @@ export default function AdminTicketsReadOnly() {
             <table className="w-full text-left border-separate border-spacing-0 min-w-[1050px] font-montserrat relative">
               <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                 <tr>
-                  <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
+                  <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Guest Dancer</th>
                   <th className="p-6 font-bold w-1/3 border-b border-gray-100">Attendee Name</th>
                   <th className="p-6 font-bold w-40 border-b border-gray-100">Ticket ID</th>
                   <th className="p-6 font-bold text-center w-48 border-b border-gray-100">Pass Type</th>

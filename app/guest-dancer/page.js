@@ -241,7 +241,6 @@ export default function AmbassadorDashboard() {
                      <div className="p-8 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0">
                         <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
                      </div>
-                     
                      <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                         <div className="mb-4 relative z-10">
@@ -312,7 +311,12 @@ export default function AmbassadorDashboard() {
                   <div className="flex items-center gap-2 mb-2">
                      <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm"><Info size={14} /> Dashboard Guide</button>
                   </div>
-                  <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Dashboard</h1>
+                  
+                  {/* UPDATED: DYNAMIC HEADER TEXT */}
+                  <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">
+                     {userData?.ambassadorDisplayName ? `${userData.ambassadorDisplayName}'s Dashboard` : "Dashboard"}
+                  </h1>
+
                </div>
             </div>
 

@@ -201,11 +201,19 @@ export default function InboxManager({ requests = [] }) {
        type: "info", title: "Approve Ambassador?", message: `Grant ${req.name} access to the Ambassador Dashboard?`, confirmText: "Yes, Approve", cancelText: "Cancel",
        onConfirm: async () => {
           try {
-             await updateDoc(doc(db, "users", req.userId), { role: "ambassador", applicationStatus: "approved" });
+             // THE FIX: We now explicitly copy req.name into ambassadorDisplayName!
+             await updateDoc(doc(db, "users", req.userId), { 
+                role: "ambassador", 
+                applicationStatus: "approved",
+                ambassadorDisplayName: req.name 
+             });
+             
              await updateDoc(doc(db, "ambassador_requests", req.id), { status: "approved" });
              if (selectedItem?.id === req.id) setSelectedItem(null);
              showPopup({ type: "success", title: "Approved!", message: `${req.name} is now an official Guest Dancer.` });
-          } catch (err) { showPopup({ type: "error", title: "Error", message: "Failed to approve user." }); }
+          } catch (err) { 
+             showPopup({ type: "error", title: "Error", message: "Failed to approve user." }); 
+          }
        }
     });
   };
