@@ -15,8 +15,6 @@ export default function Button({
   className = "",
   title,
 }) {
-  // THE FIX: Completely removed `btn-interact` to stop the jumping position.
-  // Using `transition-all duration-300` creates a perfectly smooth color fade.
   const baseStyles = "inline-flex items-center justify-center gap-2 font-montserrat uppercase outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-all duration-300 font-black";
 
   // --- SIZES ---
@@ -45,7 +43,10 @@ export default function Button({
     <>
       {isLoading && <Loader2 size={size === 'subSliderTab' ? 14 : 16} className="animate-spin" />}
       {!isLoading && Icon && iconPosition === "left" && <Icon size={size === 'subSliderTab' ? 14 : 16} />}
-      <span>{children}</span>
+      
+      {/* THE FIX: Removed the <span> wrapper around children so flexbox works perfectly again */}
+      {children}
+      
       {!isLoading && Icon && iconPosition === "right" && <Icon size={size === 'subSliderTab' ? 14 : 16} />}
     </>
   );

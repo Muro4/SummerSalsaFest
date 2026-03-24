@@ -294,7 +294,7 @@ function LoginContent() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, targetEmail);
-      setSuccessMsg("Check your inbox! We've sent you a password reset link.");
+      setSuccessMsg("Check your inbox! We've sent you a password reset link. (Also check your spam folder)");
       setResetCooldown(60);
     } catch (err) {
       console.error(err);
@@ -322,7 +322,7 @@ function LoginContent() {
     <div className="relative w-full max-w-4xl min-h-[750px] md:min-h-[600px] md:h-[clamp(600px,90vh,700px)] bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-16 md:mt-0">
       
       {/* =========================================
-          LOGIN / RESET FORM
+         LOGIN / RESET FORM
       ========================================= */}
       <div className={`${isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-12 absolute top-0 md:left-0 h-full z-10 bg-white md:bg-transparent`}>
         
@@ -340,12 +340,7 @@ function LoginContent() {
               </div>
               
               <div className="space-y-1">
-                <div className="flex justify-between items-end pr-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
-                  <button type="button" onClick={() => { setIsResetMode(true); setError(""); }} className="text-[10px] font-bold text-salsa-pink hover:underline uppercase tracking-widest cursor-pointer">
-                    Forgot?
-                  </button>
-                </div>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
                 <div className="relative flex items-center">
                   <input required type={showPassword ? "text" : "password"} maxLength={50} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
                   <Lock className="absolute left-4 text-gray-500" size={18} />
@@ -354,6 +349,11 @@ function LoginContent() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <button type="button" onClick={() => { setIsResetMode(true); setError(""); }} className="text-[10px] font-bold text-salsa-pink hover:underline uppercase tracking-widest cursor-pointer">
+                    Forgot password?
+                  </button>
                 </div>
               </div>
 
@@ -423,7 +423,7 @@ function LoginContent() {
       </div>
 
       {/* =========================================
-          SIGN UP FORM 
+         SIGN UP FORM 
       ========================================= */}
       <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
         <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">Create Account</h1>
@@ -548,7 +548,7 @@ function LoginContent() {
       </div>
 
       {/* =========================================
-          THE MAGIC SLIDING OVERLAY
+         THE MAGIC SLIDING OVERLAY
       ========================================= */}
       <div className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full z-30 transition-transform duration-700 ease-in-out ${isLogin ? 'translate-x-full' : 'translate-x-0'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-teal-100 to-salsa-mint shadow-2xl">
