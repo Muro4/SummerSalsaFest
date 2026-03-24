@@ -97,8 +97,7 @@ export default function InfoPage() {
       </section>
 
       {/* 5. LOCATIONS: THE DUAL VENUE SYSTEM (Engineered Responsive Version) */}
-      <section className="relative w-full h-[400px] md:h-[500px] flex flex-col md:flex-row bg-slate-900 overflow-hidden border-t border-gray-100 selection:bg-transparent">
-        
+       <section className="relative w-full h-[600px] md:h-[500px] flex flex-col md:flex-row bg-slate-900 overflow-hidden border-t border-gray-100 selection:bg-transparent">
         {/* VENUE 1: DAY (Workshops) */}
         {/* md:hover:flex-[1.5] makes this grow dynamically. The edge moves. */}
         <div className="relative flex-1 group cursor-pointer transition-all duration-700 md:hover:flex-[1.5] border-b md:border-b-0 md:border-r border-white/10 z-10">

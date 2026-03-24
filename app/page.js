@@ -124,7 +124,7 @@ export default function Home() {
               {editionText}
             </span>
 
-            <h1 className="animate-fade-in delay-300 font-modak text-7xl md:text-[7rem] leading-none mb-8 uppercase flex flex-wrap justify-center gap-4 text-center">
+            <h1 className="animate-fade-in delay-300 font-modak text-5xl sm:text-7xl md:text-[7rem] leading-none mb-8 uppercase flex flex-wrap justify-center gap-3 md:gap-4 text-center">
               <span className="ambient-wave-word wave-1">SUMMER</span>
               <span className="ambient-wave-word wave-2">SALSA</span>
               <span className="ambient-wave-word wave-3">FEST</span>
@@ -241,9 +241,9 @@ export default function Home() {
             <Button variant="actionIcon" size="icon" icon={ChevronRight} onClick={scrollRight} className="p-4 bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-900 rounded-full hover:border-salsa-pink hover:text-salsa-pink shadow-xl"/>
           </div>
 
-          <div ref={scrollContainerRef} className="flex gap-8 px-6 md:px-[15vw] overflow-x-auto custom-scrollbar py-10 pb-14 scroll-smooth">
+          <div ref={scrollContainerRef} className="flex gap-4 md:gap-8 px-4 md:px-[15vw] overflow-x-auto custom-scrollbar py-10 pb-14 scroll-smooth snap-x snap-mandatory">
             {[...reviews, ...reviews, ...reviews].map((review, i) => (
-              <div key={i} className="shrink-0 w-[300px] md:w-[400px] bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 transition-transform hover:-translate-y-2 flex flex-col cursor-pointer">
+              <div key={i} className="shrink-0 w-[280px] sm:w-[350px] md:w-[400px] snap-center bg-white p-8 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 transition-transform hover:-translate-y-2 flex flex-col cursor-pointer">
                 <div className="flex gap-1 mb-6">
                   {[...Array(5)].map((_, s) => <Star key={s} size={16} className="fill-salsa-pink text-salsa-pink" />)}
                 </div>

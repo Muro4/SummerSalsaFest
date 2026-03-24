@@ -71,7 +71,7 @@ export default function GalleryPage() {
 
       {/* 2. MASONRY GRID (Fades in last) */}
       <section className="animate-fade-in delay-700 px-6 pb-32 max-w-7xl mx-auto">
-        <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
+        <div className="columns-1 sm:columns-2 md:columns-3 gap-4 md:gap-6 space-y-4 md:space-y-6">
           {galleryImages.map((img, index) => (
             <div 
               key={index} 
@@ -110,29 +110,29 @@ export default function GalleryPage() {
           {/* Left Arrow */}
           <button 
             onClick={showPrev}
-            className="absolute left-4 md:left-12 text-white/50 hover:text-white hover:scale-110 transition-all z-50 p-4 bg-white/10 hover:bg-salsa-pink rounded-full backdrop-blur-sm"
+            className="absolute bottom-6 left-6 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:left-12 text-white/70 hover:text-white hover:scale-110 transition-all z-50 p-3 md:p-4 bg-white/10 hover:bg-salsa-pink rounded-full backdrop-blur-sm"
           >
-            <ChevronLeft size={40} />
+            <ChevronLeft size={32} className="md:w-10 md:h-10" />
           </button>
 
           {/* Main Display Image */}
           <img 
             src={galleryImages[selectedIndex].src} 
             alt={galleryImages[selectedIndex].alt} 
-            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
+            className="max-w-[95vw] max-h-[75vh] md:max-h-[85vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()} 
           />
 
           {/* Right Arrow */}
           <button 
             onClick={showNext}
-            className="absolute right-4 md:right-12 text-white/50 hover:text-white hover:scale-110 transition-all z-50 p-4 bg-white/10 hover:bg-salsa-pink rounded-full backdrop-blur-sm"
+            className="absolute bottom-6 right-6 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:right-12 text-white/70 hover:text-white hover:scale-110 transition-all z-50 p-3 md:p-4 bg-white/10 hover:bg-salsa-pink rounded-full backdrop-blur-sm"
           >
-            <ChevronRight size={40} />
+            <ChevronRight size={32} className="md:w-10 md:h-10" />
           </button>
           
           {/* Image Counter */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white font-black text-xs tracking-[0.3em] bg-black/30 px-4 py-2 rounded-full backdrop-blur-md">
+          <div className="absolute bottom-8 md:bottom-6 left-1/2 -translate-x-1/2 text-white font-black text-xs tracking-[0.3em] bg-black/30 px-4 py-2 rounded-full backdrop-blur-md">
             {selectedIndex + 1} / {galleryImages.length}
           </div>
         </div>

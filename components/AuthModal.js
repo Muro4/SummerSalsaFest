@@ -7,7 +7,7 @@ export default function AuthModal({ isOpen, onClose, onGuestContinue }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}></div>
-      <div className="relative bg-white w-full max-w-lg rounded-[3.5rem] border-2 border-salsa-mint/30 shadow-2xl p-10 animate-in zoom-in duration-300">
+      <div className="relative bg-white w-full max-w-lg rounded-[3.5rem] border-2 border-salsa-mint/30 shadow-2xl p-8 md:p-10 animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
         <button onClick={onClose} className="absolute top-8 right-8 text-gray-400 hover:text-salsa-pink transition"><X size={24} /></button>
         <div className="text-center mb-10">
             <h2 className="font-bebas text-5xl text-gray-900 uppercase tracking-tight leading-none">Join the festival</h2>

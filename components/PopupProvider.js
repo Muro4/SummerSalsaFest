@@ -32,7 +32,7 @@ export function PopupProvider({ children }) {
             onClick={closePopup}
           ></div>
           
-          <div className="relative bg-white w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300 border border-gray-100">
+          <div className="relative bg-white w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300 border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
             
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-sm
               ${popup.type === 'error' ? 'bg-red-50 text-red-500' : 

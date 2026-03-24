@@ -34,7 +34,7 @@ export default function CookieBanner() {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-8 md:right-auto md:bottom-8 md:max-w-[420px] z-[999] animate-in slide-in-from-bottom-8 fade-in duration-700 font-montserrat select-none">
+    <div className="fixed left-4 right-4 md:left-8 md:right-auto md:bottom-8 bottom-[calc(1rem+env(safe-area-inset-bottom))] md:max-w-[420px] z-[999] animate-in slide-in-from-bottom-8 fade-in duration-700 font-montserrat select-none">
       <div className="bg-slate-900 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-slate-800 relative overflow-hidden group">
         
         {/* Decorative background glow */}

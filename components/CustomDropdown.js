@@ -70,12 +70,15 @@ export default function CustomDropdown({
                 );
               }
 
+              // components/CustomDropdown.js (Snippet - Update the return block inside the options map)
+
               return (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer text-xs font-bold uppercase tracking-widest whitespace-nowrap ${isActive ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                  // ✅ UPDATED: Changed py-3 to py-4 md:py-3 to ensure a fat-finger friendly tap area on mobile
+                  className={`w-full text-left px-4 py-4 md:py-3 rounded-lg transition-colors cursor-pointer text-xs font-bold uppercase tracking-widest whitespace-nowrap ${isActive ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                 >
                   {opt.label}
                 </button>

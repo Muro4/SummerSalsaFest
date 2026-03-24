@@ -304,7 +304,9 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                         <span className="text-lg font-black text-slate-700">€{getPrice(row.type)}</span>
                      </div>
                      
-                     <button onClick={() => confirmRemoveRow(row.id, row.name)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all"><Trash2 size={16} /></button>
+                      <button onClick={() => confirmRemoveRow(row.id, row.name)} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 hover:bg-red-50 p-3 rounded-xl transition-all cursor-pointer">
+                        <Trash2 size={18} />
+                     </button>
                   </div>
                ))}
                {filteredDrafts.length === 0 && <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">No drafts found.</div>}

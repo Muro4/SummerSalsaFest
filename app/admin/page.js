@@ -185,8 +185,8 @@ export default function AdminDashboard() {
          {/* ==============================================
              MOBILE FLOATING ACTION BAR
              ============================================== */}
-         <div 
-            className={`lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] p-4 z-50 flex items-center justify-between transition-transform duration-500 ease-out ${
+          <div 
+            className={`lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] pt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-50 flex items-center justify-between transition-transform duration-500 ease-out ${
                historyIndex > 0 ? "translate-y-0" : "translate-y-full"
             }`}
          >
