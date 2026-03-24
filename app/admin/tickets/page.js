@@ -368,11 +368,11 @@ export default function AdminTicketsReadOnly() {
                 {/* Header Info */}
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1 min-w-0 pr-2">
-                    <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest break-words whitespace-normal">{t.userName}</span>
-                    <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono">ID: {t.ticketID}</span>
+                    <span title={t.userName} className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest truncate">{t.userName}</span>
+                    <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono truncate">ID: {t.ticketID}</span>
                   </div>
-                  {/* Pass Pill */}
-                  <span className={`shrink-0 inline-flex items-center justify-center px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
+                  {/* Pass Pill (Fixed Width) */}
+                  <span className={`shrink-0 inline-flex items-center justify-center w-24 py-1.5 rounded-full text-[10px] shadow-sm font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
                     {t.passType}
                   </span>
                 </div>
@@ -416,12 +416,11 @@ export default function AdminTicketsReadOnly() {
               <thead className="bg-white text-[10px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                 <tr>
                   <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
-                  <th className="p-6 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
+                  <th className="p-6 font-bold w-1/3 border-b border-gray-100">Attendee Name</th>
                   <th className="p-6 font-bold w-40 border-b border-gray-100">Ticket ID</th>
-                  <th className="p-6 font-bold w-48 border-b border-gray-100">Pass Type</th>
-                  <th className="p-6 font-bold text-center w-24 border-b border-gray-100">Price</th>
+                  <th className="p-6 font-bold text-center w-48 border-b border-gray-100">Pass Type</th>
                   {/* Centered Check-in Status Column */}
-                  <th className="p-6 font-bold text-center w-64 rounded-tr-[3rem] border-b border-gray-100">Check-in Status</th>
+                  <th className="p-6 font-bold text-center w-64 rounded-tr-[3rem] border-b border-gray-100">Status</th>
                 </tr>
               </thead>
               <tbody className="uppercase text-xs">
@@ -441,22 +440,19 @@ export default function AdminTicketsReadOnly() {
                         )}
                       </td>
                       
-                      <td className="p-6 align-middle border-b border-gray-50 max-w-[250px]">
-                        <span className="block text-base font-bold font-montserrat text-slate-900 tracking-wider break-words whitespace-normal leading-snug">{t.userName}</span>
+                      <td className="p-6 align-middle border-b border-gray-50 max-w-[250px] xl:max-w-[350px]">
+                        <span title={t.userName} className="block text-base font-bold font-montserrat text-slate-900 tracking-wider leading-snug truncate">{t.userName}</span>
                       </td>
 
                       <td className="p-6 align-middle border-b border-gray-50">
                         <span className="block text-sm font-bold text-slate-500 uppercase tracking-widest font-mono">{t.ticketID}</span>
                       </td>
 
-                      <td className="p-6 align-middle border-b border-gray-50">
-                        <span className={`inline-flex items-center justify-center px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest ${getPassStyle(t.passType)}`}>
+                      {/* Centered Pass Type Column with Fixed Width Pill */}
+                      <td className="p-6 align-middle text-center border-b border-gray-50">
+                        <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(t.passType)}`}>
                           {t.passType}
                         </span>
-                      </td>
-                      
-                      <td className="p-6 align-middle text-center font-bold text-sm text-slate-700 border-b border-gray-50">
-                        €{t.price}
                       </td>
                       
                       {/* Centered Desktop Toggle */}
@@ -474,7 +470,7 @@ export default function AdminTicketsReadOnly() {
                   )
                 })}
                 {filteredTickets.length === 0 && (
-                  <tr><td colSpan="6" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No tickets match your search.</td></tr>
+                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">No tickets match your search.</td></tr>
                 )}
               </tbody>
             </table>

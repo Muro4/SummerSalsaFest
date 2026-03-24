@@ -186,28 +186,29 @@ export default function Cart() {
 
               <div className="space-y-6">
                 {items.map(item => (
-                  <div key={item.id} className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
-                    <div className="flex items-center gap-8 mb-6 md:mb-0 w-full md:w-auto">
+                  <div key={item.id} className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center shadow-[0_10px_30px_rgba(0,0,0,0.03)] gap-6 md:gap-0">
+                    
+                    {/* UPDATED: flex-1 and min-w-0 for perfect truncation */}
+                    <div className="flex items-center gap-6 md:gap-8 w-full md:flex-1 min-w-0">
                       <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center border border-transparent shrink-0 shadow-inner ${getPassIconStyle(item.passType)}`}>
                         <Ticket size={32} strokeWidth={1.5} />
                       </div>
-                      <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex flex-col gap-1 min-w-0 flex-1 pr-0 md:pr-4">
                         <div className="mb-1">
                           <span className={`text-[11px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.15em] shadow-sm ${getPassStyle(item.passType)}`}>{item.passType}</span>
                         </div>
-                        {/* NAME: Removed tracking-tight and used name-spacing class if you added it to globals.css */}
-                        <h3 className="text-3xl font-black uppercase text-slate-900 leading-tight tracking-normal truncate">
+                        <h3 title={item.userName} className="text-3xl font-black uppercase text-slate-900 leading-tight tracking-normal truncate">
                           {item.userName}
                         </h3>
-                        <div className="flex items-center gap-4 mt-1">
-                          <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
-                            <Clock size={12} className="opacity-50" /> {item.festivalYear} Edition
+                        <div className="flex items-center gap-4 mt-1 min-w-0">
+                          <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5 truncate">
+                            <Clock size={12} className="opacity-50 shrink-0" /> <span className="truncate">{item.festivalYear} Edition</span>
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between w-full md:w-auto gap-12 pt-6 md:pt-0 border-t border-slate-50 md:border-none">
+                    <div className="flex items-center justify-between w-full md:w-auto gap-12 pt-6 md:pt-0 border-t border-slate-50 md:border-none shrink-0">
                       <div className="text-right">
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Price</p>
                         <p className="font-bebas text-5xl text-slate-900 leading-none">€{item.price}</p>
@@ -219,7 +220,6 @@ export default function Cart() {
               </div>
             </div>
 
-            {/* SUMMARY COLUMN */}
             {/* SUMMARY COLUMN */}
             <div className="lg:col-span-5 xl:col-span-4">
               <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-2xl sticky top-32">

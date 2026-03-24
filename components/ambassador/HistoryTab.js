@@ -81,8 +81,8 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-6 pl-10 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
-                        <th className="p-6 font-bold w-56 border-b border-gray-100">Pass Type</th>
+                        <th className="p-6 pl-10 font-bold w-1/3 border-b border-gray-100">Attendee Name</th>
+                        <th className="p-6 font-bold text-center w-48 border-b border-gray-100">Pass Type</th>
                         <th className="p-6 font-bold text-right w-32 border-b border-gray-100">Price</th>
                         <th className="p-6 pl-16 font-bold text-center w-56 border-b border-gray-100">Emailed</th>
                         <th className="p-6 pr-10 text-right font-bold w-40 border-b border-gray-100">Status</th>
@@ -91,17 +91,20 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                   <tbody className="uppercase text-xs font-bold text-slate-900">
                      {filteredHistory.map((t, i) => (
                         <tr key={t.id} onClick={() => setFullScreenTicket(t)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                           <td className="p-6 pl-10 align-middle border-b border-gray-50">
+                           
+                           {/* STRICT TRUNCATION FOR DESKTOP NAME */}
+                           <td className="p-6 pl-10 align-middle border-b border-gray-50 max-w-[300px] xl:max-w-[400px]">
                               <div className="flex items-center gap-4 h-full mt-1">
-                                 <span className="text-[11px] font-black text-slate-400 w-6 text-right group-hover:text-salsa-pink transition-colors">{i + 1}.</span>
-                                 <div>
-                                    <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide group-hover:text-salsa-pink transition-colors leading-tight">{t.userName}</span>
-                                    <span className="block text-[10px] font-bold text-slate-400 mt-1 tracking-widest font-mono">ID: {t.ticketID}</span>
+                                 <span className="text-[11px] font-black text-slate-400 w-6 text-right group-hover:text-salsa-pink transition-colors shrink-0">{i + 1}.</span>
+                                 <div className="min-w-0 flex-1">
+                                    <span title={t.userName} className="block text-base font-bold font-montserrat text-slate-700 tracking-wide group-hover:text-salsa-pink transition-colors leading-tight truncate">{t.userName}</span>
                                  </div>
                               </div>
                            </td>
-                           <td className="p-6 align-middle border-b border-gray-50">
-                              <span className={`px-5 py-2.5 rounded-full font-sans text-[10px] font-black tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>
+
+                           {/* FIXED WIDTH & CENTERED PILL */}
+                           <td className="p-6 align-middle text-center border-b border-gray-50">
+                              <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(t.passType)}`}>
                                  {t.passType}
                               </span>
                            </td>
@@ -117,7 +120,7 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                            </td>
                            <td className="p-6 pr-10 align-middle font-montserrat border-b border-gray-50">
                               <div className="flex items-center justify-end gap-4 h-full mt-1">
-                                 <div className={`flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase ${t.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                 <div className={`flex items-center gap-1.5 text-[11px] font-black tracking-widest uppercase ${t.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
                                     {t.status === 'active' ? <CheckCircle size={14} /> : <Clock size={14} />} {t.status}
                                  </div>
                                  <div className="bg-white p-2 rounded-xl text-slate-400 group-hover:bg-salsa-pink group-hover:text-white transition-all duration-300 shadow-sm border border-gray-200 group-hover:border-salsa-pink group-hover:scale-110" title="View Ticket">
@@ -136,13 +139,17 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
             <div className="lg:hidden flex flex-col gap-4 p-4 bg-slate-50 border-t border-gray-100 flex-grow pb-24">
                {filteredHistory.map((t) => (
                   <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative cursor-pointer hover:ring-2 ring-salsa-pink/50 transition-all">
+                     
                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                           <span className="block text-lg font-black uppercase text-slate-900 leading-tight tracking-widest">{t.userName}</span>
-                           <span className="block text-sm font-bold text-slate-500 font-mono mt-1 tracking-widest">ID: {t.ticketID}</span>
+                        <div className="flex-1 min-w-0 pr-2">
+                           <span title={t.userName} className="block text-lg font-black uppercase text-slate-900 leading-tight tracking-widest truncate">{t.userName}</span>
                         </div>
-                        <span className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getPassStyle(t.passType)}`}>{t.passType}</span>
+                        {/* FIXED WIDTH MOBILE PILL */}
+                        <span className={`shrink-0 inline-flex items-center justify-center w-24 py-1.5 rounded-full text-[10px] shadow-sm font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
+                           {t.passType}
+                        </span>
                      </div>
+
                      <div className="flex justify-between items-center pt-4 border-t border-gray-50 mt-1">
                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
                            {t.status === 'active' ? <CheckCircle size={14} className="text-emerald-500"/> : <Clock size={14} className="text-amber-500"/>}

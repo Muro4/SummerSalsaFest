@@ -69,7 +69,7 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                               <td className="p-6 align-middle border-b border-gray-50">
                                  {u.role === 'ambassador' && u.ambassadorDisplayName ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {u.ambassadorDisplayName}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">-</span>}
                               </td>
-                              <td className="p-6 align-middle text-slate-500 lowercase font-bold text-xs tracking-wide border-b border-gray-50">{u.email}</td>
+                              <td className="p-6 align-middle text-slate-500 lowercase font-bold text-sm tracking-wide border-b border-gray-50">{u.email}</td>
                               <td className="p-6 pl-16 pr-12 align-middle border-b border-gray-50">
                                  <div className="flex justify-start">
                                     <CustomDropdown

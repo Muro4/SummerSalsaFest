@@ -233,7 +233,7 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                                     placeholder="ATTENDEE NAME" 
                                     onChange={(e) => handleNameChange(row.id, e.target.value)} 
                                     onBlur={() => validateRowName(row.id, row.name)}
-                                    className={`w-full p-3 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text-[11px] text-slate-900 transition-all shadow-inner text-left font-montserrat`} 
+                                    className={`w-full p-3 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text- tracking-wide text-slate-900 transition-all shadow-inner text-left font-montserrat`} 
                                  />
                                  {rowErrors[row.id] && (
                                     <span className="absolute -bottom-5 left-2 text-[9px] font-black uppercase tracking-widest text-red-500 animate-in fade-in zoom-in duration-200">
@@ -283,7 +283,7 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                               placeholder="ATTENDEE NAME" 
                               onChange={(e) => handleNameChange(row.id, e.target.value)} 
                               onBlur={() => validateRowName(row.id, row.name)}
-                              className={`w-full p-3 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text-[11px] text-slate-900 transition-all font-montserrat shadow-inner`} 
+                              className={`w-full p-3 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text-[10px] text-slate-900 transition-all font-montserrat shadow-inner`} 
                            />
                            {rowErrors[row.id] && (
                               <span className="absolute -bottom-4 left-2 text-[9px] font-black uppercase tracking-widest text-red-500 animate-in fade-in zoom-in duration-200">

@@ -102,8 +102,8 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
                         <th className="p-6 pl-10 font-bold w-48 rounded-tl-[3rem] border-b border-gray-100">Ambassador</th>
-                        <th className="p-6 font-bold w-1/4 border-b border-gray-100">Attendee Name</th>
-                        <th className="p-6 font-bold w-56 border-b border-gray-100">Pass Type</th>
+                        <th className="p-6 font-bold w-1/3 border-b border-gray-100">Attendee Name</th>
+                        <th className="p-6 font-bold w-48 border-b border-gray-100">Pass Type</th>
                         <th className="p-6 font-bold text-center w-40 border-b border-gray-100">Status</th>
                         <th className="p-6 font-bold text-center w-32 border-b border-gray-100">Price</th>
                         <th className="p-6 pr-10 text-right font-bold w-32 rounded-tr-[3rem] border-b border-gray-100">Action</th>
@@ -120,10 +120,12 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                               <td className="p-6 pl-10 align-middle border-b border-gray-50">
                                  {ambTag ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Direct</span>}
                               </td>
-                              <td className="p-6 align-middle truncate max-w-[200px] border-b border-gray-50">
-                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide">{t.userName}</span>
-                                 <span className="block text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">ID: {t.ticketID}</span>
+                              
+                              {/* UPDATED DESKTOP NAME CELL */}
+                              <td className="p-6 align-middle truncate max-w-[300px] xl:max-w-[400px] border-b border-gray-50">
+                                 <span title={t.userName} className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">{t.userName}</span>
                               </td>
+                              
                               <td className="p-6 align-middle border-b border-gray-50">
                                  <CustomDropdown
                                     value={t.passType} variant="pill"
@@ -167,10 +169,12 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                return (
                   <div key={t.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative overflow-visible">
                      <div className="flex justify-between items-start gap-4">
+                        
+                        {/* UPDATED MOBILE NAME CONTAINER */}
                         <div className="flex-1 min-w-0 pr-2">
-                           <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest break-words whitespace-normal">{t.userName}</span>
-                           <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono">ID: {t.ticketID}</span>
+                           <span title={t.userName} className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest truncate">{t.userName}</span>
                         </div>
+                        
                         <div className="shrink-0 relative z-40 mt-1 scale-[0.85] origin-top-right">
                            <CustomDropdown
                               value={t.passType} variant="pill"

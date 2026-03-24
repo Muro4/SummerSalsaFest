@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
-import { Loader2, Info, X, ChevronLeft, ChevronRight, Download, Send, UserPlus, History } from "lucide-react";
+import { Loader2, Info, X, ChevronLeft, ChevronRight, Download, Send, UserPlus, History, Mail } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
 import jsPDF from "jspdf";
@@ -72,9 +72,9 @@ export default function AmbassadorDashboard() {
             const uDoc = await getDoc(doc(db, "users", user.uid));
             if (uDoc.exists() && (uDoc.data().role === 'ambassador' || uDoc.data().role === 'superadmin')) {
                setUserData(uDoc.data());
-               const rosterDoc = await getDoc(doc(db, "rosters", user.uid));
-               if (rosterDoc.exists() && rosterDoc.data().members) setGroupRows(rosterDoc.data().members);
-               else setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
+               
+               // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state
+               setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
 
                const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
                unsubTickets = onSnapshot(q, (snap) => {
@@ -108,9 +108,9 @@ export default function AmbassadorDashboard() {
       if (currentIndex > 0) setFullScreenTicket(paidTickets[currentIndex - 1]);
    };
 
-   const saveRoster = async (newRows) => {
+   // Keep saveRoster entirely local, don't write to Firestore
+   const saveRoster = (newRows) => {
       setGroupRows(newRows);
-      if (auth.currentUser) await setDoc(doc(db, "rosters", auth.currentUser.uid), { members: newRows }, { merge: true });
    };
 
    const submitGroupToCart = async () => {
@@ -131,11 +131,12 @@ export default function AmbassadorDashboard() {
          for (const person of groupRows) {
             await addDoc(collection(db, "tickets"), {
                userId: auth.currentUser.uid, userName: person.name.trim().toUpperCase(), passType: person.type, price: getPrice(person.type),
-               status: "pending", festivalYear: parseInt(selectedYear), purchaseDate: new Date().toISOString(), emailSentCount: 0,
+               status: "pending", festivalYear: 2026, purchaseDate: new Date().toISOString(), emailSentCount: 0,
                ticketID: "GRP" + Math.random().toString(36).substring(2, 7).toUpperCase()
             });
          }
-         await saveRoster([{ id: Date.now(), name: "", type: "Full Pass" }]);
+         // Reset the local state back to one empty row after successful add to cart
+         saveRoster([{ id: Date.now(), name: "", type: "Full Pass" }]);
          showPopup({ type: "success", title: "Sent to Cart!", message: "Your drafted group has been moved to your cart.", confirmText: "Go to Cart", onConfirm: () => router.push("/cart") });
       } catch (e) {
          showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
@@ -240,17 +241,42 @@ export default function AmbassadorDashboard() {
                      <div className="p-8 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0">
                         <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
                      </div>
+                     
                      <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                        <div className="mb-4 relative z-10"><span className={`text-[12px] font-sans font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>{fullScreenTicket.passType}</span></div>
+                        <div className="mb-4 relative z-10">
+                           {/* UPDATED: PILL IS NOW FIXED-WIDTH TO MATCH TABLES */}
+                           <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(fullScreenTicket.passType)}`}>
+                              {fullScreenTicket.passType}
+                           </span>
+                        </div>
                         <h2 className={`${getTicketNameSize(fullScreenTicket.userName)} font-black text-slate-900 uppercase leading-[1.1] tracking-tight mb-2 pr-12 whitespace-normal break-words relative z-10 w-full transition-all duration-300`}>{fullScreenTicket.userName}</h2>
-                        <p className="font-mono text-gray-400 text-[11px] font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
+                        
+                        {/* UPDATED: ID IS LARGER */}
+                        <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
+                        
                         <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
-                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span><span className="block text-xs font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span></div>
-                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span><span className="block text-xs font-black text-slate-900 uppercase">€{fullScreenTicket.price}</span></div>
+                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span>
+                              {/* UPDATED: EVENT NAME LARGER */}
+                              <span className="block text-sm font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span>
+                           </div>
+                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span>
+                              {/* UPDATED: PRICE LARGER */}
+                              <span className="block text-sm font-black text-slate-900 uppercase">€{fullScreenTicket.price}</span>
+                           </div>
                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
-                              <div><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span></div>
-                              <div className="text-right"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span></div>
+                              <div>
+                                 <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span>
+                                 {/* UPDATED: DATE LARGER */}
+                                 <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span>
+                              </div>
+                              <div className="text-right">
+                                 <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
+                                 {/* UPDATED: TIME LARGER */}
+                                 <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span>
+                              </div>
                            </div>
                         </div>
                      </div>
