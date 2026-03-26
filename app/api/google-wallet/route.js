@@ -10,31 +10,29 @@ export async function POST(req) {
     const CLASS_ID = process.env.GOOGLE_CLASS_ID;
     let PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 
-    // 1. SAFETY CHECK
     if (!PRIVATE_KEY || !ISSUER_EMAIL || !ISSUER_ID || !CLASS_ID) {
-      throw new Error("Missing Google Wallet environment variables in Vercel.");
+      throw new Error("Missing Google Wallet environment variables.");
     }
 
-    // 2. VERCEL KEY FIX: Strip accidental quotes and fix line breaks
+    // Fix Vercel's environment variable formatting
     PRIVATE_KEY = PRIVATE_KEY.replace(/^"|"$/g, '').replace(/\\n/g, '\n');
 
-    // Clean the ticket ID to ensure no hidden spaces break the Google URL
+    // Clean the ticket ID
     const cleanTicketID = ticket.ticketID.replace(/[^a-zA-Z0-9]/g, '');
     
-    // We add "-V2" just to force Google to create a fresh ticket, bypassing any cached broken ones
-    const objectId = `${ISSUER_ID}.${cleanTicketID}-V2`;
+    // THE FIX: Append Date.now() so Google NEVER caches a failed attempt
+    const objectId = `${ISSUER_ID}.${cleanTicketID}-${Date.now()}`;
     
-    // 3. THE TICKET PAYLOAD
     const passObject = {
       id: objectId,
       classId: `${ISSUER_ID}.${CLASS_ID}`,
       state: "ACTIVE",
-      hexBackgroundColor: ticket.passType.includes("Full") ? "#e11d48" : "#4f46e5", // Pink or Violet!
+      hexBackgroundColor: ticket.passType.includes("Full") ? "#e11d48" : "#4f46e5",
       barcode: {
         type: "QR_CODE",
         value: ticket.ticketID,
         alternateText: ticket.ticketID,
-        renderEncoding: "UTF_8" // Forces the QR code to render
+        renderEncoding: "UTF_8"
       },
       ticketHolderName: ticket.userName,
       ticketType: {
@@ -52,7 +50,6 @@ export async function POST(req) {
       }
     };
 
-    // 4. SIGN AND SEND
     const token = jwt.sign(claims, PRIVATE_KEY, { algorithm: "RS256" });
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`;
 
