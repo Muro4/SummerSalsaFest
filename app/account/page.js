@@ -70,6 +70,7 @@ export default function AccountPage() {
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [addingToWallet, setAddingToWallet] = useState(false);
 
   const [hasApplied, setHasApplied] = useState(false);
 
@@ -169,6 +170,32 @@ export default function AccountPage() {
       pdf.save(`SalsaFest_Ticket_${fullScreenTicket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { showPopup({ type: "error", title: "Export Error", message: err.message, confirmText: "Close" }); }
     finally { if (dlIcon) dlIcon.style.display = ''; }
+  };
+
+  // --- GOOGLE WALLET INTEGRATION ---
+  const handleAddToWallet = async () => {
+    if (!fullScreenTicket) return;
+    setAddingToWallet(true);
+    try {
+      const res = await fetch("/api/google-wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticket: fullScreenTicket })
+      });
+      
+      const data = await res.json();
+      
+      if (data.url) {
+        window.open(data.url, "_blank"); 
+      } else {
+        throw new Error(data.error || "No URL returned");
+      }
+    } catch (err) {
+      console.error(err);
+      showPopup({ type: "error", title: "Wallet Error", message: "Could not generate Google Wallet pass at this time.", confirmText: "Close" });
+    } finally {
+      setAddingToWallet(false);
+    }
   };
 
   const handleSendTicketEmail = async () => {
@@ -316,9 +343,24 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* TICKET EMAIL CONTROLS */}
+            {/* TICKET CONTROLS */}
             <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
+              
+              {/* GOOGLE WALLET BUTTON */}
+              <button 
+                onClick={handleAddToWallet}
+                disabled={addingToWallet}
+                className="w-full bg-black text-white font-black px-6 py-3.5 rounded-xl shadow-md hover:bg-slate-800 hover:-translate-y-0.5 transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer"
+              >
+                {addingToWallet ? <Loader2 size={16} className="animate-spin" /> : (
+                  <svg viewBox="0 0 48 48" width="18" height="18">
+                    <path fill="#fff" d="M37 13H11c-2.2 0-4 1.8-4 4v14c0 2.2 1.8 4 4 4h26c2.2 0 4-1.8 4-4V17c0-2.2-1.8-4-4-4zm-4 15c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/>
+                  </svg>
+                )}
+                Save to Google Wallet
+              </button>
+
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2 border-t border-gray-50 pt-4">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
                   <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>

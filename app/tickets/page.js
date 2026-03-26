@@ -48,7 +48,8 @@ export default function TicketPage() {
       return;
     }
 
-    if (auth.currentUser && userData?.role !== 'ambassador') {
+    // --- CHECK SIGNED-IN USER LIMIT ---
+    if (auth.currentUser && userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
       setLoading(true);
       const q = query(
         collection(db, "tickets"),
@@ -57,19 +58,49 @@ export default function TicketPage() {
       );
       const snap = await getDocs(q);
 
-      if (!snap.empty) {
+      if (snap.size >= 5) {
         setLoading(false);
         showPopup({
           type: "info",
           title: "Limit Reached",
-          message: "Standard users can purchase one pass per year. For group purchases, please apply as an Ambassador.",
-          confirmText: "My Account",
-          onConfirm: () => router.push("/account")
+          message: "Standard users can purchase up to 5 passes per year. For larger group purchases, please apply as a Guest Dancer.",
+          confirmText: "Apply as Guest Dancer",
+          cancelText: "Cancel",
+          onConfirm: () => router.push("/apply")
         });
         return;
       }
       setLoading(false);
     }
+
+    // --- CHECK GUEST USER LIMIT ---
+    if (!auth.currentUser && isGuest) {
+      const guestSession = sessionStorage.getItem("guestSessionID");
+      if (guestSession) {
+        setLoading(true);
+        const q = query(
+          collection(db, "tickets"),
+          where("userId", "==", guestSession),
+          where("festivalYear", "==", 2026)
+        );
+        const snap = await getDocs(q);
+
+        if (snap.size >= 5) {
+          setLoading(false);
+          showPopup({
+            type: "info",
+            title: "Limit Reached",
+            message: "Guests can purchase up to 5 passes. To buy more, please create an account and apply as a Guest Dancer.",
+            confirmText: "Create Account",
+            cancelText: "Cancel",
+            onConfirm: () => router.push("/login")
+          });
+          return;
+        }
+        setLoading(false);
+      }
+    }
+
     setStep(2);
   };
 
