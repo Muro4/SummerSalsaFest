@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Search, Filter, Ticket, Calendar, CheckCircle, Clock, Mail, Eye } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
+import { EVENT_YEARS } from "@/lib/constants"; // <-- IMPORTED DYNAMIC YEARS
 
 const getPassBgColor = (type) => {
    const t = (type || '').toLowerCase();
@@ -33,9 +34,7 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
 
    const totalPaidRevenue = filteredHistory.reduce((acc, ticket) => acc + (ticket.price || 0), 0);
 
-   const activeYearOptions = ['2024', '2025', '2026', '2027'];
-   if (!activeYearOptions.includes(selectedYear)) activeYearOptions.push(selectedYear);
-   const dynamicYearDropdown = activeYearOptions.sort().reverse().map(y => ({ label: `SSF ${y}`, value: y }));
+   // Removed the old activeYearOptions array since we are using the central EVENT_YEARS now
 
    return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
@@ -51,7 +50,8 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                   <CustomDropdown value={passFilter} onChange={setPassFilter} icon={Ticket} options={[{ label: 'All Passes', value: 'All', isPill: true, colorClass: getPassStyle('All') }, { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }, { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }]} variant="filter" />
                </div>
                <div className="relative w-full sm:w-auto z-30">
-                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={dynamicYearDropdown} variant="filter"/>
+                  {/* UPDATED: USING EVENT_YEARS HERE */}
+                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
                </div>
             </div>
          </div>

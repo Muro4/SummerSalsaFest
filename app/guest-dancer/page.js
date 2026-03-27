@@ -5,7 +5,7 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, updateDoc } 
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
-import Button from "@/components/Button";
+import TabNavigation from "@/components/TabNavigation"; // <-- Added TabNavigation
 import { Loader2, Info, X, ChevronLeft, ChevronRight, Download, Send, UserPlus, History, Mail } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from 'html-to-image';
@@ -61,6 +61,12 @@ export default function AmbassadorDashboard() {
 
    const router = useRouter();
    const { showPopup } = usePopup();
+
+   // --- TAB DEFINITION ---
+   const dashboardTabs = [
+     { id: "draft", label: "Draft Roster", icon: UserPlus },
+     { id: "history", label: "Paid History", icon: History }
+   ];
 
    useEffect(() => {
       const hasSeenInfo = localStorage.getItem("hasSeenAmbassadorInfo");
@@ -244,36 +250,28 @@ export default function AmbassadorDashboard() {
                      <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                         <div className="mb-4 relative z-10">
-                           {/* UPDATED: PILL IS NOW FIXED-WIDTH TO MATCH TABLES */}
                            <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(fullScreenTicket.passType)}`}>
                               {fullScreenTicket.passType}
                            </span>
                         </div>
                         <h2 className={`${getTicketNameSize(fullScreenTicket.userName)} font-black text-slate-900 uppercase leading-[1.1] tracking-tight mb-2 pr-12 whitespace-normal break-words relative z-10 w-full transition-all duration-300`}>{fullScreenTicket.userName}</h2>
-                        
-                        {/* UPDATED: ID IS LARGER */}
                         <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
-                        
                         <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                               <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span>
-                              {/* UPDATED: EVENT NAME LARGER */}
                               <span className="block text-sm font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span>
                            </div>
                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                               <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span>
-                              {/* UPDATED: PRICE LARGER */}
                               <span className="block text-sm font-black text-slate-900 uppercase">€{fullScreenTicket.price}</span>
                            </div>
                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
                               <div>
                                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span>
-                                 {/* UPDATED: DATE LARGER */}
                                  <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span>
                               </div>
                               <div className="text-right">
                                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
-                                 {/* UPDATED: TIME LARGER */}
                                  <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span>
                               </div>
                            </div>
@@ -312,7 +310,6 @@ export default function AmbassadorDashboard() {
                      <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm"><Info size={14} /> Dashboard Guide</button>
                   </div>
                   
-                  {/* UPDATED: DYNAMIC HEADER TEXT */}
                   <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">
                      {userData?.ambassadorDisplayName ? `${userData.ambassadorDisplayName}'s Dashboard` : "Dashboard"}
                   </h1>
@@ -322,23 +319,17 @@ export default function AmbassadorDashboard() {
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full relative z-20">
                
-               {/* EXACT 1-TO-1 THICK ADMIN GRID NAVIGATOR */}
-               <div className="bg-slate-50 border border-gray-100 p-1.5 rounded-2xl w-full lg:w-[380px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] grid grid-cols-2 relative gap-1 lg:gap-0">
-                  <div
-                     className="hidden lg:block absolute top-1.5 bottom-1.5 bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
-                     style={{ width: 'calc((100% - 0.75rem) / 2)', left: activeTab === 'draft' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }}
+               {/* UPDATED: TAB NAVIGATION COMPONENT */}
+               <div className="w-full md:w-[400px]">
+                  <TabNavigation 
+                     tabs={dashboardTabs} 
+                     activeTab={activeTab} 
+                     setActiveTab={setActiveTab} 
                   />
-                  <Button variant="ghost" size="sliderTab" icon={UserPlus} onClick={() => setActiveTab("draft")} className={`relative z-10 ${activeTab === 'draft' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Draft Roster</Button>
-                  <Button variant="ghost" size="sliderTab" icon={History} onClick={() => setActiveTab("history")} className={`relative z-10 ${activeTab === 'history' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Paid History</Button>
                </div>
                
-               {/* Only show Year on History tab, aligned identically to the admin panel action buttons */}
-               {activeTab === 'history' && (
-                  <div className="hidden lg:flex items-center gap-3 w-full lg:w-auto animate-in fade-in duration-300">
-                     <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest mr-2">Festival Year</span>
-                     <span className="font-bebas text-4xl text-slate-900 leading-none pt-1">{selectedYear}</span>
-                  </div>
-               )}
+               {/* Note: In your Account page, we put the "selectedYear" state in the History Tab so it renders near the table. The Ambassador History Tab will need the same! */}
+               
             </div>
 
             {/* TAB RENDERING */}

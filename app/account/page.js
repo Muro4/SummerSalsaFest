@@ -8,6 +8,8 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
+import TabNavigation from "@/components/TabNavigation";
+import { EVENT_YEARS } from "@/lib/constants"; // <-- NEW IMPORT HERE
 import {
   Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
   User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
@@ -62,7 +64,9 @@ export default function AccountPage() {
   const [editAmbNameValue, setEditAmbNameValue] = useState("");
 
   const [resetCooldown, setResetCooldown] = useState(0);
-  const [selectedYear, setSelectedYear] = useState("2026");
+  
+  // Default to the current year dynamically
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const [ticketSearch, setTicketSearch] = useState("");
   const [passFilter, setPassFilter] = useState("all");
@@ -76,6 +80,12 @@ export default function AccountPage() {
 
   const router = useRouter();
   const { showPopup } = usePopup();
+
+  // --- TAB DEFINITION ---
+  const accountTabs = [
+    { id: "tickets", label: "Active Passes", icon: Ticket },
+    { id: "settings", label: "Settings", icon: Settings }
+  ];
 
   useEffect(() => {
     let timer;
@@ -97,7 +107,6 @@ export default function AccountPage() {
           setEditAmbNameValue(profile.ambassadorDisplayName || "");
         }
 
-        // Check if user has already applied
         try {
           const appDoc = await getDoc(doc(db, "ambassador_requests", user.uid));
           if (appDoc.exists()) setHasApplied(true);
@@ -172,7 +181,6 @@ export default function AccountPage() {
     finally { if (dlIcon) dlIcon.style.display = ''; }
   };
 
-  // --- GOOGLE WALLET INTEGRATION ---
   const handleAddToWallet = async () => {
     if (!fullScreenTicket) return;
     setAddingToWallet(true);
@@ -345,8 +353,6 @@ export default function AccountPage() {
 
             {/* TICKET CONTROLS */}
             <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
-              
-              {/* GOOGLE WALLET BUTTON */}
               <button 
                 onClick={handleAddToWallet}
                 disabled={addingToWallet}
@@ -399,7 +405,6 @@ export default function AccountPage() {
               <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
               <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30">Next <ChevronRight size={14} /></button>
             </div>
-
           </div>
         </div>
       )}
@@ -407,29 +412,19 @@ export default function AccountPage() {
       <div className="max-w-7xl mx-auto px-6 mb-24">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
-          <div><h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1><p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p></div>
-          {activeTab === 'tickets' && (
-            <div className="flex flex-col items-end z-20">
-              <label className="text-[11px] font-black text-slate-400 uppercase mb-2 tracking-widest">Event Archive</label>
-              <CustomDropdown
-                value={selectedYear}
-                onChange={setSelectedYear}
-                options={[
-                  { label: 'SSF 2026', value: '2026' },
-                  { label: 'SSF 2025', value: '2025' },
-                  { label: 'SSF 2024', value: '2024' }
-                ]}
-                variant="compact"
-              />
-            </div>
-          )}
+          <div>
+            <h1 className="font-bebas text-7xl uppercase leading-none text-slate-900">My Account</h1>
+            <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Manage your passes and profile</p>
+          </div>
         </div>
 
         {/* TABS */}
-        <div className="tabs-container w-full lg:w-80 mb-12">
-          <div className="absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/2)] bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm" style={{ left: activeTab === 'tickets' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }} />
-          <button onClick={() => setActiveTab("tickets")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'tickets' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Ticket size={14} /> Active Passes</button>
-          <button onClick={() => setActiveTab("settings")} className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase transition-colors duration-300 cursor-pointer font-montserrat ${activeTab === 'settings' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}><Settings size={14} /> Settings</button>
+        <div className="w-full md:w-[400px] mb-12">
+          <TabNavigation 
+            tabs={accountTabs} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+          />
         </div>
 
         <div className="relative min-h-[500px] w-full">
@@ -438,9 +433,9 @@ export default function AccountPage() {
             {/* TICKETS TAB */}
             {activeTab === "tickets" && (
               <div>
-
                 {/* Search & Filter Row */}
                 <div className="flex flex-col md:flex-row gap-4 mb-8">
+                  {/* Search Input */}
                   <div className="relative flex-grow group">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
                     <input
@@ -451,23 +446,38 @@ export default function AccountPage() {
                     />
                   </div>
 
-                  {userData?.role !== 'user' && (
-                    <div className="relative w-full md:w-auto">
+                  {/* Right-side Filters Container */}
+                  <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto z-20">
+                    {/* Pass Type Filter (Admins Only) */}
+                    {userData?.role !== 'user' && (
+                      <div className="relative w-full sm:w-auto">
+                        <CustomDropdown
+                          icon={Filter}
+                          value={passFilter}
+                          onChange={setPassFilter}
+                          options={[
+                            { label: 'All Passes', value: 'all', isPill: true, colorClass: 'bg-slate-100 text-slate-600' },
+                            { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: 'bg-salsa-pink text-white' },
+                            { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: 'bg-violet-600 text-white' },
+                            { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: 'bg-teal-300 text-teal-950' },
+                            { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: 'bg-yellow-400 text-yellow-900' }
+                          ]}
+                          variant="filter"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Event Archive Year Filter */}
+                    <div className="relative w-full sm:w-auto">
                       <CustomDropdown
-                        icon={Filter}
-                        value={passFilter}
-                        onChange={setPassFilter}
-                        options={[
-                          { label: 'All Passes', value: 'all', isPill: true, colorClass: 'bg-slate-100 text-slate-600' },
-                          { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: 'bg-salsa-pink text-white' },
-                          { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: 'bg-violet-600 text-white' },
-                          { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: 'bg-teal-300 text-teal-950' },
-                          { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: 'bg-yellow-400 text-yellow-900' }
-                        ]}
+                        icon={Calendar}
+                        value={selectedYear}
+                        onChange={setSelectedYear}
+                        options={EVENT_YEARS} // <-- Now pulling directly from @/lib/constants
                         variant="filter"
                       />
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {filteredTickets.length > 0 ? (
@@ -510,7 +520,7 @@ export default function AccountPage() {
                   
                   <div className="space-y-4 relative z-10">
                     
-                    {/* ROW 1: Account Holder (Editable Display Name) */}
+                    {/* ROW 1: Account Holder */}
                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900"><UserIcon size={18} /></div>
@@ -542,7 +552,7 @@ export default function AccountPage() {
                       <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm border border-emerald-100 self-start sm:self-auto">Verified</span>
                     </div>
 
-                    {/* ROW 3: Account Role (Plus Apply CTA for users) */}
+                    {/* ROW 3: Account Role */}
                     <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-500"><Shield size={18} /></div>
@@ -554,7 +564,6 @@ export default function AccountPage() {
                         </div>
                       </div>
 
-                      {/* Guest Dancer Application Button (Only for normal users) */}
                       {userData?.role === 'user' && (
                         hasApplied ? (
                           <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-100 self-start sm:self-auto">
@@ -569,7 +578,7 @@ export default function AccountPage() {
                       )}
                     </div>
 
-                    {/* ROW 4: Guest Dancer Tag (Only for approved ambassadors) */}
+                    {/* ROW 4: Guest Dancer Tag */}
                     {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
                       <div className="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center border border-gray-100 gap-4 transition-colors hover:border-gray-200">
                         <div className="flex items-center gap-3">
