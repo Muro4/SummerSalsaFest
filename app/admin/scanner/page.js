@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode"; // Using the Headless scanner now!
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import { 
@@ -58,44 +58,46 @@ export default function AdminScanner() {
   }, []);
 
   // Initialize camera ONLY ONCE on mount. It stays active permanently.
-  // Initialize camera ONLY ONCE on mount. It stays active permanently.
   useEffect(() => {
     if (!hasAccess || scannerInitialized.current) return;
     
     scannerInitialized.current = true;
+    let html5QrCode;
     
-    const scanner = new Html5QrcodeScanner("reader", { 
-        fps: 10, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0, 
-        // 🚀 MOBILE FIX 1: Explicitly demand the rear camera
-        videoConstraints: {
-            facingMode: "environment"
-        }
-    }, false);
-    
-    scanner.render((text) => {
-        // If we are already processing a scan or looking at a result, ignore new scans
-        if (isProcessingRef.current) return;
+    const initializeScanner = async () => {
+      try {
+        html5QrCode = new Html5Qrcode("reader");
         
-        isProcessingRef.current = true;
-        handleLookup(text);
-    });
+        await html5QrCode.start(
+          { facingMode: "environment" }, // Forces the rear camera on mobile
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          },
+          (text) => {
+            // Success Callback
+            if (isProcessingRef.current) return;
+            isProcessingRef.current = true;
+            handleLookup(text);
+          },
+          (errorMessage) => {
+            // Ignore background scan errors (it constantly throws errors until it finds a QR)
+          }
+        );
+      } catch (err) {
+        console.error("Camera access denied or failed:", err);
+        setErrorMessage("Camera blocked or unavailable. Please use manual entry.");
+      }
+    };
 
-    // 🚀 MOBILE FIX 2: Force iOS Safari to play the video inline (preventing black screens)
-    // We use a slight delay to ensure the library has injected the <video> element into the DOM first
-    setTimeout(() => {
-        const videoElement = document.querySelector("#reader video");
-        if (videoElement) {
-            videoElement.setAttribute("playsinline", "true");
-            videoElement.setAttribute("webkit-playsinline", "true");
-            videoElement.setAttribute("muted", "true");
-        }
-    }, 1500);
+    initializeScanner();
     
     return () => {
-        scanner.clear().catch(() => {});
-        scannerInitialized.current = false;
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
+      }
+      scannerInitialized.current = false;
     };
   }, [hasAccess]);
 
@@ -183,16 +185,6 @@ export default function AdminScanner() {
     <main className="h-dvh bg-salsa-white pt-24 pb-8 font-montserrat flex flex-col">
       <Navbar />
 
-      <style dangerouslySetInnerHTML={{__html: `
-        #reader { border: none !important; background: transparent !important; }
-        #reader__scan_region { min-height: 300px !important; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 2.5rem; background: #f8fafc; }
-        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: 2.5rem !important; }
-        #reader__dashboard_section_csr span { display: none !important; }
-        #reader__dashboard_section_csr button { background: #0f172a !important; color: white !important; border-radius: 1rem !important; padding: 0.75rem 1.5rem !important; border: none !important; font-family: 'Montserrat', sans-serif !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: 11px !important; margin: 10px auto !important; display: block !important; cursor: pointer; }
-        #reader__dashboard_section_swaplink { text-decoration: none !important; color: #94a3b8 !important; font-weight: 700 !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; margin-top: 10px !important; display: inline-block !important; }
-        #reader__camera_selection { border: 2px solid #e2e8f0 !important; border-radius: 1rem !important; padding: 0.5rem !important; font-family: 'Montserrat', sans-serif !important; font-weight: 700 !important; font-size: 11px !important; color: #475569 !important; outline: none !important; width: 100% !important; max-width: 250px !important; display: block !important; margin: 0 auto 10px auto !important; }
-      `}} />
-      
       <div className="max-w-md mx-auto px-4 w-full flex-grow flex flex-col justify-center">
         
         {/* CSS GRID OVERLAP TRICK: Both the Scanner and the Result live in the same cell.
@@ -211,7 +203,10 @@ export default function AdminScanner() {
 
                 {/* EXPANDED SCANNER CONTAINER */}
                 <div className="bg-white rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex items-center justify-center p-3 w-full shrink-0">
-                  <div id="reader" className="w-full rounded-[2.5rem] overflow-hidden flex flex-col min-h-[300px]"></div>
+                  <div 
+                    id="reader" 
+                    className="w-full rounded-[2.5rem] overflow-hidden flex flex-col min-h-[300px] bg-slate-100 relative [&>video]:object-cover [&>video]:w-full [&>video]:h-full [&>video]:absolute [&>video]:inset-0 [&>video]:rounded-[2.5rem]"
+                  ></div>
                 </div>
 
                 {/* MANUAL ID ENTRY */}
@@ -295,7 +290,7 @@ export default function AdminScanner() {
                         onClick={resetScanner} 
                         className="w-full bg-slate-900 text-white font-black py-5 rounded-[1.5rem] shadow-lg hover:bg-slate-800 flex items-center justify-center gap-3 text-sm uppercase tracking-widest transition-all"
                       >
-                          <RefreshCw size={20} /> Scan Next Guest
+                          {loading ? <Loader2 className="animate-spin" size={20} /> : <><RefreshCw size={20} /> Scan Next Guest</>}
                       </button>
                     )}
                   </div>
