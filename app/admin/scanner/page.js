@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
-import { Html5Qrcode } from "html5-qrcode"; // Using the Headless scanner now!
+import { Html5Qrcode } from "html5-qrcode"; 
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import { 
@@ -30,6 +30,14 @@ const getPassTextColor = (type) => {
 
 const getPassStyle = (type) => {
   return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
+};
+
+// --- DYNAMIC FONT SIZING FOR LONG NAMES ---
+const getScannerNameSize = (name) => {
+  if (!name) return "text-5xl";
+  if (name.length > 22) return "text-3xl leading-tight";
+  if (name.length > 12) return "text-4xl leading-tight";
+  return "text-6xl leading-none";
 };
 
 export default function AdminScanner() {
@@ -69,20 +77,19 @@ export default function AdminScanner() {
         html5QrCode = new Html5Qrcode("reader");
         
         await html5QrCode.start(
-          { facingMode: "environment" }, // Forces the rear camera on mobile
+          { facingMode: "environment" }, 
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
           },
           (text) => {
-            // Success Callback
             if (isProcessingRef.current) return;
             isProcessingRef.current = true;
             handleLookup(text);
           },
           (errorMessage) => {
-            // Ignore background scan errors (it constantly throws errors until it finds a QR)
+            // Ignore background scan errors
           }
         );
       } catch (err) {
@@ -121,11 +128,9 @@ export default function AdminScanner() {
 
       if (snap.empty) {
         setErrorMessage("Ticket not found in database.");
-        // Release lock after a tiny delay so they can scan another code
         setTimeout(() => { isProcessingRef.current = false; }, 1500);
       } else {
         setScanResult({ id: snap.docs[0].id, ...snap.docs[0].data() });
-        // We LEAVE the lock active. They must click "Scan Next" to release it.
       }
     } catch (e) {
       console.error("Firestore Error:", e.code, e.message);
@@ -146,7 +151,6 @@ export default function AdminScanner() {
     setManualID("");
     setErrorMessage(null);
     
-    // 1.5s Cooldown: Prevents the camera from instantly re-scanning the same ticket as you pull your phone away
     setTimeout(() => {
         isProcessingRef.current = false;
     }, 1500);
@@ -187,17 +191,14 @@ export default function AdminScanner() {
 
       <div className="max-w-md mx-auto px-4 w-full flex-grow flex flex-col justify-center">
         
-        {/* CSS GRID OVERLAP TRICK: Both the Scanner and the Result live in the same cell.
-            This prevents layout jumps and allows the camera to stay active but invisible! */}
         <div className="grid grid-cols-1 grid-rows-1 w-full items-center justify-center">
 
             {/* LAYER 1: HOT CAMERA & MANUAL INPUT */}
             <div className={`col-start-1 row-start-1 flex flex-col gap-4 w-full transition-opacity duration-300 ${scanResult ? 'opacity-0 pointer-events-none' : 'opacity-100 z-10'}`}>
                 
-                {/* INLINE ERROR MESSAGE */}
                 {errorMessage && (
-                    <div className="flex items-center justify-center gap-2 text-red-500 font-bold text-[11px] uppercase tracking-widest px-4 py-2 shrink-0 animate-in slide-in-from-top-2 bg-red-50 rounded-xl border border-red-100 mx-auto w-max">
-                        <AlertCircle size={14} /> {errorMessage}
+                    <div className="flex items-center justify-center gap-2 text-red-500 font-bold text-[11px] uppercase tracking-widest px-4 py-2 shrink-0 animate-in slide-in-from-top-2 bg-red-50 rounded-xl border border-red-100 mx-auto w-max max-w-full text-center">
+                        <AlertCircle size={14} className="shrink-0" /> <span className="truncate">{errorMessage}</span>
                     </div>
                 )}
 
@@ -216,7 +217,7 @@ export default function AdminScanner() {
                           type="text" 
                           placeholder="ENTER TICKET ID..." 
                           maxLength={12}
-                          className="flex-grow p-4 bg-transparent border-2 border-gray-100 rounded-[1.5rem] outline-none focus:border-slate-900 font-mono font-bold uppercase text-center tracking-widest text-sm transition-colors"
+                          className="flex-grow w-full min-w-0 p-4 bg-transparent border-2 border-gray-100 rounded-[1.5rem] outline-none focus:border-slate-900 font-mono font-bold uppercase text-center tracking-widest text-sm transition-colors"
                           value={manualID}
                           onChange={(e) => {
                               setManualID(e.target.value);
@@ -250,7 +251,7 @@ export default function AdminScanner() {
                       <RefreshCw size={14}/> Scan Next
                   </button>
 
-                  <div className="flex-grow flex flex-col items-center justify-center text-center px-6 pt-20 pb-10 relative z-10">
+                  <div className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-20 pb-10 relative z-10 w-full overflow-hidden">
                     
                     {/* 1. TICKET STATUS */}
                     <div className={`flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest mb-6 ${
@@ -263,8 +264,8 @@ export default function AdminScanner() {
                         <><CheckCircle size={20}/> Valid Pass</>}
                     </div>
                     
-                    {/* 2. ATTENDEE NAME */}
-                    <h2 className="font-bebas text-6xl text-slate-900 leading-none uppercase break-words whitespace-normal mb-8 px-2 tracking-wider">
+                    {/* 2. ATTENDEE NAME (Now dynamic and wrap-safe!) */}
+                    <h2 className={`font-bebas text-slate-900 uppercase break-words hyphens-auto mb-8 px-2 tracking-wider w-full ${getScannerNameSize(scanResult.userName)}`}>
                       {scanResult.userName}
                     </h2>
                     
@@ -275,7 +276,7 @@ export default function AdminScanner() {
 
                   </div>
 
-                  {/* ACTION BUTTONS (Dynamic based on status) */}
+                  {/* ACTION BUTTONS */}
                   <div className="p-6 pt-0 w-full shrink-0">
                     {scanResult.status === 'active' ? (
                       <button 
