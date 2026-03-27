@@ -58,6 +58,7 @@ export default function AdminScanner() {
   }, []);
 
   // Initialize camera ONLY ONCE on mount. It stays active permanently.
+  // Initialize camera ONLY ONCE on mount. It stays active permanently.
   useEffect(() => {
     if (!hasAccess || scannerInitialized.current) return;
     
@@ -67,6 +68,10 @@ export default function AdminScanner() {
         fps: 10, 
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0, 
+        // 🚀 MOBILE FIX 1: Explicitly demand the rear camera
+        videoConstraints: {
+            facingMode: "environment"
+        }
     }, false);
     
     scanner.render((text) => {
@@ -76,6 +81,17 @@ export default function AdminScanner() {
         isProcessingRef.current = true;
         handleLookup(text);
     });
+
+    // 🚀 MOBILE FIX 2: Force iOS Safari to play the video inline (preventing black screens)
+    // We use a slight delay to ensure the library has injected the <video> element into the DOM first
+    setTimeout(() => {
+        const videoElement = document.querySelector("#reader video");
+        if (videoElement) {
+            videoElement.setAttribute("playsinline", "true");
+            videoElement.setAttribute("webkit-playsinline", "true");
+            videoElement.setAttribute("muted", "true");
+        }
+    }, 1500);
     
     return () => {
         scanner.clear().catch(() => {});
