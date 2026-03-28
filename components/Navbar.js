@@ -170,6 +170,7 @@ export default function Navbar() {
             <Link href="/info" className="hover:text-salsa-pink transition-colors">Info</Link>
             <Link href="/gallery" className="hover:text-salsa-pink transition-colors">Gallery</Link>
             <Link href="/about" className="hover:text-salsa-pink transition-colors">About Us</Link>
+            <Link href="/contact" className="hover:text-salsa-pink transition">Contact Us</Link>
           </div>
 
           {/* RIGHT: ACTIONS & ICONS */}
