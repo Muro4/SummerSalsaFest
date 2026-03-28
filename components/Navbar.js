@@ -7,25 +7,27 @@ import { doc, getDoc, collection, onSnapshot, updateDoc } from "firebase/firesto
 import { usePathname, useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
+import logoImg from "../assets/logo.png";
+import Image from "next/image";
 import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket, ChevronRight } from "lucide-react";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
-  
+
   // States for Desktop vs Mobile Menus
   const [dropdownOpen, setDropdownOpen] = useState(false); // Desktop Account Dropdown
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Navigation Drawer
   const [mobileAccountOpen, setMobileAccountOpen] = useState(false); // Mobile Account Drawer
-  
+
   const [scrolled, setScrolled] = useState(false);
-  const [cartItems, setCartItems] = useState(0); 
+  const [cartItems, setCartItems] = useState(0);
 
   const dropdownRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   const { showPopup } = usePopup();
-  
+
   const isHome = pathname === "/";
   const isTransparent = isHome && !scrolled;
 
@@ -38,11 +40,11 @@ export default function Navbar() {
 
   // --- Safe Listener Management ---
   useEffect(() => {
-    let unsubCart = null; 
+    let unsubCart = null;
 
     const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
-      
+
       if (currentUser) {
         const uDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (uDoc.exists()) {
@@ -50,7 +52,7 @@ export default function Navbar() {
           setUserData(data);
 
           if (
-            (data.applicationStatus === "approved" || data.applicationStatus === "rejected") && 
+            (data.applicationStatus === "approved" || data.applicationStatus === "rejected") &&
             !data.applicationNotified
           ) {
             updateDoc(doc(db, "users", currentUser.uid), { applicationNotified: true }).catch(console.error);
@@ -71,10 +73,10 @@ export default function Navbar() {
         if (unsubCart) unsubCart();
         const cartRef = collection(db, "users", currentUser.uid, "cart");
         unsubCart = onSnapshot(cartRef, (snap) => {
-            let totalItems = 0;
-            snap.forEach((itemDoc) => { totalItems += (itemDoc.data().quantity || 1); });
-            setCartItems(totalItems);
-          },
+          let totalItems = 0;
+          snap.forEach((itemDoc) => { totalItems += (itemDoc.data().quantity || 1); });
+          setCartItems(totalItems);
+        },
           (error) => { if (error.code !== 'permission-denied') console.warn("Cart sync issue:", error.message); }
         );
 
@@ -87,7 +89,7 @@ export default function Navbar() {
 
     return () => {
       unsubAuth();
-      if (unsubCart) unsubCart(); 
+      if (unsubCart) unsubCart();
     };
   }, [router, showPopup]);
 
@@ -99,7 +101,7 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-   useEffect(() => {
+  useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -125,11 +127,11 @@ export default function Navbar() {
     setMobileMenuOpen(false);
     setMobileAccountOpen(false);
     router.push("/login");
-    setTimeout(async () => { try { await signOut(auth); } catch (err) { console.error("Sign out error:", err); } }, 800); 
+    setTimeout(async () => { try { await signOut(auth); } catch (err) { console.error("Sign out error:", err); } }, 800);
   };
 
-  const navBackgroundClass = isHome 
-    ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3 md:py-4' : 'bg-transparent py-4 md:py-6') 
+  const navBackgroundClass = isHome
+    ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3 md:py-4' : 'bg-transparent py-4 md:py-6')
     : 'bg-white shadow-sm py-3 md:py-4 border-b border-gray-200';
 
   const textColorClass = isTransparent ? "text-white" : "text-slate-800";
@@ -138,11 +140,26 @@ export default function Navbar() {
     <>
       <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 font-montserrat ${navBackgroundClass}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
-          
+
+
           {/* LEFT: LOGO */}
           <div className="flex-1 flex justify-start items-center">
-            <Link href="/" className="hover:opacity-80 transition-opacity" onClick={() => {setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false);}}>
-              <img src="/images/logo.png" alt="Salsa Fest Logo" className={`h-8 md:h-10 w-auto object-contain transition-all duration-300 ${isTransparent ? 'brightness-0 invert' : ''}`} />
+            <Link href="/" className="hover:opacity-80 transition-opacity" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }}>
+              <div className={`relative h-11 w-32 transition-all duration-300 ${isTransparent
+                  /* Transparent Nav: Turns the PNG completely white to match text-white */
+                  ? 'brightness-0 invert'
+
+                  /* Solid Nav: Turns the PNG black, with 80% opacity to perfectly match text-slate-800 */
+                  : 'brightness-0 opacity-85'
+                }`}>
+                <Image
+                  src={logoImg}
+                  alt="Salsa Fest Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
             </Link>
           </div>
 
@@ -157,12 +174,12 @@ export default function Navbar() {
 
           {/* RIGHT: ACTIONS & ICONS */}
           <div className="flex-1 flex justify-end items-center gap-3 md:gap-4">
-            
+
             {/* 1. CART ICON */}
             {user && (
               <div className="relative">
-                <Link 
-                  href="/cart" onClick={() => {setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false);}}
+                <Link
+                  href="/cart" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }}
                   className={`w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent 
                     ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}
                 >
@@ -179,8 +196,8 @@ export default function Navbar() {
             {/* 2. AVATAR (ACCOUNT MENU) */}
             {user ? (
               <div className="relative" ref={dropdownRef}>
-                <button 
-                  onClick={() => { setDropdownOpen(!dropdownOpen); setMobileAccountOpen(true); setMobileMenuOpen(false); }} 
+                <button
+                  onClick={() => { setDropdownOpen(!dropdownOpen); setMobileAccountOpen(true); setMobileMenuOpen(false); }}
                   className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
                 >
                   <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center transition-colors duration-300 ${isTransparent ? 'bg-slate-900/80 text-white' : 'bg-white text-slate-800'}`}>
@@ -222,14 +239,14 @@ export default function Navbar() {
 
             {/* 3. HAMBURGER MENU (MOBILE NAVIGATION) */}
             <div className="md:hidden relative">
-              <button 
-                onClick={() => { setMobileMenuOpen(true); setMobileAccountOpen(false); }} 
+              <button
+                onClick={() => { setMobileMenuOpen(true); setMobileAccountOpen(false); }}
                 className={`p-2 transition-colors duration-300 ${textColorClass} cursor-pointer`}
               >
                 <Menu size={28} />
               </button>
             </div>
-            
+
           </div>
         </div>
       </nav>
@@ -240,14 +257,14 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
           {/* Dark Backdrop */}
-          <div 
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" 
-            onClick={() => setMobileMenuOpen(false)} 
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setMobileMenuOpen(false)}
           />
-          
+
           {/* Sliding Drawer - Width set to 50% */}
           <div className="relative w-[70%] bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-10">
-            
+
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
               <span className="font-black text-slate-900 uppercase tracking-widest text-xs truncate">Menu</span>
@@ -293,14 +310,14 @@ export default function Navbar() {
       {mobileAccountOpen && user && (
         <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
           {/* Dark Backdrop */}
-          <div 
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" 
-            onClick={() => setMobileAccountOpen(false)} 
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setMobileAccountOpen(false)}
           />
-          
+
           {/* Sliding Drawer - Width set to 50% */}
           <div className="relative w-[70%] bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-10">
-            
+
             {/* User Info Header */}
             <div className="p-4 bg-slate-50 border-b border-gray-100 flex flex-col items-center justify-center shrink-0 relative">
               <button onClick={() => setMobileAccountOpen(false)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-salsa-pink transition-colors">
@@ -319,36 +336,36 @@ export default function Navbar() {
 
             {/* Account Links */}
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 px-2 pt-2">Your Portal</p>
-  
-  <Button href="/account" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={UserIcon} className="w-full justify-start text-slate-800">
-    My Account
-  </Button>
-  
-  {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
-    <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className="w-full justify-start text-salsa-pink">
-      Dashboard
-    </Button>
-  )}
-  
-  {userData?.role === 'admin' && (
-    <Button href="/admin/tickets" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Ticket} className="w-full justify-start text-indigo-600">
-      Tickets Database
-    </Button>
-  )}
-  
-  {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
-    <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className="w-full justify-start text-indigo-600">
-      Gate Scanner
-    </Button>
-  )}
-  
-  {userData?.role === 'superadmin' && (
-    <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className="w-full justify-start text-salsa-pink">
-      Admin Panel
-    </Button>
-  )}
-</div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 px-2 pt-2">Your Portal</p>
+
+              <Button href="/account" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={UserIcon} className="w-full justify-start text-slate-800">
+                My Account
+              </Button>
+
+              {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
+                <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className="w-full justify-start text-salsa-pink">
+                  Dashboard
+                </Button>
+              )}
+
+              {userData?.role === 'admin' && (
+                <Button href="/admin/tickets" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Ticket} className="w-full justify-start text-indigo-600">
+                  Tickets Database
+                </Button>
+              )}
+
+              {(userData?.role === 'admin' || userData?.role === 'superadmin') && (
+                <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className="w-full justify-start text-indigo-600">
+                  Gate Scanner
+                </Button>
+              )}
+
+              {userData?.role === 'superadmin' && (
+                <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className="w-full justify-start text-salsa-pink">
+                  Admin Panel
+                </Button>
+              )}
+            </div>
 
             {/* Sign Out Footer */}
             <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
