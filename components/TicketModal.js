@@ -77,12 +77,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
       const dataUrl = await captureTicketImage();
       if (!dataUrl) throw new Error("Capture failed");
 
-      // PDF dimensions
       const pdfW = 340;
       const pdfH = 600;
       const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
-      
-      // Center the image perfectly in the PDF
       pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       pdf.save(`SalsaFest_Ticket_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { 
@@ -164,7 +161,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
                         <span className="block text-xs font-black text-slate-900 uppercase">SSF {ticket.festivalYear}</span>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-xl">
-                        <span className="block text-[10px] font-black text-slate-400 uppercase mb-1">Price</span>
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Price</span>
                         <span className="block text-xs font-black text-slate-900 uppercase">€{ticket.price}</span>
                     </div>
                 </div>
@@ -222,6 +219,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
           </div>
         </div>
 
+        {/* CONTROLS */}
         <div className="w-full max-w-[340px] md:max-w-[700px] mx-auto bg-white p-5 md:p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4">
           <button onClick={handleAddToWallet} disabled={addingToWallet} className="flex md:hidden w-full bg-black text-white font-black px-4 py-3.5 rounded-xl shadow-md hover:bg-slate-800 transition-all uppercase tracking-widest text-[10px] items-center justify-center gap-2 disabled:opacity-50">
             {addingToWallet ? <Loader2 size={14} className="animate-spin" /> : (
@@ -257,6 +255,15 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
 // --- MAIN WRAPPER ---
 export default function TicketModal({ ticket: activeTicket, ticketsList, setTicket, onClose }) {
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
+
+  // BODY SCROLL LOCK Logic
+  useEffect(() => {
+    const originalOverflow = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow || 'unset';
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -316,15 +323,12 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       {/* ======================= */}
       {/* MOBILE VIEW */}
       {/* ======================= */}
-      {/* Global Close Button for Mobile - FIXED outside the loop */}
       <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="md:hidden fixed top-4 right-4 text-white hover:text-salsa-pink transition-all bg-white/10 p-2 rounded-full backdrop-blur-md z-[120]">
           <X size={24} />
       </button>
 
-      {/* Horizontal Carousel with SNAP-ALWAYS */}
       <div className="flex md:hidden absolute inset-0 overflow-x-auto overflow-y-auto snap-x snap-mandatory hide-scrollbar z-[105] pt-16 pb-6" onClick={onClose}>
         {ticketsList.map((t, i) => (
-          /* snap-always forces the scroll to stop on this specific ticket */
           <div id={`mobile-slide-${t.id}`} key={t.id} className="min-w-full px-4 snap-center snap-always flex flex-col items-center justify-start min-h-max pb-12 pt-4">
             
             {ticketsList.length > 1 && (
