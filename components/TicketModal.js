@@ -63,12 +63,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
         backgroundColor: "#ffffff", 
         skipFonts: true,
         fontEmbedCSS: '',
-        // THE FIX: This filter tells the library to ignore any element with 'export-ignore' class
-        filter: (node) => {
-            const exclusionClasses = ['export-ignore'];
-            return !exclusionClasses.some(cls => node.classList?.contains(cls));
-        },
-        style: { boxShadow: "none" } 
+        filter: (node) => !node.classList?.contains('export-ignore'),
+        style: { boxShadow: "none", margin: "0", padding: "0" } 
       });
     } catch (e) {
       console.error("Capture error:", e);
@@ -81,8 +77,13 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
       const dataUrl = await captureTicketImage();
       if (!dataUrl) throw new Error("Capture failed");
 
-      const pdf = new jsPDF({ orientation: "p", unit: "px", format: [340, 600] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, 340, 600);
+      // PDF dimensions
+      const pdfW = 340;
+      const pdfH = 600;
+      const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
+      
+      // Center the image perfectly in the PDF
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       pdf.save(`SalsaFest_Ticket_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { 
       showPopup({ type: "error", title: "Export Error", message: "Download failed. Please try again.", confirmText: "Close" }); 
@@ -115,8 +116,10 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
     setSendingEmail(true);
     try {
       const dataUrl = await captureTicketImage();
-      const pdf = new jsPDF({ orientation: "p", unit: "px", format: [340, 600] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, 340, 600);
+      const pdfW = 340;
+      const pdfH = 600;
+      const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       const pdfBase64 = pdf.output('datauristring');
 
       await fetch("/api/send-ticket", { 
@@ -139,9 +142,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
 
   return (
     <>
-      {/* 1. THE PHANTOM TICKET (Desktop Export Source) */}
+      {/* 1. PHANTOM (Desktop Export) */}
       <div className="hidden md:block fixed top-0 left-0 opacity-0 pointer-events-none z-[-1]">
-        <div id={`phantom-ticket-${ticket.id}`} className="w-[340px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div id={`phantom-ticket-${ticket.id}`} className="w-[340px] h-[600px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
             <div className="p-8 flex items-center justify-center bg-gray-50 border-b-2 border-dashed border-gray-200">
                 <div className="w-52 aspect-square bg-white p-4 rounded-3xl border border-gray-100 flex items-center justify-center">
                     <QRCodeSVG value={ticket.ticketID} size={256} style={{ width: "100%", height: "100%" }} level="H" />
@@ -155,9 +158,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
                 </div>
                 <h2 className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2 break-words">{ticket.userName}</h2>
                 <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">ID: {ticket.ticketID}</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mt-auto">
                     <div className="bg-gray-50 p-3 rounded-xl">
-                        <span className="block text-[10px] font-black text-slate-400 uppercase mb-1">Event</span>
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Event</span>
                         <span className="block text-xs font-black text-slate-900 uppercase">SSF {ticket.festivalYear}</span>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-xl">
@@ -169,11 +172,10 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
         </div>
       </div>
 
-      {/* 2. THE VISIBLE UI TICKET */}
+      {/* 2. VISIBLE UI */}
       <div className="flex flex-col gap-4 w-full" onClick={(e) => e.stopPropagation()}>
         <div id={`ticket-card-${ticket.id}`} className="w-full max-w-[340px] md:max-w-none md:w-[850px] mx-auto bg-white rounded-[2rem] md:rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden shrink-0" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
           
-          {/* Added 'export-ignore' class here */}
           <button onClick={handleDownloadPDF} title="Download PDF" className="export-ignore absolute top-4 right-4 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-pink hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100">
             <Download size={20} />
           </button>
@@ -220,7 +222,6 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
           </div>
         </div>
 
-        {/* CONTROLS */}
         <div className="w-full max-w-[340px] md:max-w-[700px] mx-auto bg-white p-5 md:p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4">
           <button onClick={handleAddToWallet} disabled={addingToWallet} className="flex md:hidden w-full bg-black text-white font-black px-4 py-3.5 rounded-xl shadow-md hover:bg-slate-800 transition-all uppercase tracking-widest text-[10px] items-center justify-center gap-2 disabled:opacity-50">
             {addingToWallet ? <Loader2 size={14} className="animate-spin" /> : (
@@ -230,19 +231,19 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
           </button>
           <div className="flex justify-between items-center gap-3 px-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] md:text-[11px] font-bold uppercase text-slate-400 tracking-widest">Status:</span>
-              <span className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${ticket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              <span className="text-[10px] md:text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+              <span className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${ticket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                 {ticket.emailSentCount > 0 ? `Sent ${ticket.emailSentCount}` : 'Not Sent'}
               </span>
             </div>
-            <span className="hidden md:block text-[11px] font-black text-slate-300">{index + 1} of {totalTickets}</span>
+            <span className="hidden md:block text-[11px] font-black text-slate-300 font-montserrat">{index + 1} of {totalTickets}</span>
           </div>
           <div className="border-t border-gray-50 pt-4">
-            <label className="block text-[10px] md:text-[11px] font-bold uppercase text-slate-400 tracking-widest mb-2 px-1">Attendee Email</label>
+            <label className="block text-[10px] md:text-[11px] font-bold uppercase text-slate-400 tracking-widest mb-2 px-1 font-montserrat">Attendee Email</label>
             <div className="relative flex items-center w-full">
               <Mail className="absolute left-3 md:left-4 text-gray-400" size={16} />
               <input type="email" maxLength={50} placeholder="EMAIL" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-[11px] uppercase tracking-widest font-montserrat" />
-              <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-1.5 md:right-2 bg-salsa-pink text-white px-4 py-2 md:py-2.5 rounded-lg font-black text-[10px] md:text-[11px] uppercase hover:bg-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm">
+              <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-1.5 md:right-2 bg-salsa-pink text-white px-4 py-2 md:py-2.5 rounded-lg font-black text-[10px] md:text-[11px] uppercase hover:bg-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm font-montserrat">
                 {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={12} /> Send</>}
               </button>
             </div>
@@ -253,7 +254,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket }) {
   );
 }
 
-// --- MAIN WRAPPER MODAL ---
+// --- MAIN WRAPPER ---
 export default function TicketModal({ ticket: activeTicket, ticketsList, setTicket, onClose }) {
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
 
@@ -270,11 +271,11 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
   useEffect(() => {
     const el = document.getElementById(`mobile-slide-${activeTicket.id}`);
     if (el) el.scrollIntoView({ behavior: 'instant', inline: 'center' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="fixed inset-0 z-[100] flex font-montserrat items-center justify-center">
-      {/* Backdrop to close */}
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300 cursor-pointer" onClick={onClose} />
       
       <style dangerouslySetInnerHTML={{__html: `.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}} />
@@ -284,7 +285,8 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       {/* ======================= */}
       <div className="hidden md:flex relative flex-col items-center justify-center p-8 z-[105]" onClick={onClose}>
         
-        <div className="w-full flex justify-end mb-4">
+        {/* CLOSE BUTTON - MOVED ABOVE TICKET */}
+        <div className="w-full flex justify-end mb-4 pr-16">
             <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="cursor-pointer text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md">
                 <X size={24} />
             </button>
@@ -299,12 +301,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
               <ChevronLeft size={32} />
             </button>
             
-            <TicketView 
-              ticket={activeTicket} 
-              index={currentIndex} 
-              totalTickets={ticketsList.length} 
-              onUpdateDesktopTicket={setTicket} 
-            />
+            <TicketView ticket={activeTicket} index={currentIndex} totalTickets={ticketsList.length} onUpdateDesktopTicket={setTicket} />
 
             <button 
               onClick={(e) => { e.stopPropagation(); setTicket(ticketsList[currentIndex + 1]); }} 
@@ -319,14 +316,17 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       {/* ======================= */}
       {/* MOBILE VIEW */}
       {/* ======================= */}
-      <div className="flex md:hidden absolute inset-0 overflow-x-auto overflow-y-auto snap-x snap-mandatory hide-scrollbar z-[105] pt-16 pb-6" onClick={onClose}>
-        
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="cursor-pointer absolute top-4 right-4 text-white hover:text-salsa-pink transition-all bg-white/10 p-2 rounded-full backdrop-blur-md z-[110]">
-            <X size={24} />
-        </button>
+      {/* Global Close Button for Mobile - FIXED outside the loop */}
+      <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="md:hidden fixed top-4 right-4 text-white hover:text-salsa-pink transition-all bg-white/10 p-2 rounded-full backdrop-blur-md z-[120]">
+          <X size={24} />
+      </button>
 
+      {/* Horizontal Carousel with SNAP-ALWAYS */}
+      <div className="flex md:hidden absolute inset-0 overflow-x-auto overflow-y-auto snap-x snap-mandatory hide-scrollbar z-[105] pt-16 pb-6" onClick={onClose}>
         {ticketsList.map((t, i) => (
-          <div id={`mobile-slide-${t.id}`} key={t.id} className="min-w-full px-4 snap-center flex flex-col items-center justify-start min-h-max pb-12 pt-4">
+          /* snap-always forces the scroll to stop on this specific ticket */
+          <div id={`mobile-slide-${t.id}`} key={t.id} className="min-w-full px-4 snap-center snap-always flex flex-col items-center justify-start min-h-max pb-12 pt-4">
+            
             {ticketsList.length > 1 && (
               <div className="flex items-center gap-2 mb-4 text-white/70 animate-pulse">
                 <ChevronLeft size={16} />
@@ -334,6 +334,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
                 <ChevronRight size={16} />
               </div>
             )}
+            
             <TicketView ticket={t} index={i} totalTickets={ticketsList.length} />
           </div>
         ))}
