@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Search, Filter, Ticket, Users, Trash2, Calendar, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
+import { EVENT_YEARS } from "@/lib/constants"; // <-- NEW IMPORT HERE
 
 // Local Pass Styling
 const getPassStyle = (type) => {
@@ -65,10 +66,6 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
       });
    };
 
-   const activeYearOptions = ['2024', '2025', '2026'];
-   if (!activeYearOptions.includes(selectedYear)) activeYearOptions.push(selectedYear);
-   const dynamicYearDropdown = activeYearOptions.sort().reverse().map(y => ({ label: `SSF ${y}`, value: y }));
-
    return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
          <div className="flex flex-col xl:flex-row gap-4 relative z-40">
@@ -89,7 +86,8 @@ export default function TicketsTab({ tickets, users, onStageChange, historyStage
                </div>
 
                <div className="relative w-full sm:w-auto z-20">
-                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={dynamicYearDropdown} variant="filter"/>
+                  {/* UPDATED TO USE EVENT_YEARS */}
+                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
                </div>
                
             </div>

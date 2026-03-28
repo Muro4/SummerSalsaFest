@@ -12,6 +12,7 @@ import AnalyticsTab from "@/components/admin/AnalyticsTab";
 import InboxManager from "@/components/admin/InboxManager"; 
 import TicketsTab from "@/components/admin/TicketsTab";
 import UsersTab from "@/components/admin/UsersTab";
+import TabNavigation from "@/components/TabNavigation"; // <-- NEW COMPONENT IMPORT
 
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2 } from "lucide-react";
 
@@ -113,6 +114,14 @@ export default function AdminDashboard() {
    // Unified Notification Counter
    const totalInboxNotifications = unreadInboxCount + pendingRequestsCount;
 
+   // --- DEFINE TABS HERE ---
+   const adminTabs = [
+      { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+      { id: 'inbox', label: 'Inbox', icon: Mail, badge: totalInboxNotifications },
+      { id: 'tickets', label: 'Tickets', icon: Ticket },
+      { id: 'users', label: 'Users', icon: UserCog }
+   ];
+
    if (!isAdmin || loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
    return (
@@ -130,31 +139,13 @@ export default function AdminDashboard() {
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full relative z-20">
 
-               {/* --- MAIN TAB NAVIGATOR --- */}
-               <div className="bg-slate-50 border border-gray-100 p-1.5 rounded-2xl w-full lg:w-[680px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] grid grid-cols-2 lg:grid-cols-4 relative gap-1 lg:gap-0">
-                  
-                  {/* Desktop Sliding Pill */}
-                  <div
-                     className="hidden lg:block absolute top-1.5 bottom-1.5 bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
-                     style={{
-                        width: 'calc((100% - 0.75rem) / 4)',
-                        left: activeTab === 'analytics' ? '0.375rem' :
-                           activeTab === 'inbox' ? 'calc(0.375rem + (100% - 0.75rem) / 4)' :
-                           activeTab === 'tickets' ? 'calc(0.375rem + ((100% - 0.75rem) / 4) * 2)' :
-                              'calc(0.375rem + ((100% - 0.75rem) / 4) * 3)'
-                     }}
+               {/* --- MAIN TAB NAVIGATOR (NEW CLEAN IMPLEMENTATION) --- */}
+               <div className="w-full lg:w-[680px]">
+                  <TabNavigation 
+                     tabs={adminTabs} 
+                     activeTab={activeTab} 
+                     setActiveTab={setActiveTab} 
                   />
-                  
-                  <Button variant="ghost" size="sliderTab" icon={BarChart3} onClick={() => setActiveTab("analytics")} className={`relative z-10 ${activeTab === 'analytics' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Analytics</Button>
-                  
-                  <Button variant="ghost" size="sliderTab" icon={Mail} onClick={() => setActiveTab("inbox")} className={`relative z-10 ${activeTab === 'inbox' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>
-                     Inbox
-                     {totalInboxNotifications > 0 && <span className="bg-salsa-pink text-white text-[10px] px-1.5 py-0.5 rounded-full leading-none font-bold animate-pulse tracking-normal absolute top-1.5 right-2 lg:right-3">{totalInboxNotifications}</span>}
-                  </Button>
-                  
-                  <Button variant="ghost" size="sliderTab" icon={Ticket} onClick={() => setActiveTab("tickets")} className={`relative z-10 ${activeTab === 'tickets' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Tickets</Button>
-                  
-                  <Button variant="ghost" size="sliderTab" icon={UserCog} onClick={() => setActiveTab("users")} className={`relative z-10 ${activeTab === 'users' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Users</Button>
                </div>
 
                {/* --- DESKTOP ACTION BUTTONS --- */}

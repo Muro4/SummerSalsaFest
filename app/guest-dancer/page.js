@@ -5,8 +5,12 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, updateDoc } 
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
+<<<<<<< HEAD
 import Button from "@/components/Button";
 import TicketModal from "@/components/TicketModal";
+=======
+import TabNavigation from "@/components/TabNavigation"; // <-- Added TabNavigation
+>>>>>>> bd639bd44aecdbfdfc6717c8dfcd7b694ec662df
 import { Loader2, Info, X, ChevronLeft, ChevronRight, Download, Send, UserPlus, History, Mail } from "lucide-react";
 import { toPng } from 'html-to-image';
 import jsPDF from "jspdf";
@@ -61,6 +65,12 @@ export default function AmbassadorDashboard() {
 
    const router = useRouter();
    const { showPopup } = usePopup();
+
+   // --- TAB DEFINITION ---
+   const dashboardTabs = [
+     { id: "draft", label: "Draft Roster", icon: UserPlus },
+     { id: "history", label: "Paid History", icon: History }
+   ];
 
    useEffect(() => {
       const hasSeenInfo = localStorage.getItem("hasSeenAmbassadorInfo");
@@ -223,12 +233,85 @@ export default function AmbassadorDashboard() {
 
          {/* --- FULLSCREEN TICKET MODAL --- */}
          {fullScreenTicket && (
+<<<<<<< HEAD
             <TicketModal 
                ticket={fullScreenTicket} 
                ticketsList={paidTickets} 
                setTicket={setFullScreenTicket} 
                onClose={() => setFullScreenTicket(null)} 
             />
+=======
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-x-hidden overflow-y-auto">
+               <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setFullScreenTicket(null)}></div>
+               <div className="relative w-fit max-w-[95vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300 my-10 mx-auto">
+                  <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md z-50"><X size={24} /></button>
+                  <div className="absolute top-1/2 -translate-y-1/2 -left-12 md:-left-20 hidden md:flex z-50">
+                     <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32} /></button>
+                  </div>
+                  <div className="absolute top-1/2 -translate-y-1/2 -right-12 md:-right-20 hidden md:flex z-50">
+                     <button onClick={handleNextTicket} disabled={currentTicketIndex >= paidTickets.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32} /></button>
+                  </div>
+
+                  <div id="ticket-to-download" className="w-[320px] md:w-[850px] flex-none bg-white rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                     <button id="download-icon-btn" onClick={handleDownloadPDF} title="Download PDF" className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint hover:-translate-y-1 hover:shadow-lg text-gray-400 hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100">
+                        <Download size={20} />
+                     </button>
+                     <div className="p-8 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0">
+                        <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
+                     </div>
+                     <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <div className="mb-4 relative z-10">
+                           <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(fullScreenTicket.passType)}`}>
+                              {fullScreenTicket.passType}
+                           </span>
+                        </div>
+                        <h2 className={`${getTicketNameSize(fullScreenTicket.userName)} font-black text-slate-900 uppercase leading-[1.1] tracking-tight mb-2 pr-12 whitespace-normal break-words relative z-10 w-full transition-all duration-300`}>{fullScreenTicket.userName}</h2>
+                        <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
+                        <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
+                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span>
+                              <span className="block text-sm font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span>
+                           </div>
+                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span>
+                              <span className="block text-sm font-black text-slate-900 uppercase">€{fullScreenTicket.price}</span>
+                           </div>
+                           <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
+                              <div>
+                                 <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Date</span>
+                                 <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span>
+                              </div>
+                              <div className="text-right">
+                                 <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
+                                 <span className="block text-sm font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
+                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
+                        <div className="flex items-center gap-2"><span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span><span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}</span></div>
+                        <span className="text-[11px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {paidTickets.length}</span>
+                     </div>
+                     <div className="border-t border-gray-50 pt-4">
+                        <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">Attendee Email</label>
+                        <div className="relative flex items-center w-full">
+                           <Mail className="absolute left-4 text-gray-400" size={16} />
+                           <input type="email" maxLength={50} placeholder="EMAIL" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[11px] uppercase tracking-widest font-montserrat" />
+                           <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[11px] uppercase hover:bg-pink-600 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat shadow-sm">{sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}</button>
+                        </div>
+                     </div>
+                     <div className="flex md:hidden justify-between pt-3 border-t border-gray-100 mt-2">
+                        <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-500 disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
+                        <button onClick={handleNextTicket} disabled={currentTicketIndex >= paidTickets.length - 1} className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-500 disabled:opacity-30">Next <ChevronRight size={14} /></button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+>>>>>>> bd639bd44aecdbfdfc6717c8dfcd7b694ec662df
          )}
 
 
@@ -242,7 +325,6 @@ export default function AmbassadorDashboard() {
                      <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm"><Info size={14} /> Dashboard Guide</button>
                   </div>
                   
-                  {/* UPDATED: DYNAMIC HEADER TEXT */}
                   <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">
                      {userData?.ambassadorDisplayName ? `${userData.ambassadorDisplayName}'s Dashboard` : "Dashboard"}
                   </h1>
@@ -252,23 +334,17 @@ export default function AmbassadorDashboard() {
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full relative z-20">
                
-               {/* EXACT 1-TO-1 THICK ADMIN GRID NAVIGATOR */}
-               <div className="bg-slate-50 border border-gray-100 p-1.5 rounded-2xl w-full lg:w-[380px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] grid grid-cols-2 relative gap-1 lg:gap-0">
-                  <div
-                     className="hidden lg:block absolute top-1.5 bottom-1.5 bg-slate-900 rounded-xl transition-all duration-300 ease-out shadow-sm"
-                     style={{ width: 'calc((100% - 0.75rem) / 2)', left: activeTab === 'draft' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }}
+               {/* UPDATED: TAB NAVIGATION COMPONENT */}
+               <div className="w-full md:w-[400px]">
+                  <TabNavigation 
+                     tabs={dashboardTabs} 
+                     activeTab={activeTab} 
+                     setActiveTab={setActiveTab} 
                   />
-                  <Button variant="ghost" size="sliderTab" icon={UserPlus} onClick={() => setActiveTab("draft")} className={`relative z-10 ${activeTab === 'draft' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Draft Roster</Button>
-                  <Button variant="ghost" size="sliderTab" icon={History} onClick={() => setActiveTab("history")} className={`relative z-10 ${activeTab === 'history' ? '!text-white bg-slate-900 lg:bg-transparent shadow-sm lg:shadow-none' : '!text-slate-400 hover:!text-slate-900 lg:hover:bg-transparent transition-colors'}`}>Paid History</Button>
                </div>
                
-               {/* Only show Year on History tab, aligned identically to the admin panel action buttons */}
-               {activeTab === 'history' && (
-                  <div className="hidden lg:flex items-center gap-3 w-full lg:w-auto animate-in fade-in duration-300">
-                     <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest mr-2">Festival Year</span>
-                     <span className="font-bebas text-4xl text-slate-900 leading-none pt-1">{selectedYear}</span>
-                  </div>
-               )}
+               {/* Note: In your Account page, we put the "selectedYear" state in the History Tab so it renders near the table. The Ambassador History Tab will need the same! */}
+               
             </div>
 
             {/* TAB RENDERING */}
