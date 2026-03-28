@@ -2,26 +2,21 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { updateProfile, sendPasswordResetEmail, signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
-<<<<<<< HEAD
 import TicketModal from "@/components/TicketModal";
-=======
 import TabNavigation from "@/components/TabNavigation";
-import { EVENT_YEARS } from "@/lib/constants"; // <-- NEW IMPORT HERE
->>>>>>> bd639bd44aecdbfdfc6717c8dfcd7b694ec662df
+import { EVENT_YEARS } from "@/lib/constants";
 import {
-  Ticket, Settings, Loader2, Search, Calendar, Clock, X, ShoppingBag,
-  User as UserIcon, Mail, LogOut, Key, Edit2, Save, Download, Users,
-  ChevronLeft, ChevronRight, Send, Filter, Sparkles, Shield
+  Ticket, Settings, Loader2, Search, Calendar, Clock, ShoppingBag,
+  User as UserIcon, Mail, LogOut, Key, Edit2, Save, Users,
+  Filter, Sparkles, Shield
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { toPng } from 'html-to-image';
-import jsPDF from "jspdf";
 
 // --- UTILS ---
 const getPassBgColor = (type) => {
@@ -76,10 +71,6 @@ export default function AccountPage() {
   const [passFilter, setPassFilter] = useState("all");
 
   const [fullScreenTicket, setFullScreenTicket] = useState(null);
-  const [recipientEmail, setRecipientEmail] = useState("");
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [addingToWallet, setAddingToWallet] = useState(false);
-
   const [hasApplied, setHasApplied] = useState(false);
 
   const router = useRouter();
@@ -170,131 +161,13 @@ export default function AccountPage() {
     });
   };
 
-  const handleDownloadPDF = async () => {
-    const element = document.getElementById("ticket-to-download");
-    if (!element) return;
-    const dlIcon = document.getElementById("download-icon-btn");
-    if (dlIcon) dlIcon.style.display = 'none';
-    try {
-      const { width, height } = element.getBoundingClientRect();
-      const dataUrl = await toPng(element, { quality: 1, pixelRatio: 3, backgroundColor: "#ffffff", skipFonts: true, style: { boxShadow: "none" } });
-      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
-      pdf.save(`SalsaFest_Ticket_${fullScreenTicket.userName.replace(/\s+/g, '_')}.pdf`);
-    } catch (err) { showPopup({ type: "error", title: "Export Error", message: err.message, confirmText: "Close" }); }
-    finally { if (dlIcon) dlIcon.style.display = ''; }
-  };
-
-  const handleAddToWallet = async () => {
-    if (!fullScreenTicket) return;
-    setAddingToWallet(true);
-    try {
-      const res = await fetch("/api/google-wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticket: fullScreenTicket })
-      });
-      
-      const data = await res.json();
-      
-      if (data.url) {
-        window.open(data.url, "_blank"); 
-      } else {
-        throw new Error(data.error || "No URL returned");
-      }
-    } catch (err) {
-      console.error(err);
-      showPopup({ type: "error", title: "Wallet Error", message: "Could not generate Google Wallet pass at this time.", confirmText: "Close" });
-    } finally {
-      setAddingToWallet(false);
-    }
-  };
-
-  const handleSendTicketEmail = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!recipientEmail || !emailRegex.test(recipientEmail)) {
-      showPopup({ type: "error", title: "Invalid Email", message: "Please enter a valid email address.", confirmText: "Try Again" });
-      return;
-    }
-
-    setSendingEmail(true);
-
-    const element = document.getElementById("ticket-to-download");
-    const controls = document.getElementById("ticket-controls");
-    const dlIcon = document.getElementById("download-icon-btn");
-
-    if (controls) controls.style.display = 'none';
-    if (dlIcon) dlIcon.style.display = 'none';
-
-    let pdfBase64 = "";
-
-    try {
-      const { width, height } = element.getBoundingClientRect();
-
-      const dataUrl = await toPng(element, {
-        quality: 0.9,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        skipFonts: true,
-        style: { boxShadow: "none" }
-      });
-
-      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
-      pdfBase64 = pdf.output('datauristring');
-    } catch (err) {
-      showPopup({ type: "error", title: "PDF Error", message: "Failed to generate ticket attachment.", confirmText: "Close" });
-      setSendingEmail(false);
-      if (controls) controls.style.display = '';
-      if (dlIcon) dlIcon.style.display = '';
-      return;
-    }
-
-    if (controls) controls.style.display = '';
-    if (dlIcon) dlIcon.style.display = '';
-
-    fetch("/api/send-ticket", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: recipientEmail,
-        ticket: fullScreenTicket,
-        pdfAttachment: pdfBase64
-      })
-    }).catch(error => {
-      console.error("🚨 BACKGROUND EMAIL ERROR:", error);
-    });
-
-    updateDoc(doc(db, "tickets", fullScreenTicket.id), { emailSentCount: (fullScreenTicket.emailSentCount || 0) + 1 }).catch(console.error);
-
-    setFullScreenTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
-
-    showPopup({
-      type: "success",
-      title: "Sent!",
-      message: `The ticket to ${recipientEmail} has been queued and will arrive shortly.`,
-      confirmText: "Done"
-    });
-
-    setRecipientEmail("");
-    setSendingEmail(false);
-  };
-
-  const getTicketNameSize = (name) => {
-    if (!name) return "text-3xl md:text-4xl";
-    if (name.length > 25) return "text-xl md:text-2xl";
-    if (name.length > 15) return "text-2xl md:text-3xl";
-    return "text-3xl md:text-4xl";
-  };
-
   const filteredTickets = tickets.filter(t =>
     t.festivalYear?.toString() === selectedYear &&
     (passFilter === "all" || t.passType === passFilter) &&
     (t.userName?.toLowerCase().includes(ticketSearch.toLowerCase()) || t.ticketID?.toLowerCase().includes(ticketSearch.toLowerCase()))
   );
 
-  const currentTicketIndex = fullScreenTicket ? filteredTickets.findIndex(t => t.id === fullScreenTicket.id) : -1;
-
+  // Add event listener for TicketModal (if you still want keyboard nav mapped here, though TicketModal handles it too)
   useEffect(() => {
     if (!fullScreenTicket) return;
     const handleKeyDown = (e) => {
@@ -306,13 +179,6 @@ export default function AccountPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [fullScreenTicket, filteredTickets]);
 
-  const handleNextTicket = () => {
-    if (currentTicketIndex < filteredTickets.length - 1) setFullScreenTicket(filteredTickets[currentTicketIndex + 1]);
-  };
-  const handlePrevTicket = () => {
-    if (currentTicketIndex > 0) setFullScreenTicket(filteredTickets[currentTicketIndex - 1]);
-  };
-
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
   return (
@@ -321,105 +187,12 @@ export default function AccountPage() {
 
       {/* --- MODAL: FULL PREVIEW --- */}
       {fullScreenTicket && (
-<<<<<<< HEAD
         <TicketModal 
           ticket={fullScreenTicket} 
           ticketsList={filteredTickets} 
           setTicket={setFullScreenTicket} 
           onClose={() => setFullScreenTicket(null)} 
         />
-=======
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-x-hidden overflow-y-auto">
-          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setFullScreenTicket(null)}></div>
-          <div className="relative w-fit max-w-[95vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300 my-10 mx-auto">
-
-            <button onClick={() => setFullScreenTicket(null)} className="cursor-pointer absolute -top-12 right-0 md:-right-4 text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md z-50"><X size={24} /></button>
-
-            <div className="absolute top-1/2 -translate-y-1/2 -left-12 md:-left-20 hidden md:flex z-50">
-              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronLeft size={32} /></button>
-            </div>
-            <div className="absolute top-1/2 -translate-y-1/2 -right-12 md:-right-20 hidden md:flex z-50">
-              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="p-3 bg-white/10 rounded-full text-white hover:bg-white/30 hover:scale-110 transition-all disabled:opacity-20 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"><ChevronRight size={32} /></button>
-            </div>
-
-            <div id="ticket-to-download" className="w-[320px] md:w-[850px] flex-none bg-white rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-              <button id="download-icon-btn" onClick={handleDownloadPDF} title="Download PDF" className="absolute top-6 right-6 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-mint hover:-translate-y-1 hover:shadow-lg text-gray-400 hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100"><Download size={20} /></button>
-              <div className="p-8 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0">
-                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100"><QRCodeSVG value={fullScreenTicket.ticketID} size={200} level="H" /></div>
-              </div>
-              <div className="p-8 md:p-10 flex flex-col justify-center flex-1 relative bg-white min-w-0">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                <div className="mb-4 relative z-10"><span className={`text-xs font-sans font-black px-5 py-2 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(fullScreenTicket.passType)}`}>{fullScreenTicket.passType}</span></div>
-                <h2 className={`${getTicketNameSize(fullScreenTicket.userName)} font-black text-slate-900 uppercase leading-[1.1] tracking-tight mb-2 pr-12 whitespace-normal break-words relative z-10 w-full transition-all duration-300`}>{fullScreenTicket.userName}</h2>
-                <p className="font-mono text-gray-500 text-[14px] font-bold tracking-widest uppercase mb-8 relative z-10">ID: {fullScreenTicket.ticketID}</p>
-                <div className="grid grid-cols-2 gap-3 mt-auto relative z-10">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Access</span><span className="block text-xs font-black text-slate-900 uppercase">Salsa Fest {fullScreenTicket.festivalYear}</span></div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price Paid</span><span className="block text-xs font-black text-slate-900 uppercase">€{fullScreenTicket.price || 0}</span></div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
-                    <div><span className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Purchase Date</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).date}</span></div>
-                    <div className="text-right"><span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span><span className="block text-xs font-bold text-slate-900">{formatDate(fullScreenTicket.purchaseDate).time}</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* TICKET CONTROLS */}
-            <div id="ticket-controls" className="w-full md:w-[700px] bg-white p-6 rounded-[2rem] shadow-2xl flex flex-col gap-4 mt-2">
-              <button 
-                onClick={handleAddToWallet}
-                disabled={addingToWallet}
-                className="w-full bg-black text-white font-black px-6 py-3.5 rounded-xl shadow-md hover:bg-slate-800 hover:-translate-y-0.5 transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer"
-              >
-                {addingToWallet ? <Loader2 size={16} className="animate-spin" /> : (
-                  <svg viewBox="0 0 48 48" width="18" height="18">
-                    <path fill="#fff" d="M37 13H11c-2.2 0-4 1.8-4 4v14c0 2.2 1.8 4 4 4h26c2.2 0 4-1.8 4-4V17c0-2.2-1.8-4-4-4zm-4 15c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/>
-                  </svg>
-                )}
-                Save to Google Wallet
-              </button>
-
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2 border-t border-gray-50 pt-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
-                  <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${fullScreenTicket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                    {fullScreenTicket.emailSentCount > 0 ? `Sent ${fullScreenTicket.emailSentCount} Times` : 'Not Sent'}
-                  </span>
-                </div>
-                <span className="text-[11px] font-black text-slate-300 md:hidden">{currentTicketIndex + 1} of {filteredTickets.length}</span>
-              </div>
-
-              <div className="border-t border-gray-50 pt-4">
-                <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat mb-2 px-1">
-                  Attendee Email
-                </label>
-                <div className="relative flex items-center w-full">
-                  <Mail className="absolute left-4 text-gray-400" size={16} />
-                  <input
-                    type="email"
-                    maxLength={50}
-                    placeholder="EMAIL"
-                    value={recipientEmail}
-                    onChange={(e) => setRecipientEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-4 pl-12 pr-28 outline-none focus:bg-white focus:border-slate-900 transition-all text-[11px] uppercase tracking-widest font-montserrat"
-                  />
-                  <button
-                    onClick={handleSendTicketEmail}
-                    disabled={sendingEmail}
-                    className="cursor-pointer absolute right-2 bg-salsa-pink text-white px-5 py-2.5 rounded-lg font-black text-[11px] uppercase hover:bg-pink-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-montserrat"
-                  >
-                    {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex md:hidden justify-between w-full max-w-[320px] px-4 mt-2">
-              <button onClick={handlePrevTicket} disabled={currentTicketIndex <= 0} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30"><ChevronLeft size={14} /> Prev</button>
-              <button onClick={handleNextTicket} disabled={currentTicketIndex >= filteredTickets.length - 1} className="flex items-center gap-1 text-[11px] font-black uppercase text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-30">Next <ChevronRight size={14} /></button>
-            </div>
-          </div>
-        </div>
->>>>>>> bd639bd44aecdbfdfc6717c8dfcd7b694ec662df
       )}
 
       <div className="max-w-7xl mx-auto px-6 mb-24">
@@ -454,7 +227,7 @@ export default function AccountPage() {
                     <input
                       type="text"
                       placeholder="SEARCH PASSES..."
-                      className="input-standard"
+                      className="input-standard w-full"
                       onChange={e => setTicketSearch(e.target.value)}
                     />
                   </div>
@@ -486,7 +259,7 @@ export default function AccountPage() {
                         icon={Calendar}
                         value={selectedYear}
                         onChange={setSelectedYear}
-                        options={EVENT_YEARS} // <-- Now pulling directly from @/lib/constants
+                        options={EVENT_YEARS} 
                         variant="filter"
                       />
                     </div>
