@@ -167,10 +167,10 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
       <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
          
          {/* SEARCH & FILTERS */}
-         <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">
+         <div className="flex flex-col xl:flex-row gap-3 md:gap-4 mb-6 md:mb-8 w-full relative z-40 px-0">
             <div className="relative flex-grow group">
-               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
-               <input type="text" maxLength={50} placeholder="SEARCH DRAFT NAMES..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" />
+               <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
+               <input type="text" maxLength={50} placeholder="SEARCH DRAFT NAMES..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full p-4 md:p-5 pl-12 md:pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-[10px] md:text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" />
             </div>
             <div className="relative w-full xl:w-auto z-40">
                <CustomDropdown value={passFilter} onChange={setPassFilter} icon={Ticket} options={[{ label: 'All Passes', value: 'All', isPill: true, colorClass: getPassStyle('All') }, { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }]} variant="filter" />
@@ -178,20 +178,20 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
          </div>
 
          {/* DATA CONTAINER */}
-         <div className="bg-white rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col relative z-10">
-            <div className="p-8 md:p-10 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 gap-6 shrink-0 rounded-t-[3rem]">
+         <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col relative z-10">
+            <div className="p-5 md:p-10 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50/50 gap-4 md:gap-6 shrink-0 rounded-t-[2rem] md:rounded-t-[3rem]">
                <div>
-                  <h2 className="font-bebas text-4xl text-slate-900 uppercase tracking-wide">Pending Group</h2>
-                  <p className="text-xs font-medium text-slate-500 mt-1 font-montserrat">Draft names and select passes. Changes save automatically.</p>
+                  <h2 className="font-bebas text-3xl md:text-4xl text-slate-900 uppercase tracking-wide">Pending Group</h2>
+                  <p className="text-[10px] md:text-xs font-medium text-slate-500 mt-1 font-montserrat">Draft names and select passes. Changes save automatically.</p>
                </div>
-               <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+               <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-end">
                   <div className="flex items-center gap-2">
-                     <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
-                     <span className={`font-bebas text-3xl leading-none ${groupRows.length >= 100 ? 'text-red-500' : 'text-slate-900'}`}>{groupRows.length}/100</span>
+                     <span className="text-[10px] md:text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Drafted:</span>
+                     <span className={`font-bebas text-2xl md:text-3xl leading-none ${groupRows.length >= 100 ? 'text-red-500' : 'text-slate-900'}`}>{groupRows.length}/100</span>
                   </div>
                   <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
-                     <input type="number" min="1" max="100" maxLength={3} value={bulkAddCount} onChange={(e) => setBulkAddCount(e.target.value)} className="w-16 px-3 py-2 text-xs font-bold text-center outline-none bg-transparent text-slate-900 font-montserrat" />
-                     <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-[11px] uppercase flex items-center justify-center gap-2 hover:bg-salsa-pink hover:scale-105 transition-all duration-300 font-montserrat"><Plus size={14} /> Add</button>
+                     <input type="number" min="1" max="100" maxLength={3} value={bulkAddCount} onChange={(e) => setBulkAddCount(e.target.value)} className="w-12 md:w-16 px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-bold text-center outline-none bg-transparent text-slate-900 font-montserrat" />
+                     <button onClick={handleBulkAdd} className="cursor-pointer bg-slate-900 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-black text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-1 md:gap-2 hover:bg-salsa-pink hover:scale-105 transition-all duration-300 font-montserrat"><Plus size={14} /> Add</button>
                   </div>
                </div>
             </div>
@@ -255,7 +255,7 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                            <td className="p-6 text-right font-bold text-base text-slate-700 align-middle border-b border-gray-50">€{getPrice(row.type)}</td>
                            <td className="p-6 pr-10 text-right align-middle border-b border-gray-50">
                               <div className="flex items-center justify-end h-full mt-1">
-                                 <button onClick={() => confirmRemoveRow(row.id, row.name)} title="Delete Row" className="text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all duration-300 hover:scale-110"><Trash2 size={18} /></button>
+                                 <button onClick={() => confirmRemoveRow(row.id, row.name)} title="Delete Row" className="text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all duration-300 hover:scale-110 cursor-pointer"><Trash2 size={18} /></button>
                               </div>
                            </td>
                         </tr>
@@ -266,16 +266,23 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
             </div>
 
             {/* MOBILE CARDS */}
-            <div className="lg:hidden flex flex-col gap-4 p-4 bg-slate-50 border-t border-gray-100 flex-grow pb-24">
+            {/* Removed overflow-hidden from parent so z-index stacking allows dropdowns to break out */}
+            <div className="lg:hidden flex flex-col gap-3 p-3 sm:p-4 bg-slate-50 border-t border-gray-100 flex-grow pb-24">
                {filteredDrafts.map((row, index) => (
-                  <div key={row.id} className={`bg-white rounded-3xl p-5 border shadow-sm flex flex-col gap-4 relative overflow-visible transition-colors ${selectedDrafts.includes(row.id) ? 'ring-2 ring-slate-900 bg-slate-50' : 'border-gray-100'}`}>
+                  <div 
+                     key={row.id} 
+                     // THE FIX: Dynamically set z-index so the first items are higher than the later items
+                     style={{ zIndex: filteredDrafts.length - index }} 
+                     className={`bg-white rounded-3xl p-4 sm:p-5 border shadow-sm flex flex-col gap-3 relative overflow-visible transition-colors ${selectedDrafts.includes(row.id) ? 'ring-2 ring-slate-900 bg-slate-50' : 'border-gray-100'}`}
+                  >
                      
+                     {/* Top Row: Checkbox, Name Input, Inline Trash */}
                      <div className="flex items-start gap-3 w-full">
-                        <div className="flex flex-col items-center gap-2 mt-3 cursor-pointer" onClick={() => handleMouseDownOnRow(row.id)}>
+                        <div className="flex flex-col items-center gap-1.5 mt-2.5 cursor-pointer shrink-0" onClick={() => handleMouseDownOnRow(row.id)}>
                            <span className="text-[10px] font-black text-slate-400">{index + 1}.</span>
                            <input type="checkbox" className="w-4 h-4 accent-slate-900 rounded pointer-events-none" checked={selectedDrafts.includes(row.id)} readOnly />
                         </div>
-                        <div className="flex-1 min-w-0 relative mb-2">
+                        <div className="flex-1 min-w-0 relative">
                            <input 
                               type="text" 
                               maxLength={50} 
@@ -283,8 +290,11 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                               placeholder="ATTENDEE NAME" 
                               onChange={(e) => handleNameChange(row.id, e.target.value)} 
                               onBlur={() => validateRowName(row.id, row.name)}
-                              className={`w-full p-3 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text-[10px] text-slate-900 transition-all font-montserrat shadow-inner`} 
+                              className={`w-full p-3 pr-10 bg-gray-50 border ${rowErrors[row.id] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none focus:bg-white font-bold uppercase text-xs sm:text-sm text-slate-900 transition-all font-montserrat shadow-inner`} 
                            />
+                           <button onClick={() => confirmRemoveRow(row.id, row.name)} className="absolute top-1/2 -translate-y-1/2 right-2 text-gray-400 hover:text-red-500 p-2 rounded-lg transition-all cursor-pointer z-10 bg-gray-50 hover:bg-red-50">
+                              <Trash2 size={16} />
+                           </button>
                            {rowErrors[row.id] && (
                               <span className="absolute -bottom-4 left-2 text-[9px] font-black uppercase tracking-widest text-red-500 animate-in fade-in zoom-in duration-200">
                                  {rowErrors[row.id]}
@@ -293,39 +303,36 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
                         </div>
                      </div>
 
-                     <div className="flex items-center justify-between w-full relative z-20">
-                        <div className="scale-[0.85] origin-left z-20">
+                     {/* Bottom Row: Dropdown and Price */}
+                     <div className="flex items-center justify-between w-full relative z-50 pl-7 mt-1">
+                        <div className="w-[140px] sm:w-[160px] relative z-50">
                            <CustomDropdown
                               value={row.type} variant="pill"
                               onChange={(val) => updateRow(row.id, 'type', val)}
                               options={[{ label: 'Full Pass', value: 'Full Pass', colorClass: 'bg-salsa-pink text-white' }, { label: 'Party Pass', value: 'Party Pass', colorClass: 'bg-violet-600 text-white' }, { label: 'Day Pass', value: 'Day Pass', colorClass: 'bg-teal-300 text-teal-950' }]}
                            />
                         </div>
-                        <span className="text-lg font-black text-slate-700">€{getPrice(row.type)}</span>
+                        <span className="text-xl font-black text-slate-700 leading-none">€{getPrice(row.type)}</span>
                      </div>
-                     
-                      <button onClick={() => confirmRemoveRow(row.id, row.name)} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 hover:bg-red-50 p-3 rounded-xl transition-all cursor-pointer">
-                        <Trash2 size={18} />
-                     </button>
                   </div>
                ))}
-               {filteredDrafts.length === 0 && <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">No drafts found.</div>}
+               {filteredDrafts.length === 0 && <div className="bg-white rounded-3xl p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">No drafts found.</div>}
             </div>
 
-            <div className="p-6 md:p-8 bg-slate-50 border-t border-gray-100 flex flex-col md:flex-row justify-between md:justify-end items-center gap-6 shrink-0 mt-auto md:rounded-b-[3rem] relative z-10">
+            <div className="p-5 md:p-8 bg-slate-50 border-t border-gray-100 flex flex-col md:flex-row justify-between md:justify-end items-center gap-4 md:gap-6 shrink-0 mt-auto md:rounded-b-[3rem] relative z-10">
                {selectedDrafts.length > 0 && (
-                  <button onClick={confirmMassDelete} className="w-full md:w-auto text-red-500 hover:text-white hover:bg-red-500 border border-red-500 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-sm">
+                  <button onClick={confirmMassDelete} className="w-full md:w-auto text-red-500 hover:text-white hover:bg-red-500 border border-red-500 px-6 py-3 md:py-4 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shadow-sm cursor-pointer">
                      Delete Selected ({selectedDrafts.length})
                   </button>
                )}
-               <div className="text-center md:text-right">
-                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
-                  <span className="block font-montserrat text-3xl font-black text-slate-900">€{draftTotal}</span>
+               <div className="text-center md:text-right w-full md:w-auto">
+                  <span className="block text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest font-montserrat">Total Amount</span>
+                  <span className="block font-montserrat text-3xl md:text-4xl font-black text-slate-900">€{draftTotal}</span>
                </div>
                <button 
                   onClick={submitGroupToCart} 
                   disabled={groupRows.length === 0 || groupRows.some(r => !r.name || rowErrors[r.id])} 
-                  className="w-full md:w-auto cursor-pointer bg-slate-900 text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:bg-emerald-500 hover:shadow-emerald-500/20 transition-all duration-300 tracking-widest text-[11px] uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed font-montserrat"
+                  className="w-full md:w-auto cursor-pointer bg-slate-900 text-white font-black px-8 py-4 md:px-10 rounded-2xl shadow-xl hover:bg-emerald-500 hover:shadow-emerald-500/20 transition-all duration-300 tracking-widest text-[10px] md:text-[11px] uppercase flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed font-montserrat"
                >
                   Send to Cart <ArrowRight size={16} />
                </button>

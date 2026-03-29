@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { db } from "@/lib/firebase";
@@ -10,6 +10,9 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Cooldown state for spam prevention (in seconds)
+  const [cooldown, setCooldown] = useState(0);
   
   // Real-time email validation state
   const [emailError, setEmailError] = useState("");
@@ -26,6 +29,14 @@ export default function ContactPage() {
   const [customSubject, setCustomSubject] = useState("");
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Cooldown Timer Effect
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -50,6 +61,12 @@ export default function ContactPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Spam prevention check
+    if (cooldown > 0) {
+      setError(`Please wait ${cooldown} seconds before sending another message.`);
+      return;
+    }
+
     // Basic empty check
     if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
       setError("Please fill out all fields.");
@@ -88,6 +105,7 @@ export default function ContactPage() {
       });
       
       setIsSent(true);
+      setCooldown(60); // Set exactly 1 minute cooldown
       setFormData({ name: "", email: "", category: "Tickets", message: "" });
       setCustomSubject("");
     } catch (err) {
@@ -124,21 +142,34 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* 2. STATIC CONTACT TILES */}
+      {/* 2. INTERACTIVE CONTACT TILES */}
       <section className="relative z-20 -mt-10 sm:-mt-16 px-4 sm:px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[
-            { label: "Email Us", val: "info@summersalsa.com", icon: <Mail size={24} />, color: "bg-salsa-mint" },
-            { label: "Call Us", val: "+359 888 123 456", icon: <Phone size={24} />, color: "bg-salsa-pink" },
-            { label: "Location", val: "Varna Free University", icon: <MapPin size={24} />, color: "bg-slate-900" }
+            { label: "Email Us", val: "ssf.varna@gmail.com", icon: <Mail size={24} />, color: "bg-salsa-mint", href: "mailto:ssf.varna@gmail.com", target: "_blank" },
+            { label: "Call Us", val: "+359 888 123 456", icon: <Phone size={24} />, color: "bg-salsa-pink", href: "tel:+359888123456", target: "_self" },
+            { label: "Location", val: "Varna Free University", icon: <MapPin size={24} />, color: "bg-slate-900", href: "https://maps.google.com/?q=Varna+Free+University,+Varna", target: "_blank" }
           ].map((item, i) => (
-            <div key={i} className="bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col items-center text-center">
-              <div className={`w-12 h-12 sm:w-14 sm:h-14 ${item.color} text-white rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 shadow-sm`}>
+            <a 
+              key={i} 
+              href={item.href}
+              target={item.target}
+              rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+              // THE FIX: Force JavaScript to open a new tab, preventing webmail handlers from hijacking the current page
+              onClick={(e) => {
+                if (item.target === "_blank") {
+                  e.preventDefault();
+                  window.open(item.href, '_blank');
+                }
+              }}
+              className="bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col items-center text-center hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 cursor-pointer group"
+            >
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 ${item.color} text-white rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
                 {item.icon}
               </div>
               <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1 sm:mb-2">{item.label}</p>
               <p className="font-bold text-sm sm:text-base text-slate-900 tracking-tight">{item.val}</p>
-            </div>
+            </a>
           ))}
         </div>
       </section>
@@ -203,7 +234,7 @@ export default function ContactPage() {
                   />
                 </div>
                 
-                {/* Email (Now with real-time responsive error) */}
+                {/* Email */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                   <input 
@@ -228,7 +259,6 @@ export default function ContactPage() {
               {/* Category (Radio Buttons) */}
               <div className="space-y-2 sm:space-y-3 pt-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">What's this about?</label>
-                {/* Flex-col on mobile, Flex-row on larger screens */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
                   {['Tickets', 'Workshops', 'Media', 'Other'].map((cat) => (
                     <button
@@ -286,10 +316,16 @@ export default function ContactPage() {
               {/* Submit Button */}
               <button 
                 type="submit"
-                disabled={isSubmitting || emailError}
-                className="w-full bg-slate-900 text-white p-4 sm:p-5 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest hover:bg-salsa-pink hover:shadow-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 mt-2 sm:mt-4 disabled:opacity-50"
+                disabled={isSubmitting || emailError || cooldown > 0}
+                className="w-full bg-slate-900 text-white p-4 sm:p-5 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest hover:bg-salsa-pink hover:shadow-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 mt-2 sm:mt-4 disabled:opacity-50 disabled:hover:bg-slate-900 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <><Send size={16} /> Send Message</>}
+                {isSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : cooldown > 0 ? (
+                  `Wait ${cooldown}s to send again`
+                ) : (
+                  <><Send size={16} /> Send Message</>
+                )}
               </button>
             </form>
           )}

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Search, Filter, Ticket, Calendar, CheckCircle, Clock, Mail, Eye } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
-import { EVENT_YEARS } from "@/lib/constants"; // <-- IMPORTED DYNAMIC YEARS
+import { EVENT_YEARS } from "@/lib/constants";
 
 const getPassBgColor = (type) => {
    const t = (type || '').toLowerCase();
@@ -34,23 +34,40 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
 
    const totalPaidRevenue = filteredHistory.reduce((acc, ticket) => acc + (ticket.price || 0), 0);
 
-   // Removed the old activeYearOptions array since we are using the central EVENT_YEARS now
-
    return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
          
          {/* SEARCH & FILTERS */}
          <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">
-            <div className="relative flex-grow group">
+            <div className="relative flex-grow group w-full">
                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
-               <input type="text" maxLength={50} placeholder="SEARCH PAID NAMES OR IDs..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" />
+               <input 
+                  type="text" 
+                  maxLength={50} 
+                  placeholder="SEARCH PAID NAMES OR IDs..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)} 
+                  className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" 
+               />
             </div>
+            
             <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto shrink-0">
                <div className="relative w-full sm:w-auto z-40">
-                  <CustomDropdown value={passFilter} onChange={setPassFilter} icon={Ticket} options={[{ label: 'All Passes', value: 'All', isPill: true, colorClass: getPassStyle('All') }, { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }, { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }]} variant="filter" />
+                  <CustomDropdown 
+                     value={passFilter} 
+                     onChange={setPassFilter} 
+                     icon={Ticket} 
+                     options={[
+                        { label: 'All Passes', value: 'All', isPill: true, colorClass: getPassStyle('All') }, 
+                        { label: 'Full Pass', value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, 
+                        { label: 'Party Pass', value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, 
+                        { label: 'Day Pass', value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }, 
+                        { label: 'Free Pass', value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }
+                     ]} 
+                     variant="filter" 
+                  />
                </div>
                <div className="relative w-full sm:w-auto z-30">
-                  {/* UPDATED: USING EVENT_YEARS HERE */}
                   <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
                </div>
             </div>
@@ -91,8 +108,6 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                   <tbody className="uppercase text-xs font-bold text-slate-900">
                      {filteredHistory.map((t, i) => (
                         <tr key={t.id} onClick={() => setFullScreenTicket(t)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                           
-                           {/* STRICT TRUNCATION FOR DESKTOP NAME */}
                            <td className="p-6 pl-10 align-middle border-b border-gray-50 max-w-[300px] xl:max-w-[400px]">
                               <div className="flex items-center gap-4 h-full mt-1">
                                  <span className="text-[11px] font-black text-slate-400 w-6 text-right group-hover:text-salsa-pink transition-colors shrink-0">{i + 1}.</span>
@@ -101,8 +116,6 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                                  </div>
                               </div>
                            </td>
-
-                           {/* FIXED WIDTH & CENTERED PILL */}
                            <td className="p-6 align-middle text-center border-b border-gray-50">
                               <span className={`inline-flex items-center justify-center w-32 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(t.passType)}`}>
                                  {t.passType}
@@ -135,34 +148,45 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                </table>
             </div>
 
-            {/* MOBILE CARDS */}
+            {/* ==============================================
+                MOBILE VIEW: CARDS (Visible only on small screens)
+                ============================================== */}
             <div className="lg:hidden flex flex-col gap-4 p-4 bg-slate-50 border-t border-gray-100 flex-grow pb-24">
                {filteredHistory.map((t) => (
                   <div key={t.id} onClick={() => setFullScreenTicket(t)} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative cursor-pointer hover:ring-2 ring-salsa-pink/50 transition-all">
                      
+                     {/* Header Info */}
                      <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0 pr-2">
-                           <span title={t.userName} className="block text-lg font-black uppercase text-slate-900 leading-tight tracking-widest truncate">{t.userName}</span>
+                           <span title={t.userName} className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest truncate">{t.userName}</span>
+                           <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono truncate">ID: {t.ticketID}</span>
                         </div>
-                        {/* FIXED WIDTH MOBILE PILL */}
+                        {/* Pass Pill (Fixed Width) */}
                         <span className={`shrink-0 inline-flex items-center justify-center w-24 py-1.5 rounded-full text-[10px] shadow-sm font-black uppercase tracking-widest mt-1 ${getPassStyle(t.passType)}`}>
                            {t.passType}
                         </span>
                      </div>
 
-                     <div className="flex justify-between items-center pt-4 border-t border-gray-50 mt-1">
+                     {/* Bottom Row (Status, Email Count, Price) */}
+                     <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-1 w-full">
                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
                            {t.status === 'active' ? <CheckCircle size={14} className="text-emerald-500"/> : <Clock size={14} className="text-amber-500"/>}
                            <span className={t.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}>{t.status}</span>
                         </div>
+                        
                         <div className="flex items-center gap-3">
                            {t.emailSentCount > 0 && <span className="text-emerald-500 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-bold tracking-widest flex items-center gap-1"><Mail size={12}/> {t.emailSentCount}</span>}
                            <span className="font-bold text-slate-700 text-sm">€{t.price}</span>
                         </div>
                      </div>
+
                   </div>
                ))}
-               {filteredHistory.length === 0 && <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">No paid attendees found.</div>}
+               {filteredHistory.length === 0 && (
+                  <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">
+                     No paid attendees found.
+                  </div>
+               )}
             </div>
 
          </div>

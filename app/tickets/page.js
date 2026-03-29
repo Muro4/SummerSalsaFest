@@ -221,7 +221,14 @@ export default function TicketPage() {
                 {isGuest && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">Email for Delivery</label>
-                    <input type="email" placeholder="YOUR@EMAIL.COM" required className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900" onChange={e => setGuestEmail(e.target.value)} />
+                    <input 
+                      type="email" 
+                      placeholder="YOUR@EMAIL.COM" 
+                      required 
+                      maxLength={100} 
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900" 
+                      onChange={e => setGuestEmail(e.target.value)} 
+                    />
                   </div>
                 )}
 
@@ -231,6 +238,7 @@ export default function TicketPage() {
                     type="text"
                     placeholder="E.G. IVAN GEORGIEV"
                     required
+                    maxLength={50}
                     className={`w-full p-3.5 bg-gray-50 border rounded-2xl outline-none focus:bg-white font-bold uppercase text-sm transition-all text-slate-900 ${isNameInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`}
                     onChange={e => setRealName(e.target.value)}
                   />

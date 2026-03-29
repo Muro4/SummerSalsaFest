@@ -119,8 +119,8 @@ export default function AboutPage() {
             { title: "World-Class Quality", icon: <Award size={32} />, desc: "We don't compromise on the lineup. We bring the undisputed champions of the world directly to Varna to teach and inspire." },
             { title: "Unforgettable Joy", icon: <Sparkles size={32} />, desc: "It’s not just about steps and timing; it's about the feeling. We engineer every party to make you forget the real world." }
           ].map((value, i) => (
-            <div key={i} className="bg-salsa-white rounded-[2.5rem] p-10 border border-salsa-mint/20 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group text-center">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm text-salsa-pink group-hover:scale-110 group-hover:bg-salsa-pink group-hover:text-white transition-all duration-300">
+            <div key={i} className="bg-salsa-white rounded-[2.5rem] p-10 border border-salsa-mint/20 text-center">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm text-salsa-pink">
                 {value.icon}
               </div>
               <h3 className="font-bold text-2xl mb-4 text-gray-900">{value.title}</h3>
