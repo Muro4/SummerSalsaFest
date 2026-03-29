@@ -101,6 +101,7 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -156,7 +157,8 @@ export default function Navbar() {
                   src={logoImg}
                   alt="Salsa Fest Logo"
                   fill
-                  className="object-contain"
+                  // THE FIX: Added "object-left" to snap the image perfectly to the grid edge
+                  className="object-contain object-left" 
                   priority
                 />
               </div>
@@ -182,7 +184,7 @@ export default function Navbar() {
                 <Link
                   href="/cart" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }}
                   className={`w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent 
-                    ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}
+                  ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}
                 >
                   <ShoppingCart size={20} className="md:w-[22px] md:h-[22px]" />
                 </Link>
