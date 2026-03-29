@@ -6,11 +6,10 @@ import Button from "@/components/Button";
 import { Music, Users, Sun, Star } from "lucide-react"; 
 
 export default function Home() {
-  // All required refs for the smooth scrolling logic
   const scrollContainerRef = useRef(null);
   const animationRef = useRef(null);
   const restartTimeoutRef = useRef(null);
-  const isManuallyScrollingRef = useRef(false); // <-- This was missing!
+  const isManuallyScrollingRef = useRef(false); 
   const scrollAccumulator = useRef(0);
   
   // --- DYNAMIC FESTIVAL DATA ---
@@ -62,12 +61,8 @@ export default function Home() {
   const startAutoScroll = () => {
     const scroll = () => {
       if (scrollContainerRef.current && !isManuallyScrollingRef.current) {
-        
         const isMobile = window.innerWidth < 768;
-        
-        // Very slow speeds for high-refresh-rate monitors
         const speed = isMobile ? 0.4 : 0.15; 
-        
         scrollAccumulator.current += speed;
         
         if (scrollAccumulator.current >= 1) {
@@ -76,8 +71,6 @@ export default function Home() {
         }
 
         const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-        
-        // Reset to beginning if we hit the end
         if (scrollLeft + clientWidth >= scrollWidth - 1) {
           scrollContainerRef.current.scrollLeft = 0;
         }
@@ -94,7 +87,7 @@ export default function Home() {
     if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     restartTimeoutRef.current = setTimeout(() => {
       isManuallyScrollingRef.current = false;
-    }, 5000); // Wait 5 seconds after manual interaction to resume auto-scroll
+    }, 5000); 
   };
 
   return (
@@ -116,25 +109,29 @@ export default function Home() {
           }}
         />
 
-        {/* EXACT HERO REVERT */}
-        <div className="relative z-10 w-full h-screen flex flex-col items-center justify-center px-4 md:px-0"> 
-          <div className="text-salsa-white max-w-6xl mt-12 flex flex-col items-center w-full"> 
+        {/* CENTERED HERO WRAPPER
+          Using flex-grow and justify-center perfectly centers the content. 
+          pb-16 md:pb-24 slightly offsets the visual center to account for the diagonal cut at the bottom.
+        */}
+        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pb-16 md:pb-24"> 
+          <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
-            {/* DYNAMIC EDITION TEXT */} 
-            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 md:mb-8 text-center"> 
+            {/* DYNAMIC EDITION TEXT - Spacing: mb-8 (32px) */} 
+            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
               {editionText} 
             </span> 
 
-            <h1 className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-6 md:mb-8 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
+            {/* HEADLINE - Spacing: mb-12 (48px) */} 
+            <h1 className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
               <span className="ambient-wave-word wave-3">FEST</span> 
             </h1> 
 
-            <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mt-4 md:mt-12 mb-10 md:mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-3xl p-6 md:p-0 shadow-2xl md:shadow-none gap-6 md:gap-12"> 
+            {/* INFO CARD - Spacing: mb-16 (64px) */} 
+            <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-[2rem] p-8 md:p-0 shadow-2xl md:shadow-none gap-8 md:gap-12"> 
               <div className="text-center md:text-right w-full md:w-auto"> 
                 <p className="font-bebas text-4xl md:text-5xl text-white">1-3 AUG</p> 
-                {/* DYNAMIC YEAR */} 
                 <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{festivalYear}</p> 
               </div> 
               <div className="w-16 h-px md:w-px md:h-16 bg-white/30" /> 
@@ -144,6 +141,7 @@ export default function Home() {
               </div> 
             </div> 
 
+            {/* ORIGINAL BUTTONS RESTORED */} 
             <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 w-full md:w-auto"> 
               <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20"> 
                 BUY PASS 
@@ -154,16 +152,17 @@ export default function Home() {
               </Button> 
             </div> 
           </div> 
-          
-          {/* Scroll Indicator - Hidden on mobile to avoid overlap */}
-          <div className="hidden md:flex animate-fade-in delay-900 absolute bottom-10 left-1/2 -translate-x-1/2 flex-col items-center gap-2">
-            <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
-            <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">
-              <div className="w-1 h-2 bg-salsa-pink rounded-full animate-bounce"></div>
-            </div>
+        </div>
+
+        {/* Scroll Indicator - Positioned absolutely so it doesn't affect flex centering */}
+        <div className="hidden md:flex absolute bottom-40 left-1/2 -translate-x-1/2 z-10 animate-fade-in delay-900 flex-col items-center gap-2 pointer-events-none">
+          <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
+          <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">
+            <div className="w-1 h-2 bg-salsa-pink rounded-full animate-bounce"></div>
           </div>
         </div>
 
+        {/* Diagonal Cut Bottom */}
         <div className="absolute -bottom-[1px] left-0 w-full z-20 leading-[0]">
           <svg className="w-full h-10 sm:h-16 md:h-24 block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
             <path d="M0,60 C300,120 900,0 1200,60 L1200,120 L0,120 Z" className="fill-white"></path>
@@ -234,7 +233,6 @@ export default function Home() {
           onMouseEnter={stopAutoScrollAndScheduleRestart}
           onTouchStart={stopAutoScrollAndScheduleRestart}
         >
-          {/* Snap properties removed entirely to allow butter-smooth JS scrolling */}
           <div ref={scrollContainerRef} className="flex gap-4 md:gap-8 px-4 md:px-[15vw] overflow-x-auto hide-scrollbar py-6 md:py-10 pb-10 md:pb-14">
             {[...reviews, ...reviews, ...reviews].map((review, i) => (
               <div key={i} className="shrink-0 w-[280px] sm:w-[350px] md:w-[400px] bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col cursor-pointer">

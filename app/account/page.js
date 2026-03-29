@@ -63,8 +63,7 @@ export default function AccountPage() {
   const [editAmbNameValue, setEditAmbNameValue] = useState("");
 
   const [resetCooldown, setResetCooldown] = useState(0);
-  
-  // Default to the current year dynamically
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const [ticketSearch, setTicketSearch] = useState("");
@@ -76,7 +75,21 @@ export default function AccountPage() {
   const router = useRouter();
   const { showPopup } = usePopup();
 
-  // --- TAB DEFINITION ---
+  // --- VALIDATION LOGIC ---
+  // --- VALIDATION LOGIC ---
+  // 1. Strict Letters Only (For real names)
+  const isValidNameStr = (str) => /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(str);
+
+  // 2. Letters + Numbers Allowed (For Guest Dancer Tags)
+  const isValidAmbTagStr = (str) => /^[a-zA-Z0-9\u00C0-\u024F\s\-']+$/.test(str);
+
+  const isWithinWordLimit = (str) => str.trim().split(/\s+/).length <= 5;
+
+  const isNameInvalid = editNameValue.length > 0 && (!isValidNameStr(editNameValue) || !isWithinWordLimit(editNameValue));
+
+  // Update this line to use the new number-friendly function
+  const isAmbNameInvalid = editAmbNameValue.length > 0 && (!isValidAmbTagStr(editAmbNameValue) || !isWithinWordLimit(editAmbNameValue));
+
   const accountTabs = [
     { id: "tickets", label: "Active Passes", icon: Ticket },
     { id: "settings", label: "Settings", icon: Settings }
@@ -122,12 +135,12 @@ export default function AccountPage() {
   }, [router]);
 
   const handleUpdateName = async () => {
-    if (!editNameValue.trim()) return;
+    if (!editNameValue.trim() || isNameInvalid) return;
     setLoading(true);
     try {
-      await updateProfile(auth.currentUser, { displayName: editNameValue });
-      await setDoc(doc(db, "users", auth.currentUser.uid), { displayName: editNameValue }, { merge: true });
-      setUserData(prev => ({ ...prev, displayName: editNameValue }));
+      await updateProfile(auth.currentUser, { displayName: editNameValue.trim() });
+      await setDoc(doc(db, "users", auth.currentUser.uid), { displayName: editNameValue.trim() }, { merge: true });
+      setUserData(prev => ({ ...prev, displayName: editNameValue.trim() }));
       setIsEditingName(false);
       showPopup({ type: "success", title: "Saved!", message: "Profile name updated.", confirmText: "Done" });
     } catch (e) { showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" }); }
@@ -135,11 +148,11 @@ export default function AccountPage() {
   };
 
   const handleUpdateAmbassadorName = async () => {
-    if (!editAmbNameValue.trim()) return;
+    if (!editAmbNameValue.trim() || isAmbNameInvalid) return;
     setLoading(true);
     try {
-      await setDoc(doc(db, "users", auth.currentUser.uid), { ambassadorDisplayName: editAmbNameValue }, { merge: true });
-      setUserData(prev => ({ ...prev, ambassadorDisplayName: editAmbNameValue }));
+      await setDoc(doc(db, "users", auth.currentUser.uid), { ambassadorDisplayName: editAmbNameValue.trim() }, { merge: true });
+      setUserData(prev => ({ ...prev, ambassadorDisplayName: editAmbNameValue.trim() }));
       setIsEditingAmbName(false);
       showPopup({ type: "success", title: "Saved!", message: "Guest Dancer tag updated.", confirmText: "Done" });
     } catch (e) { showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" }); }
@@ -184,19 +197,17 @@ export default function AccountPage() {
     <main className="min-h-screen bg-salsa-white pt-24 md:pt-32 pb-20 font-montserrat select-none">
       <Navbar />
 
-      {/* --- MODAL: FULL PREVIEW --- */}
       {fullScreenTicket && (
-        <TicketModal 
-          ticket={fullScreenTicket} 
-          ticketsList={filteredTickets} 
-          setTicket={setFullScreenTicket} 
-          onClose={() => setFullScreenTicket(null)} 
+        <TicketModal
+          ticket={fullScreenTicket}
+          ticketsList={filteredTickets}
+          setTicket={setFullScreenTicket}
+          onClose={() => setFullScreenTicket(null)}
         />
       )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 mb-24">
-        
-        {/* HEADER */}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-10 gap-4 md:gap-6">
           <div>
             <h1 className="font-bebas text-5xl md:text-7xl uppercase leading-none text-slate-900">My Account</h1>
@@ -204,22 +215,19 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* TABS */}
         <div className="w-full md:w-[400px] mb-8 md:mb-12">
-          <TabNavigation 
-            tabs={accountTabs} 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
+          <TabNavigation
+            tabs={accountTabs}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
           />
         </div>
 
         <div className="relative min-h-[500px] w-full">
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full z-0">
 
-            {/* TICKETS TAB */}
             {activeTab === "tickets" && (
               <div>
-                {/* Search & Filter Row */}
                 <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
                   <div className="relative flex-grow group">
                     <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-salsa-pink transition-colors" size={16} />
@@ -249,13 +257,13 @@ export default function AccountPage() {
                         />
                       </div>
                     )}
-                    
+
                     <div className="relative w-full sm:w-auto">
                       <CustomDropdown
                         icon={Calendar}
                         value={selectedYear}
                         onChange={setSelectedYear}
-                        options={EVENT_YEARS} 
+                        options={EVENT_YEARS}
                         variant="filter"
                       />
                     </div>
@@ -270,11 +278,10 @@ export default function AccountPage() {
                           <div className="bg-white p-2 md:p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500">
                             <QRCodeSVG value={t.ticketID} size={85} level="H" className="w-16 h-16 md:w-[85px] md:h-[85px]" />
                           </div>
-                          <span className="text-[9px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 md:mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
+                          <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 md:mt-4 text-center group-hover:text-slate-900 transition-colors">Tap to expand</span>
                         </div>
                         <div className="p-5 md:p-8 flex flex-col justify-center flex-grow relative bg-white min-w-0">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>
-                          {/* THE FIX: Changed mobile text from [9px] to [10px] for the pass pill */}
                           <div className="mb-2 md:mb-3 relative z-10"><span className={`text-[10px] md:text-[11px] font-sans font-black px-4 md:px-5 py-1.5 md:py-2 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(t.passType)}`}>{t.passType}</span></div>
                           <h3 className="text-xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-[1.1] mb-1 relative z-10 truncate transition-colors">{t.userName}</h3>
                           <p className="font-mono text-gray-500 text-xs md:text-sm font-bold tracking-widest uppercase mb-4 md:mb-6 relative z-10">ID: {t.ticketID}</p>
@@ -300,38 +307,51 @@ export default function AccountPage() {
               </div>
             )}
 
-            {/* SETTINGS TAB */}
             {activeTab === "settings" && (
               <div className="grid lg:grid-cols-2 gap-6 md:gap-8 max-w-6xl">
-                
+
                 {/* 1. Profile Details */}
                 <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-[0_10px_30px_rgb(0,0,0,0.04)] relative overflow-hidden h-fit">
                   <h2 className="font-bebas text-4xl md:text-5xl mb-6 md:mb-8 uppercase text-slate-900">Profile Details</h2>
-                  
+
                   <div className="space-y-3 md:space-y-4 relative z-10">
-                    
+
                     {/* ROW 1: Account Holder */}
-                    <div className="p-4 md:p-5 bg-gray-50 rounded-2xl flex flex-row justify-between items-center border border-gray-100 gap-3 md:gap-4 transition-colors hover:border-gray-200">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900 shrink-0"><UserIcon size={18} /></div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block text-[10px] md:text-[11px] font-bold text-slate-400 uppercase mb-1 leading-none">Account Holder</span>
+                    <div className="p-4 md:p-5 bg-gray-50 rounded-2xl flex flex-row justify-between items-start md:items-center border border-gray-100 gap-3 md:gap-4 transition-colors hover:border-gray-200">
+                      <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-900 shrink-0 mt-0.5 md:mt-0"><UserIcon size={18} /></div>
+                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                          <span className="block text-[10px] md:text-[11px] font-bold text-slate-400 uppercase mb-1 md:mb-0.5 leading-none">Account Holder</span>
                           {isEditingName ? (
-                            <input type="text" maxLength={50} value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
+                            <>
+                              <input
+                                type="text"
+                                maxLength={50}
+                                value={editNameValue}
+                                onChange={e => setEditNameValue(e.target.value)}
+                                className={`bg-white border rounded-lg px-2 py-1 outline-none text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat mt-1 ${isNameInvalid ? 'border-red-400 focus:border-red-500 shadow-sm' : 'border-gray-200 focus:border-slate-900'}`}
+                                autoFocus
+                              />
+                              {isNameInvalid && (
+                                <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest mt-1.5 animate-in fade-in duration-200">No special characters or numbers are allowed (Max 5 words)</span>
+                              )}
+                            </>
                           ) : (
-                            <span className="block text-xs font-bold uppercase text-slate-900 truncate">{userData?.displayName}</span>
+                            <span className="block text-xs font-bold uppercase text-slate-900 truncate mt-1 md:mt-0">{userData?.displayName}</span>
                           )}
                         </div>
                       </div>
-                      {isEditingName ? (
-                        <button onClick={handleUpdateName} className="bg-slate-900 text-white text-[10px] md:text-[11px] font-black p-2.5 sm:px-6 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md shrink-0">
-                          <Save size={14} /> <span className="hidden sm:inline">Save</span>
-                        </button>
-                      ) : (
-                        <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 p-2.5 sm:px-3 sm:py-2 rounded-lg text-[10px] md:text-[11px] font-black flex items-center justify-center gap-2 transition-all shrink-0">
-                          <Edit2 size={14} /> <span className="hidden sm:inline">Edit</span>
-                        </button>
-                      )}
+                      <div className="shrink-0 mt-0.5 md:mt-0">
+                        {isEditingName ? (
+                          <button onClick={handleUpdateName} disabled={isNameInvalid || !editNameValue.trim()} className="bg-slate-900 text-white text-[10px] md:text-[11px] font-black p-2.5 sm:px-6 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed">
+                            <Save size={14} /> <span className="hidden sm:inline">Save</span>
+                          </button>
+                        ) : (
+                          <button onClick={() => setIsEditingName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 p-2.5 sm:px-3 sm:py-2 rounded-lg text-[10px] md:text-[11px] font-black flex items-center justify-center gap-2 transition-all">
+                            <Edit2 size={14} /> <span className="hidden sm:inline">Edit</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* ROW 2: Email Address */}
@@ -341,13 +361,11 @@ export default function AccountPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className="block text-[10px] md:text-[11px] font-bold text-slate-400 uppercase leading-none">Email Address</span>
-                            {/* THE FIX: Increased mobile text to [10px] and px-2.5 py-1 */}
                             <span className="sm:hidden text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2.5 py-1 rounded-md uppercase tracking-widest shadow-sm border border-emerald-100 leading-none">Verified</span>
                           </div>
                           <span className="block text-xs font-bold text-slate-900 truncate">{userData?.email}</span>
                         </div>
                       </div>
-                      {/* Desktop Only: Right-Aligned Pill */}
                       <span className="hidden sm:inline-block text-[10px] md:text-[11px] font-black text-emerald-500 bg-emerald-50 px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm border border-emerald-100 shrink-0">Verified</span>
                     </div>
 
@@ -379,27 +397,43 @@ export default function AccountPage() {
 
                     {/* ROW 4: Guest Dancer Tag */}
                     {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && (
-                      <div className="p-4 md:p-5 bg-gray-50 rounded-2xl flex flex-row justify-between items-center border border-gray-100 gap-3 md:gap-4 transition-colors hover:border-gray-200">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500 shrink-0"><Users size={18} /></div>
-                          <div className="flex-1 min-w-0">
-                            <span className="block text-[10px] md:text-[11px] font-bold text-slate-400 uppercase mb-1 leading-none">Guest Dancer Tag</span>
+                      <div className="p-4 md:p-5 bg-gray-50 rounded-2xl flex flex-row justify-between items-start md:items-center border border-gray-100 gap-3 md:gap-4 transition-colors hover:border-gray-200">
+                        <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
+                          <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-amber-500 shrink-0 mt-0.5 md:mt-0"><Users size={18} /></div>
+                          <div className="flex-1 min-w-0 flex flex-col justify-center">
+                            <span className="block text-[10px] md:text-[11px] font-bold text-slate-400 uppercase mb-1 md:mb-0.5 leading-none">Guest Dancer Tag</span>
                             {isEditingAmbName ? (
-                              <input type="text" maxLength={50} value={editAmbNameValue} onChange={e => setEditAmbNameValue(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-slate-900 text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat" autoFocus />
+                              <>
+                                <input
+                                  type="text"
+                                  maxLength={50}
+                                  value={editAmbNameValue}
+                                  onChange={e => setEditAmbNameValue(e.target.value)}
+                                  className={`bg-white border rounded-lg px-2 py-1 outline-none text-xs font-bold uppercase text-slate-900 w-full transition-all font-montserrat mt-1 ${isAmbNameInvalid ? 'border-red-400 focus:border-red-500 shadow-sm' : 'border-gray-200 focus:border-slate-900'}`}
+                                  autoFocus
+                                />
+                                {isAmbNameInvalid && (
+                                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest mt-1.5 animate-in fade-in duration-200">
+                                    No special characters are allowed (Max 5 words)
+                                  </span>
+                                )}
+                              </>
                             ) : (
-                              <span className="block text-xs font-bold uppercase text-slate-900 truncate">{userData?.ambassadorDisplayName || "Not Set"}</span>
+                              <span className="block text-xs font-bold uppercase text-slate-900 truncate mt-1 md:mt-0">{userData?.ambassadorDisplayName || "Not Set"}</span>
                             )}
                           </div>
                         </div>
-                        {isEditingAmbName ? (
-                          <button onClick={handleUpdateAmbassadorName} className="bg-slate-900 text-white text-[10px] md:text-[11px] font-black p-2.5 sm:px-6 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md shrink-0">
-                            <Save size={14} /> <span className="hidden sm:inline">Save</span>
-                          </button>
-                        ) : (
-                          <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 p-2.5 sm:px-3 sm:py-2 rounded-lg text-[10px] md:text-[11px] font-black flex items-center justify-center gap-2 transition-all shrink-0">
-                            <Edit2 size={14} /> <span className="hidden sm:inline">Edit</span>
-                          </button>
-                        )}
+                        <div className="shrink-0 mt-0.5 md:mt-0">
+                          {isEditingAmbName ? (
+                            <button onClick={handleUpdateAmbassadorName} disabled={isAmbNameInvalid || !editAmbNameValue.trim()} className="bg-slate-900 text-white text-[10px] md:text-[11px] font-black p-2.5 sm:px-6 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 hover:scale-105 transition-all shadow-md disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed">
+                              <Save size={14} /> <span className="hidden sm:inline">Save</span>
+                            </button>
+                          ) : (
+                            <button onClick={() => setIsEditingAmbName(true)} className="text-slate-400 hover:text-slate-900 hover:bg-gray-200 p-2.5 sm:px-3 sm:py-2 rounded-lg text-[10px] md:text-[11px] font-black flex items-center justify-center gap-2 transition-all">
+                              <Edit2 size={14} /> <span className="hidden sm:inline">Edit</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
