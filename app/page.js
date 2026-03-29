@@ -66,7 +66,7 @@ export default function Home() {
         const isMobile = window.innerWidth < 768;
         
         // Very slow speeds for high-refresh-rate monitors
-        const speed = isMobile ? 0.1 : 0.15; 
+        const speed = isMobile ? 0.4 : 0.15; 
         
         scrollAccumulator.current += speed;
         
