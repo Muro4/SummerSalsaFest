@@ -7,7 +7,6 @@ import { Music, Users, Sun, Star } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
 export default function Home() {
-  // Initialize the translation hooks matching our JSON namespaces
   const t = useTranslations('Index');
   const tCommon = useTranslations('Common');
 
@@ -17,7 +16,6 @@ export default function Home() {
   const isManuallyScrollingRef = useRef(false); 
   const scrollAccumulator = useRef(0);
   
-  // --- DYNAMIC FESTIVAL DATA ---
   const [festivalYear, setFestivalYear] = useState(2026);
   const [editionNumber, setEditionNumber] = useState(15);
 
@@ -31,7 +29,6 @@ export default function Home() {
     { name: "Katarina D.", role: "Follower", text: "V University is a great venue. Easy access and beautiful views." },
   ];
 
-  // Map the translated strings directly into the features array
   const features = [
     { title: t('features.artistsTitle'), desc: t('features.artistsDesc'), icon: Music },
     { title: t('features.beachTitle'), desc: t('features.beachDesc'), icon: Sun },
@@ -39,15 +36,11 @@ export default function Home() {
   ];
 
   useEffect(() => {
-    // 1. Calculate Dynamic Year
     const d = new Date();
     const calculatedYear = d.getMonth() > 7 ? d.getFullYear() + 1 : d.getFullYear();
     setFestivalYear(calculatedYear);
-    
-    // 2. Calculate Edition Number (Pass to JSON to handle st/nd/rd/th vs -то/-во)
     setEditionNumber(calculatedYear - 2011);
 
-    // 3. Start Butter-Smooth Auto-Scroll
     startAutoScroll();
     
     return () => {
@@ -57,7 +50,6 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- BUTTERY SMOOTH & SLOWED DOWN AUTO SCROLL ---
   const startAutoScroll = () => {
     const scroll = () => {
       if (scrollContainerRef.current && !isManuallyScrollingRef.current) {
@@ -112,20 +104,17 @@ export default function Home() {
         <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pb-16 md:pb-24"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
-            {/* DYNAMIC EDITION TEXT */} 
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
               {t('hero.edition', { ordinal: editionNumber })} 
             </span> 
 
-            {/* HEADLINE */} 
+            {/* This stays Modak since it's the English brand name */}
             <h1 className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
-              {/* Note: If you want to translate the festival name, you can map it here. Otherwise, leave it hardcoded as a brand name. */}
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
               <span className="ambient-wave-word wave-3">FEST</span> 
             </h1> 
 
-            {/* INFO CARD */} 
             <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-[2rem] p-8 md:p-0 shadow-2xl md:shadow-none gap-8 md:gap-12"> 
               <div className="text-center md:text-right w-full md:w-auto"> 
                 <p className="font-bebas text-4xl md:text-5xl text-white">{t('hero.date')}</p> 
@@ -138,7 +127,6 @@ export default function Home() {
               </div> 
             </div> 
 
-            {/* BUTTONS */} 
             <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 w-full md:w-auto"> 
               <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20"> 
                 {t('hero.buyBtn')}
@@ -151,7 +139,6 @@ export default function Home() {
           </div> 
         </div>
 
-        {/* Scroll Indicator */}
         <div className="hidden md:flex absolute bottom-40 left-1/2 -translate-x-1/2 z-10 animate-fade-in delay-900 flex-col items-center gap-2 pointer-events-none">
           <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">{tCommon('scroll')}</span>
           <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">
@@ -159,7 +146,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Diagonal Cut Bottom */}
         <div className="absolute -bottom-[1px] left-0 w-full z-20 leading-[0]">
           <svg className="w-full h-10 sm:h-16 md:h-24 block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
             <path d="M0,60 C300,120 900,0 1200,60 L1200,120 L0,120 Z" className="fill-white"></path>
@@ -171,7 +157,8 @@ export default function Home() {
       <section id="info" className="py-20 md:py-32 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-14 md:mb-20">
           <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('features.heading')}</span>
-          <h2 className="font-modak text-5xl md:text-6xl text-slate-900 mt-2">{t('features.subheading')}</h2>
+          {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
+          <h2 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mt-2">{t('features.subheading')}</h2>
           <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
         </div>
 
@@ -221,8 +208,9 @@ export default function Home() {
       {/* 4. REVIEWS */}
       <section className="py-20 md:py-32 bg-slate-50 relative overflow-hidden">
         <div className="text-center mb-10 md:mb-16 px-6 relative z-10">
-          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('reviews.heading') || "Testimonials"}</span>
-          <h2 className="font-modak text-4xl md:text-6xl mt-4 text-slate-900">{t('reviews.subheading') || "What Dancers Say"}</h2>
+          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('reviews.heading')}</span>
+          {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
+          <h2 className="font-bebas tracking-wide text-5xl md:text-6xl mt-4 text-slate-900">{t('reviews.subheading')}</h2>
         </div>
 
         <div 
@@ -252,7 +240,8 @@ export default function Home() {
 
       {/* 5. CALL TO ACTION */}
       <section className="py-24 md:py-32 px-4 md:px-6 text-center bg-salsa-white text-slate-900">
-        <h2 className="font-modak text-5xl md:text-8xl mb-6 md:mb-8 leading-none">{t('cta.title')}</h2>
+        {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
+        <h2 className="font-bebas tracking-wide text-6xl md:text-8xl mb-6 md:mb-8 leading-none">{t('cta.title')}</h2>
         <p className="max-w-xl mx-auto mb-10 md:mb-12 text-lg md:text-xl font-medium opacity-80 leading-relaxed text-slate-700 px-4">
           {t('cta.desc')}
         </p>
