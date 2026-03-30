@@ -109,7 +109,7 @@ export default function Home() {
             </span> 
 
             {/* This stays Modak since it's the English brand name */}
-            <h1 className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
+            <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
               <span className="ambient-wave-word wave-3">FEST</span> 
