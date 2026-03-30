@@ -1,0 +1,83 @@
+{
+  "Index": {
+    "hero": {
+      "title": "SUMMER SALSA FEST",
+      "edition": "{ordinal} Edition",
+      "date": "1-3 AUG",
+      "location": "Varna",
+      "venue": "Varna Free University",
+      "buyBtn": "BUY PASS",
+      "learnBtn": "LEARN MORE"
+    },
+    "features": {
+      "heading": "Experience",
+      "subheading": "Why Summer Salsa?",
+      "artistsTitle": "World Class Artists",
+      "artistsDesc": "Learn from over 50 international champions flying in from Cuba, Spain, and Italy.",
+      "beachTitle": "Sunrise Beach Parties",
+      "beachDesc": "Dance until the sun comes up on the beautiful golden sands of Varna's central beach.",
+      "communityTitle": "Inclusive Community",
+      "communityDesc": "Whether you are a pro or a beginner, our community welcomes everyone with open arms."
+    },
+    "reviews": {
+      "heading": "Testimonials",
+      "subheading": "What Dancers Say"
+    },
+    "cta": {
+      "title": "DON'T MISS OUT!",
+      "desc": "Join thousands of dancers from around the world in Varna. Secure your pass today!",
+      "contactBtn": "CONTACT US"
+    }
+  },
+  "Common": {
+    "scroll": "Scroll"
+  },
+  "Navbar": {
+    "home": "Home",
+    "prices": "Prices",
+    "info": "Info",
+    "gallery": "Gallery",
+    "about": "About Us",
+    "contact": "Contact Us",
+    "login": "Login",
+    "signOut": "Sign Out",
+    "menu": "Menu",
+    "myAccount": "My Account",
+    "dashboard": "Dashboard",
+    "ticketsDb": "Tickets Database",
+    "gateScanner": "Gate Scanner",
+    "adminPanel": "Admin Panel"
+  },
+  "Tickets": {
+    "step1": "Choose Pass",
+    "step2": "Attendee Info",
+    "step3": "Confirmation",
+    "title": "Select Your Pass",
+    "subtitle": "Choose an experience to continue",
+    "nextBtn": "NEXT STEP",
+    "changePass": "Change Pass",
+    "verifyTitle": "Verify Details",
+    "selected": "Selected",
+    "emailLabel": "Email for Delivery",
+    "emailPlaceholder": "YOUR@EMAIL.COM",
+    "nameLabel": "Full Name (As per ID)",
+    "namePlaceholder": "E.G. IVAN GEORGIEV",
+    "nameErrorWords": "Please enter a shorter name (max 5 words).",
+    "nameErrorChars": "Numbers and special symbols are not allowed.",
+    "addBtn": "Add to Cart",
+    "limitTitle": "Limit Reached",
+    "limitMsgUser": "Standard users can purchase up to 5 passes per year. For larger group purchases, please apply as a Guest Dancer.",
+    "limitMsgGuest": "Guests can purchase up to 5 passes. To buy more, please create an account and apply as a Guest Dancer.",
+    "applyBtn": "Apply as Guest Dancer",
+    "createAccountBtn": "Create Account",
+    "cancelBtn": "Cancel",
+    "passes": {
+      "partyName": "Party Pass",
+      "partyDesc": "Full access to all night parties from Friday to Sunday.",
+      "fullName": "Full Pass",
+      "fullDesc": "Includes all workshops, bootcamps, and all night parties.",
+      "dayName": "Day Pass",
+      "dayDesc": "Access to Saturday workshops and the Gala party."
+    }
+  }
+}

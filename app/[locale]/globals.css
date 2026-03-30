@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@import "tailwindcss";
+
 @theme {
   /* Brand Colors */
   --color-salsa-pink: #e84b8a;
@@ -14,6 +16,7 @@
   --font-bebas: var(--font-bebas);
   --font-montserrat: var(--font-montserrat);
 }
+
 
 /* =========================================
    1. BASE LAYER (HTML Elements)

@@ -9,16 +9,21 @@ import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
 import Image from "next/image";
-import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket, ChevronRight } from "lucide-react";
+import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
+
+// i18n Imports
+import { useTranslations } from 'next-intl';
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
+  const t = useTranslations('Navbar');
+
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
 
-  // States for Desktop vs Mobile Menus
-  const [dropdownOpen, setDropdownOpen] = useState(false); // Desktop Account Dropdown
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Navigation Drawer
-  const [mobileAccountOpen, setMobileAccountOpen] = useState(false); // Mobile Account Drawer
+  const [dropdownOpen, setDropdownOpen] = useState(false); 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
+  const [mobileAccountOpen, setMobileAccountOpen] = useState(false); 
 
   const [scrolled, setScrolled] = useState(false);
   const [cartItems, setCartItems] = useState(0);
@@ -28,17 +33,15 @@ export default function Navbar() {
   const pathname = usePathname();
   const { showPopup } = usePopup();
 
-  const isHome = pathname === "/";
+  const isHome = pathname === "/" || pathname === "/en" || pathname === "/bg";
   const isTransparent = isHome && !scrolled;
 
-  // --- Scroll Listener ---
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // --- Safe Listener Management ---
   useEffect(() => {
     let unsubCart = null;
 
@@ -93,7 +96,6 @@ export default function Navbar() {
     };
   }, [router, showPopup]);
 
-  // --- Click Outside & Body Lock ---
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setDropdownOpen(false);
@@ -103,21 +105,12 @@ export default function Navbar() {
   }, []);
   
   useEffect(() => {
-    if (mobileMenuOpen) {
+    if (mobileMenuOpen || mobileAccountOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    if (mobileMenuOpen || mobileAccountOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen, mobileAccountOpen]);
 
   const handleSignOut = () => {
@@ -134,16 +127,19 @@ export default function Navbar() {
 
   const textColorClass = isTransparent ? "text-white" : "text-slate-800";
 
-  // --- HELPER: Active State Logic ---
-  const isActive = (path) => pathname === path;
+  // THE FIX: Make isActive language-aware
+  const isActive = (path) => {
+    if (path === "/") {
+      return pathname === "/" || pathname === "/en" || pathname === "/bg";
+    }
+    return pathname === path || pathname === `/en${path}` || pathname === `/bg${path}`;
+  };
   
-  // Desktop Nav: Animated Underline
   const desktopLinkClass = (path) => 
     `relative py-1 transition-all duration-300 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:bg-salsa-pink after:transition-all after:duration-300 ease-in-out ${
       isActive(path) ? 'after:w-full' : 'after:w-0 hover:after:w-full'
     }`;
 
-  // Mobile Nav Drawer: Background & Text Color Change
   const mobileWrapperClass = (path) => 
     `px-4 py-5 border-b border-gray-50 flex items-center justify-center transition-colors w-full ${
       isActive(path) ? 'bg-salsa-pink/10' : 'active:bg-slate-50'
@@ -154,8 +150,6 @@ export default function Navbar() {
       isActive(path) ? 'text-salsa-pink' : 'text-slate-800'
     }`;
 
-  // NEW HELPER: Account Dropdown & Mobile Drawer Active Styles
-  // Forces pink background/text if active, otherwise normal text
   const accountLinkClass = (path, isMobile = false) => {
     const defaultColor = isMobile ? 'text-slate-800' : 'text-slate-600';
     return `w-full justify-start ${isActive(path) ? '!text-salsa-pink !bg-salsa-pink/10' : defaultColor}`;
@@ -177,16 +171,18 @@ export default function Navbar() {
 
           {/* CENTER: DESKTOP LINKS */}
           <div className={`hidden md:flex justify-center items-center gap-8 text-[11px] font-black uppercase tracking-widest ${textColorClass}`}>
-            <Link href="/" className={desktopLinkClass('/')}>Home</Link>
-            <Link href="/tickets" className={desktopLinkClass('/tickets')}>Prices</Link>
-            <Link href="/info" className={desktopLinkClass('/info')}>Info</Link>
-            <Link href="/gallery" className={desktopLinkClass('/gallery')}>Gallery</Link>
-            <Link href="/about" className={desktopLinkClass('/about')}>About Us</Link>
-            <Link href="/contact" className={desktopLinkClass('/contact')}>Contact Us</Link>
+            <Link href="/" className={desktopLinkClass('/')}>{t('home')}</Link>
+            <Link href="/tickets" className={desktopLinkClass('/tickets')}>{t('prices')}</Link>
+            <Link href="/info" className={desktopLinkClass('/info')}>{t('info')}</Link>
+            <Link href="/gallery" className={desktopLinkClass('/gallery')}>{t('gallery')}</Link>
+            <Link href="/about" className={desktopLinkClass('/about')}>{t('about')}</Link>
+            <Link href="/contact" className={desktopLinkClass('/contact')}>{t('contact')}</Link>
           </div>
 
           {/* RIGHT: ACTIONS & ICONS */}
           <div className="flex-1 flex justify-end items-center gap-3 md:gap-4">
+            
+            <LanguageSwitcher isTransparent={isTransparent} />
 
             {/* 1. CART ICON */}
             {user && (
@@ -226,20 +222,20 @@ export default function Navbar() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className={accountLinkClass('/account')}>My Account</Button>
-                      {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className={accountLinkClass('/guest-dancer')}>Dashboard</Button>}
-                      {userData?.role === 'admin' && <Button href="/admin/tickets" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Ticket} className={accountLinkClass('/admin/tickets')}>Tickets Database</Button>}
-                      {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className={accountLinkClass('/admin/scanner')}>Gate Scanner</Button>}
-                      {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className={accountLinkClass('/admin')}>Admin Panel</Button>}
+                      <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className={accountLinkClass('/account')}>{t('myAccount')}</Button>
+                      {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className={accountLinkClass('/guest-dancer')}>{t('dashboard')}</Button>}
+                      {userData?.role === 'admin' && <Button href="/admin/tickets" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Ticket} className={accountLinkClass('/admin/tickets')}>{t('ticketsDb')}</Button>}
+                      {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className={accountLinkClass('/admin/scanner')}>{t('gateScanner')}</Button>}
+                      {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className={accountLinkClass('/admin')}>{t('adminPanel')}</Button>}
                       <div className="h-px bg-gray-100 w-full my-2" />
-                      <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">Sign Out</Button>
+                      <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">{t('signOut')}</Button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
               <Button href="/login" variant={isTransparent ? "ghost" : "secondary"} size="sm" className={`hidden md:flex px-8 transition-all duration-300 shadow-md ${isTransparent ? '!bg-white !text-slate-900 hover:!bg-gray-100' : 'hover:!bg-salsa-pink'}`}>
-                Login
+                {t('login')}
               </Button>
             )}
 
@@ -254,16 +250,14 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* ==================================================== */}
-      {/* MOBILE NAVIGATION SIDE DRAWER (70% Width) */}
-      {/* ==================================================== */}
+      {/* MOBILE NAVIGATION SIDE DRAWER */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setMobileMenuOpen(false)} />
           <div className="relative w-[70%] bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-10">
 
             <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-              <span className="font-black text-slate-900 uppercase tracking-widest text-xs truncate">Menu</span>
+              <span className="font-black text-slate-900 uppercase tracking-widest text-xs truncate">{t('menu')}</span>
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-salsa-pink transition-colors">
                 <X size={20} />
               </button>
@@ -271,29 +265,29 @@ export default function Navbar() {
 
             <div className="flex-1 overflow-y-auto flex flex-col">
               <Link href="/" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/')}>
-                <span className={mobileTextClass('/')}>Home</span>
+                <span className={mobileTextClass('/')}>{t('home')}</span>
               </Link>
               <Link href="/tickets" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/tickets')}>
-                <span className={mobileTextClass('/tickets')}>Prices</span>
+                <span className={mobileTextClass('/tickets')}>{t('prices')}</span>
               </Link>
               <Link href="/info" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/info')}>
-                <span className={mobileTextClass('/info')}>Info</span>
+                <span className={mobileTextClass('/info')}>{t('info')}</span>
               </Link>
               <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/gallery')}>
-                <span className={mobileTextClass('/gallery')}>Gallery</span>
+                <span className={mobileTextClass('/gallery')}>{t('gallery')}</span>
               </Link>
               <Link href="/about" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/about')}>
-                <span className={mobileTextClass('/about')}>About Us</span>
+                <span className={mobileTextClass('/about')}>{t('about')}</span>
               </Link>
               <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/contact')}>
-                <span className={mobileTextClass('/contact')}>Contact Us</span>
+                <span className={mobileTextClass('/contact')}>{t('contact')}</span>
               </Link>
             </div>
 
             {!user && (
               <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
                 <Button href="/login" onClick={() => setMobileMenuOpen(false)} variant="primary" size="md" className="w-full justify-center text-xs">
-                  Login
+                  {t('login')}
                 </Button>
               </div>
             )}
@@ -301,9 +295,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* MOBILE ACCOUNT SIDE DRAWER (70% Width) */}
-      {/* ==================================================== */}
+      {/* MOBILE ACCOUNT SIDE DRAWER */}
       {mobileAccountOpen && user && (
         <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setMobileAccountOpen(false)} />
@@ -325,16 +317,15 @@ export default function Navbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 px-2 pt-2">Your Portal</p>
-              <Button href="/account" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={UserIcon} className={accountLinkClass('/account', true)}>My Account</Button>
-              {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className={accountLinkClass('/guest-dancer', true)}>Dashboard</Button>}
-              {userData?.role === 'admin' && <Button href="/admin/tickets" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Ticket} className={accountLinkClass('/admin/tickets', true)}>Tickets Database</Button>}
-              {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className={accountLinkClass('/admin/scanner', true)}>Gate Scanner</Button>}
-              {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className={accountLinkClass('/admin', true)}>Admin Panel</Button>}
+              <Button href="/account" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={UserIcon} className={accountLinkClass('/account', true)}>{t('myAccount')}</Button>
+              {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className={accountLinkClass('/guest-dancer', true)}>{t('dashboard')}</Button>}
+              {userData?.role === 'admin' && <Button href="/admin/tickets" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Ticket} className={accountLinkClass('/admin/tickets', true)}>{t('ticketsDb')}</Button>}
+              {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className={accountLinkClass('/admin/scanner', true)}>{t('gateScanner')}</Button>}
+              {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className={accountLinkClass('/admin', true)}>{t('adminPanel')}</Button>}
             </div>
 
             <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
-              <Button onClick={handleSignOut} variant="danger" size="md" className="w-full justify-center text-xs shadow-sm">Sign Out</Button>
+              <Button onClick={handleSignOut} variant="danger" size="md" className="w-full justify-center text-xs shadow-sm">{t('signOut')}</Button>
             </div>
           </div>
         </div>

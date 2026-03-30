@@ -4,8 +4,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Button from "@/components/Button";
 import { Music, Users, Sun, Star } from "lucide-react"; 
+import { useTranslations } from 'next-intl';
 
 export default function Home() {
+  // Initialize the translation hooks matching our JSON namespaces
+  const t = useTranslations('Index');
+  const tCommon = useTranslations('Common');
+
   const scrollContainerRef = useRef(null);
   const animationRef = useRef(null);
   const restartTimeoutRef = useRef(null);
@@ -14,7 +19,7 @@ export default function Home() {
   
   // --- DYNAMIC FESTIVAL DATA ---
   const [festivalYear, setFestivalYear] = useState(2026);
-  const [editionText, setEditionText] = useState("15th Edition");
+  const [editionNumber, setEditionNumber] = useState(15);
 
   const reviews = [
     { name: "Maria S.", role: "Professional Dancer", text: "The energy in Varna is unmatched. I've been to festivals in Berlin, but the beach workshops here are unique!" },
@@ -26,10 +31,11 @@ export default function Home() {
     { name: "Katarina D.", role: "Follower", text: "V University is a great venue. Easy access and beautiful views." },
   ];
 
+  // Map the translated strings directly into the features array
   const features = [
-    { title: "World Class Artists", desc: "Learn from over 50 international champions flying in from Cuba, Spain, and Italy.", icon: Music },
-    { title: "Sunrise Beach Parties", desc: "Dance until the sun comes up on the beautiful golden sands of Varna's central beach.", icon: Sun },
-    { title: "Inclusive Community", desc: "Whether you are a pro or a beginner, our community welcomes everyone with open arms.", icon: Users }
+    { title: t('features.artistsTitle'), desc: t('features.artistsDesc'), icon: Music },
+    { title: t('features.beachTitle'), desc: t('features.beachDesc'), icon: Sun },
+    { title: t('features.communityTitle'), desc: t('features.communityDesc'), icon: Users }
   ];
 
   useEffect(() => {
@@ -38,14 +44,8 @@ export default function Home() {
     const calculatedYear = d.getMonth() > 7 ? d.getFullYear() + 1 : d.getFullYear();
     setFestivalYear(calculatedYear);
     
-    // 2. Calculate Edition
-    const editionNumber = calculatedYear - 2011;
-    const getOrdinal = (n) => {
-      const s = ["th", "st", "nd", "rd"];
-      const v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    };
-    setEditionText(`${getOrdinal(editionNumber)} Edition`);
+    // 2. Calculate Edition Number (Pass to JSON to handle st/nd/rd/th vs -то/-во)
+    setEditionNumber(calculatedYear - 2011);
 
     // 3. Start Butter-Smooth Auto-Scroll
     startAutoScroll();
@@ -109,54 +109,51 @@ export default function Home() {
           }}
         />
 
-        {/* CENTERED HERO WRAPPER
-          Using flex-grow and justify-center perfectly centers the content. 
-          pb-16 md:pb-24 slightly offsets the visual center to account for the diagonal cut at the bottom.
-        */}
         <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pb-16 md:pb-24"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
-            {/* DYNAMIC EDITION TEXT - Spacing: mb-8 (32px) */} 
+            {/* DYNAMIC EDITION TEXT */} 
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
-              {editionText} 
+              {t('hero.edition', { ordinal: editionNumber })} 
             </span> 
 
-            {/* HEADLINE - Spacing: mb-12 (48px) */} 
+            {/* HEADLINE */} 
             <h1 className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
+              {/* Note: If you want to translate the festival name, you can map it here. Otherwise, leave it hardcoded as a brand name. */}
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
               <span className="ambient-wave-word wave-3">FEST</span> 
             </h1> 
 
-            {/* INFO CARD - Spacing: mb-16 (64px) */} 
+            {/* INFO CARD */} 
             <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-[2rem] p-8 md:p-0 shadow-2xl md:shadow-none gap-8 md:gap-12"> 
               <div className="text-center md:text-right w-full md:w-auto"> 
-                <p className="font-bebas text-4xl md:text-5xl text-white">1-3 AUG</p> 
+                <p className="font-bebas text-4xl md:text-5xl text-white">{t('hero.date')}</p> 
                 <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{festivalYear}</p> 
               </div> 
               <div className="w-16 h-px md:w-px md:h-16 bg-white/30" /> 
               <div className="text-center md:text-left w-full md:w-auto"> 
-                <p className="font-bebas text-4xl md:text-5xl uppercase text-white">Varna</p> 
-                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">Varna Free University</p> 
+                <p className="font-bebas text-4xl md:text-5xl uppercase text-white">{t('hero.location')}</p> 
+                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{t('hero.venue')}</p> 
               </div> 
             </div> 
 
-            {/* ORIGINAL BUTTONS RESTORED */} 
+            {/* BUTTONS */} 
             <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 w-full md:w-auto"> 
               <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20"> 
-                BUY PASS 
+                {t('hero.buyBtn')}
               </Button> 
 
               <Button href="/info" variant="ghost" size="lg" className="w-full max-w-[280px] sm:w-72 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 backdrop-blur-sm"> 
-                LEARN MORE 
+                {t('hero.learnBtn')}
               </Button> 
             </div> 
           </div> 
         </div>
 
-        {/* Scroll Indicator - Positioned absolutely so it doesn't affect flex centering */}
+        {/* Scroll Indicator */}
         <div className="hidden md:flex absolute bottom-40 left-1/2 -translate-x-1/2 z-10 animate-fade-in delay-900 flex-col items-center gap-2 pointer-events-none">
-          <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Scroll</span>
+          <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">{tCommon('scroll')}</span>
           <div className="w-6 h-10 border-2 border-white/20 rounded-full flex justify-center p-1">
             <div className="w-1 h-2 bg-salsa-pink rounded-full animate-bounce"></div>
           </div>
@@ -173,8 +170,8 @@ export default function Home() {
       {/* 2. SPECIALTY CARDS */}
       <section id="info" className="py-20 md:py-32 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-14 md:mb-20">
-          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">Experience</span>
-          <h2 className="font-modak text-5xl md:text-6xl text-slate-900 mt-2">Why Summer Salsa?</h2>
+          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('features.heading')}</span>
+          <h2 className="font-modak text-5xl md:text-6xl text-slate-900 mt-2">{t('features.subheading')}</h2>
           <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
         </div>
 
@@ -224,8 +221,8 @@ export default function Home() {
       {/* 4. REVIEWS */}
       <section className="py-20 md:py-32 bg-slate-50 relative overflow-hidden">
         <div className="text-center mb-10 md:mb-16 px-6 relative z-10">
-          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">Testimonials</span>
-          <h2 className="font-modak text-4xl md:text-6xl mt-4 text-slate-900">What Dancers Say</h2>
+          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('reviews.heading') || "Testimonials"}</span>
+          <h2 className="font-modak text-4xl md:text-6xl mt-4 text-slate-900">{t('reviews.subheading') || "What Dancers Say"}</h2>
         </div>
 
         <div 
@@ -255,17 +252,17 @@ export default function Home() {
 
       {/* 5. CALL TO ACTION */}
       <section className="py-24 md:py-32 px-4 md:px-6 text-center bg-salsa-white text-slate-900">
-        <h2 className="font-modak text-5xl md:text-8xl mb-6 md:mb-8 leading-none">DON&apos;T MISS OUT!</h2>
+        <h2 className="font-modak text-5xl md:text-8xl mb-6 md:mb-8 leading-none">{t('cta.title')}</h2>
         <p className="max-w-xl mx-auto mb-10 md:mb-12 text-lg md:text-xl font-medium opacity-80 leading-relaxed text-slate-700 px-4">
-          Join thousands of dancers from around the world in Varna. Secure your pass today!
+          {t('cta.desc')}
         </p>
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 w-full">
           <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20">
-            BUY PASS
+            {t('hero.buyBtn')}
           </Button>
           <Button href="/contact" variant="outline" size="lg" className="w-full max-w-[280px] sm:w-72 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white">
-            CONTACT US
+            {t('cta.contactBtn')}
           </Button>
         </div>
       </section>
