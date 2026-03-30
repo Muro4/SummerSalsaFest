@@ -2,19 +2,18 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+// THE FIX: Use our custom language-aware router
+import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
-
-const PASSES = [
-  { id: 'party', name: 'Party Pass', price: 80, desc: 'Full access to all night parties from Friday to Sunday.', color: 'bg-violet-600', text: 'text-white' },
-  { id: 'full', name: 'Full Pass', price: 150, desc: 'Includes all workshops, bootcamps, and all night parties.', color: 'bg-salsa-pink', text: 'text-white' },
-  { id: 'day', name: 'Day Pass', price: 60, desc: 'Access to Saturday workshops and the Gala party.', color: 'bg-teal-300', text: 'text-teal-950' },
-];
+// THE FIX: Import the translation hook
+import { useTranslations } from 'next-intl';
 
 export default function TicketPage() {
+  const t = useTranslations('Tickets');
+
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(null);
   const [realName, setRealName] = useState("");
@@ -26,6 +25,13 @@ export default function TicketPage() {
 
   const router = useRouter();
   const { showPopup } = usePopup();
+
+  // THE FIX: Moved PASSES inside the component to use the translation hook
+  const PASSES = [
+    { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: 80, desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
+    { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: 150, desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
+    { id: 'day', name: t('passes.dayName'), rawName: 'Day Pass', price: 60, desc: t('passes.dayDesc'), color: 'bg-teal-300', text: 'text-teal-950' },
+  ];
 
   // --- NAME VALIDATION ---
   const isValidNameChars = /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(realName);
@@ -62,10 +68,10 @@ export default function TicketPage() {
         setLoading(false);
         showPopup({
           type: "info",
-          title: "Limit Reached",
-          message: "Standard users can purchase up to 5 passes per year. For larger group purchases, please apply as a Guest Dancer.",
-          confirmText: "Apply as Guest Dancer",
-          cancelText: "Cancel",
+          title: t('limitTitle'),
+          message: t('limitMsgUser'),
+          confirmText: t('applyBtn'),
+          cancelText: t('cancelBtn'),
           onConfirm: () => router.push("/apply")
         });
         return;
@@ -89,10 +95,10 @@ export default function TicketPage() {
           setLoading(false);
           showPopup({
             type: "info",
-            title: "Limit Reached",
-            message: "Guests can purchase up to 5 passes. To buy more, please create an account and apply as a Guest Dancer.",
-            confirmText: "Create Account",
-            cancelText: "Cancel",
+            title: t('limitTitle'),
+            message: t('limitMsgGuest'),
+            confirmText: t('createAccountBtn'),
+            cancelText: t('cancelBtn'),
             onConfirm: () => router.push("/login")
           });
           return;
@@ -117,7 +123,7 @@ export default function TicketPage() {
         userName: realName.trim().toUpperCase(),
         guestEmail: isGuest ? guestEmail.trim().toLowerCase() : (auth.currentUser?.email || ""),
         isGuest,
-        passType: selected.name,
+        passType: selected.rawName, // Keep database strictly in English!
         price: selected.price,
         status: "pending",
         festivalYear: 2026,
@@ -141,9 +147,9 @@ export default function TicketPage() {
         {/* ENHANCED PROGRESS BAR */}
         <div className="w-full max-w-xl mb-12">
           <div className="grid grid-cols-3 mb-4 text-[11px] font-black uppercase tracking-widest text-center">
-            <span className={`text-left transition-colors duration-500 ${step >= 1 ? "text-salsa-pink" : "text-gray-400"}`}>Choose Pass</span>
-            <span className={`transition-colors duration-500 ${step >= 2 ? "text-salsa-pink" : "text-gray-400"}`}>Attendee Info</span>
-            <span className={`text-right transition-colors duration-500 ${step >= 3 ? "text-salsa-pink" : "text-gray-400"}`}>Confirmation</span>
+            <span className={`text-left transition-colors duration-500 ${step >= 1 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step1')}</span>
+            <span className={`transition-colors duration-500 ${step >= 2 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step2')}</span>
+            <span className={`text-right transition-colors duration-500 ${step >= 3 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step3')}</span>
           </div>
           <div className="relative h-1.5 bg-gray-100 rounded-full">
             <div className="absolute top-0 left-0 h-full bg-salsa-pink transition-all duration-700 rounded-full" style={{ width: `${step === 1 ? '0%' : step === 2 ? '50%' : '100%'}` }}></div>
@@ -157,8 +163,8 @@ export default function TicketPage() {
 
         {step === 1 ? (
           <div className="flex flex-col items-center w-full animate-in fade-in duration-500">
-            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-normal">Select Your Pass</h1>
-            <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-8">Choose an experience to continue</p>
+            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-normal">{t('title')}</h1>
+            <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-8">{t('subtitle')}</p>
 
             <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
               {PASSES.map((p) => (
@@ -194,7 +200,7 @@ export default function TicketPage() {
               disabled={!selected || loading}
               className="cursor-pointer group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[11px] uppercase disabled:opacity-50"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <>NEXT STEP <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
+              {loading ? <Loader2 className="animate-spin" /> : <>{t('nextBtn')} <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
             </button>
           </div>
         ) : (
@@ -203,16 +209,16 @@ export default function TicketPage() {
               onClick={() => setStep(1)}
               className="flex items-center gap-2 mb-6 text-slate-400 hover:text-slate-900 transition-colors font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer self-start ml-2"
             >
-              <ChevronLeft size={16} strokeWidth={3} /> Change Pass
+              <ChevronLeft size={16} strokeWidth={3} /> {t('changePass')}
             </button>
 
             <div className="w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-              <h2 className="font-bebas text-5xl mb-6 uppercase leading-none text-center text-slate-900 relative z-10 tracking-normal">Verify Details</h2>
+              <h2 className="font-bebas text-5xl mb-6 uppercase leading-none text-center text-slate-900 relative z-10 tracking-normal">{t('verifyTitle')}</h2>
 
               <div className="space-y-5 relative z-10">
                 <div className="flex flex-col items-center gap-2 mb-2">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Selected</span>
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{t('selected')}</span>
                   <span className={`border border-transparent px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${selected?.color} ${selected?.text}`}>
                     {selected?.name}
                   </span>
@@ -220,10 +226,10 @@ export default function TicketPage() {
 
                 {isGuest && (
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">Email for Delivery</label>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
                     <input 
                       type="email" 
-                      placeholder="YOUR@EMAIL.COM" 
+                      placeholder={t('emailPlaceholder')}
                       required 
                       maxLength={100} 
                       className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900" 
@@ -233,10 +239,10 @@ export default function TicketPage() {
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">Full Name (As per ID)</label>
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('nameLabel')}</label>
                   <input
                     type="text"
-                    placeholder="E.G. IVAN GEORGIEV"
+                    placeholder={t('namePlaceholder')}
                     required
                     maxLength={50}
                     className={`w-full p-3.5 bg-gray-50 border rounded-2xl outline-none focus:bg-white font-bold uppercase text-sm transition-all text-slate-900 ${isNameInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`}
@@ -244,7 +250,7 @@ export default function TicketPage() {
                   />
                   {isNameInvalid && (
                     <p className="text-red-500 text-[11px] font-bold mt-1 ml-2 tracking-widest leading-relaxed">
-                      {!isWithinWordLimit ? "Please enter a shorter name (max 5 words)." : "Numbers and special symbols are not allowed."}
+                      {!isWithinWordLimit ? t('nameErrorWords') : t('nameErrorChars')}
                     </p>
                   )}
                 </div>
@@ -257,7 +263,7 @@ export default function TicketPage() {
                   {loading ? (
                     <Loader2 className="animate-spin" size={18} />
                   ) : (
-                    "Add to Cart"
+                    t('addBtn')
                   )}
                 </button>
               </div>

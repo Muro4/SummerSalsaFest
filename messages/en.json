@@ -78,6 +78,54 @@
       "fullDesc": "Includes all workshops, bootcamps, and all night parties.",
       "dayName": "Day Pass",
       "dayDesc": "Access to Saturday workshops and the Gala party."
-    }
+    },
+    "Privacy": {
+    "heroTitle1": "PRIVACY",
+    "heroTitle2": "POLICY",
+    "lastUpdated": "Last Updated: March 2026 • Varna, Bulgaria",
+    "s1Title": "1. Introduction",
+    "s1Text": "Welcome to the Summer Salsa Festival. We respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you visit our website, purchase tickets, or apply to be a Guest Dancer.",
+    "s2Title": "2. Information We Collect",
+    "s2Li1Strong": "Account Data:",
+    "s2Li1Text": "When you register, we collect your name, email address, and securely store your authentication credentials via Google Firebase.",
+    "s2Li2Strong": "Transactions:",
+    "s2Li2Text": "When you purchase a pass, we record your ticket ID, pass type, and purchase history. (Payment details are handled securely by our payment processors and are not stored on our servers).",
+    "s2Li3Strong": "Communications:",
+    "s2Li3Text": "Information provided through our Contact Form or Guest Dancer applications (including phone numbers, social handles, and personal pitches).",
+    "s3Title": "3. How We Use Your Data",
+    "s3Text": "We use your information strictly to provide and improve our festival experience:",
+    "s3Li1": "To generate, manage, and verify your event tickets.",
+    "s3Li2": "To respond to your inquiries and evaluate Guest Dancer applications.",
+    "s3Li3": "To send you important updates regarding the festival schedule or your account.",
+    "s4Title": "4. Cookies & Tracking",
+    "s4Text": "We use local storage and cookies to ensure our website functions properly and to understand how visitors interact with our platform.",
+    "s4Box1Title": "Strictly Necessary (Essential)",
+    "s4Box1Text": "These are required for the website to function (e.g., keeping you logged securely into your account). They cannot be switched off.",
+    "s4Box2Title": "Analytics & Marketing (Optional)",
+    "s4Box2Text": "If you click \"Accept All\" on our cookie banner, we load third-party scripts (like Google Analytics and Meta Pixel) to help us measure site traffic and deliver relevant ads. You can opt-out by selecting \"Essential Only\".",
+    "s5Title": "5. Data Security",
+    "s5Text": "Your security is our priority. Our database is powered by Google Firebase, utilizing industry-standard encryption and strict security rules. Only authorized administrators can access sensitive festival data. We will never sell your personal data to third parties.",
+    "s6Title": "6. Contact Us",
+    "s6Text": "If you have any questions about this Privacy Policy or wish to request the deletion of your account data, please reach out to us at:"
+  },
+  "Terms": {
+    "heroTitle1": "USER",
+    "heroTitle2": "AGREEMENT",
+    "lastUpdated": "Last Updated: March 2026 • Varna, Bulgaria",
+    "s1Title": "1. Acceptance of Terms",
+    "s1Text": "By purchasing a ticket, registering an account, or attending Summer Salsa Fest Varna, you agree to abide by these Terms and Conditions. Please read them carefully.",
+    "s2Title": "2. Ticket Purchases & Refunds",
+    "s2Text": "All ticket sales are final. We do not offer refunds under any circumstances, including personal emergencies or travel disruptions. However, you may transfer your ticket to another person up to 14 days before the event through your account dashboard.",
+    "s3Title": "3. Code of Conduct",
+    "s3Text": "Summer Salsa Fest is dedicated to providing a safe, inclusive, and harassment-free experience for everyone. Any form of harassment, discrimination, or aggressive behavior on the dance floor or at the venues will result in immediate removal from the festival without a refund.",
+    "s4Title": "4. Guest Dancer Program",
+    "s4Text": "Guest Dancers (Ambassadors) are approved at the sole discretion of the organizers. Misuse of the ambassador portal, including selling tickets at unauthorized discounts or fraudulent group creation, will result in permanent bans and ticket cancellations.",
+    "s5Title": "5. Media Release",
+    "s5Text": "By attending the festival, you consent to being filmed and photographed by our official media team. Summer Salsa Fest reserves the right to use this media for future promotional purposes across our website and social media without compensation.",
+    "s6Title": "6. Liability Waiver",
+    "s6Text": "The organizers, Varna Free University, and Kabakum Beach venues are not liable for any personal injury, loss, or damage to belongings during the event. Attendees assume all risks associated with participation in dance activities."
   }
+
+  }
+
 }
