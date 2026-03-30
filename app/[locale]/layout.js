@@ -1,4 +1,5 @@
-import { Modak, Bebas_Neue, Montserrat } from "next/font/google";
+import { Modak, Montserrat } from "next/font/google";
+import localFont from "next/font/local"; // <--- 1. Import localFont
 import "./globals.css";
 import { PopupProvider } from '@/components/PopupProvider'; 
 import CookieBanner from "@/components/CookieBanner";
@@ -7,24 +8,24 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-// Cyrillic added to Bebas Neue
-const bebas = Bebas_Neue({ 
-  weight: '400', 
-  subsets: ["latin", "cyrillic"], 
-  variable: '--font-bebas' 
+// 2. Load your custom Cyrillic Bebas font
+const bebas = localFont({
+  src: '../fonts/BebasNeueCyrillic.ttf', // Make sure this path matches your file!
+  variable: '--font-bebas',
+  display: 'swap',
 });
 
-// Cyrillic added to Montserrat
 const montserrat = Montserrat({ 
   subsets: ["latin", "cyrillic"], 
-  variable: '--font-montserrat' 
+  variable: '--font-montserrat',
+  display: 'swap',
 });
 
-// Modak remains Latin-only
 const modak = Modak({
   weight: '400',
   subsets: ["latin"],
-  variable: '--font-modak' 
+  variable: '--font-modak',
+  display: 'swap',
 });
 
 export const metadata = {
@@ -50,6 +51,7 @@ export default async function RootLayout({ children, params }) {
 
   return (
     <html lang={locale} className="scroll-smooth">
+      {/* 3. Inject the local Bebas variable into the body */}
       <body className={`${modak.variable} ${bebas.variable} ${montserrat.variable} antialiased`}>
         <NextIntlClientProvider messages={messages}>
           <PopupProvider>
