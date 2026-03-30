@@ -17,9 +17,10 @@
   --font-montserrat: var(--font-montserrat);
 }
 
-:lang(bg) .font-modak {
+/* CORRECT */
+.font-modak:lang(bg) {
   font-family: var(--font-bebas) !important;
-  letter-spacing: 0.05em !important; /* Adds a tiny bit of tracking to match the Bebas style */
+  letter-spacing: 0.05em !important;
 }
 
 /* =========================================
