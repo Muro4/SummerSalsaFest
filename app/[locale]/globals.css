@@ -17,6 +17,10 @@
   --font-montserrat: var(--font-montserrat);
 }
 
+:lang(bg) .font-modak {
+  font-family: var(--font-bebas) !important;
+  letter-spacing: 0.05em !important; /* Adds a tiny bit of tracking to match the Bebas style */
+}
 
 /* =========================================
    1. BASE LAYER (HTML Elements)
