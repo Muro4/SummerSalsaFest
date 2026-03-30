@@ -27,6 +27,7 @@ export default function TermsPage() {
           <div className="w-16 h-16 bg-salsa-pink/20 rounded-full flex items-center justify-center text-salsa-pink mx-auto mb-6 shadow-sm border border-salsa-pink/30">
             <Scale size={32} />
           </div>
+          {/* Notice font-modak is here! It will show Modak in EN, and Bebas in BG */}
           <h1 className="animate-fade-in font-modak text-5xl sm:text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-xl flex flex-wrap justify-center gap-3 sm:gap-4">
             {t('heroTitle1')} <span className="text-salsa-pink">{t('heroTitle2')}</span>
           </h1>

@@ -172,7 +172,7 @@ export default function Navbar() {
           {/* CENTER: DESKTOP LINKS */}
           <div className={`hidden md:flex justify-center items-center gap-8 text-[11px] font-black uppercase tracking-widest ${textColorClass}`}>
             <Link href="/" className={desktopLinkClass('/')}>{t('home')}</Link>
-            <Link href="/tickets" className={desktopLinkClass('/tickets')}>{t('prices')}</Link>
+            <Link href="/tickets" className={desktopLinkClass('/tickets')}>{t('passes')}</Link>
             <Link href="/info" className={desktopLinkClass('/info')}>{t('info')}</Link>
             <Link href="/gallery" className={desktopLinkClass('/gallery')}>{t('gallery')}</Link>
             <Link href="/about" className={desktopLinkClass('/about')}>{t('about')}</Link>
@@ -268,7 +268,7 @@ export default function Navbar() {
                 <span className={mobileTextClass('/')}>{t('home')}</span>
               </Link>
               <Link href="/tickets" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/tickets')}>
-                <span className={mobileTextClass('/tickets')}>{t('prices')}</span>
+                <span className={mobileTextClass('/tickets')}>{t('passes')}</span>
               </Link>
               <Link href="/info" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/info')}>
                 <span className={mobileTextClass('/info')}>{t('info')}</span>
