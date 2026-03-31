@@ -101,7 +101,8 @@ export default function Home() {
           }}
         />
 
-        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pb-16 md:pb-24"> 
+        {/* ✅ FIXED: Added pt-28 md:pt-32 to push the content down below the fixed Navbar */}
+        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-28 md:pt-32 pb-16 md:pb-24"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
@@ -157,7 +158,6 @@ export default function Home() {
       <section id="info" className="py-20 md:py-32 px-6 max-w-7xl mx-auto">
         <div className="text-center mb-14 md:mb-20">
           <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('features.heading')}</span>
-          {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
           <h2 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mt-2">{t('features.subheading')}</h2>
           <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
         </div>
@@ -209,7 +209,6 @@ export default function Home() {
       <section className="py-20 md:py-32 bg-slate-50 relative overflow-hidden">
         <div className="text-center mb-10 md:mb-16 px-6 relative z-10">
           <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('reviews.heading')}</span>
-          {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
           <h2 className="font-bebas tracking-wide text-5xl md:text-6xl mt-4 text-slate-900">{t('reviews.subheading')}</h2>
         </div>
 
@@ -240,7 +239,6 @@ export default function Home() {
 
       {/* 5. CALL TO ACTION */}
       <section className="py-24 md:py-32 px-4 md:px-6 text-center bg-salsa-white text-slate-900">
-        {/* THE FIX: Changed font-modak to font-bebas tracking-wide */}
         <h2 className="font-bebas tracking-wide text-6xl md:text-8xl mb-6 md:mb-8 leading-none">{t('cta.title')}</h2>
         <p className="max-w-xl mx-auto mb-10 md:mb-12 text-lg md:text-xl font-medium opacity-80 leading-relaxed text-slate-700 px-4">
           {t('cta.desc')}
