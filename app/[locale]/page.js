@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Button from "@/components/Button";
 import Image from "next/image"; // <-- PERFORMANCE FIX
-import { Music, Users, Sun, Star } from "lucide-react"; 
+import { Music, Users, Sun, Star } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import LandingLoader from "@/components/LandingLoader";
 
@@ -12,14 +12,14 @@ export default function Home() {
   const t = useTranslations('Index');
   const tCommon = useTranslations('Common');
   const [showLoader, setShowLoader] = useState(false);
-  
+
 
   const scrollContainerRef = useRef(null);
   const animationRef = useRef(null);
   const restartTimeoutRef = useRef(null);
-  const isManuallyScrollingRef = useRef(false); 
+  const isManuallyScrollingRef = useRef(false);
   const scrollAccumulator = useRef(0);
-  
+
   const [festivalYear, setFestivalYear] = useState(2026);
   const [editionNumber, setEditionNumber] = useState(15);
 
@@ -48,10 +48,10 @@ export default function Home() {
     if (!hasSeenLoader) {
       setShowLoader(true);
     }
-    
+
 
     startAutoScroll();
-    
+
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
@@ -67,9 +67,9 @@ export default function Home() {
     const scroll = () => {
       if (scrollContainerRef.current && !isManuallyScrollingRef.current) {
         const isMobile = window.innerWidth < 768;
-        const speed = isMobile ? 0.4 : 0.15; 
+        const speed = isMobile ? 0.4 : 0.15;
         scrollAccumulator.current += speed;
-        
+
         if (scrollAccumulator.current >= 1) {
           scrollContainerRef.current.scrollLeft += Math.floor(scrollAccumulator.current);
           scrollAccumulator.current -= Math.floor(scrollAccumulator.current);
@@ -82,7 +82,7 @@ export default function Home() {
       }
       animationRef.current = requestAnimationFrame(scroll);
     };
-    
+
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     animationRef.current = requestAnimationFrame(scroll);
   };
@@ -92,7 +92,7 @@ export default function Home() {
     if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     restartTimeoutRef.current = setTimeout(() => {
       isManuallyScrollingRef.current = false;
-    }, 5000); 
+    }, 5000);
   };
 
   return (
@@ -105,52 +105,62 @@ export default function Home() {
       <section
         className="relative flex flex-col items-center overflow-hidden justify-center min-h-[100svh] md:min-h-[calc(100vh+120px)]"
       >
-        <div
-          className="absolute inset-0 z-0 bg-slate-900"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(0, 14, 36, 0.8), rgba(0, 11, 36, 0.4)), url('/images/background.jpg')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            backgroundAttachment: 'fixed'
-          }}
-        />
+        <div className="absolute inset-0 z-0 bg-slate-900 overflow-hidden">
+          {/* The Image component handles sizing much better than CSS background-image */}
+          <Image
+            src="/images/background.jpg"
+            alt="Summer Salsa Fest Background"
+            fill
+            priority
+            quality={90}
+            className="object-cover object-center pointer-events-none"
+            sizes="100vw"
+          />
 
-        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-24 md:pt-20 pb-32 md:pb-48"> 
-          <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
-            
-            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
-              {t('hero.edition', { ordinal: editionNumber })} 
-            </span> 
+          {/* Separate Gradient Overlay to maintain your brand look */}
+          <div
+            className="absolute inset-0 z-10"
+            style={{
+              backgroundImage: `linear-gradient(to bottom, rgba(0, 14, 36, 0.8), rgba(0, 11, 36, 0.4))`
+            }}
+          />
+        </div>
 
-            <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4.5rem] sm:text-7xl md:text-[7rem] leading-[0.9] mb-12 uppercase flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-4 text-center"> 
-              <span className="ambient-wave-word wave-1">SUMMER</span> 
-              <span className="ambient-wave-word wave-2">SALSA</span> 
-              <span className="ambient-wave-word wave-3">FEST</span> 
-            </h1> 
+        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-24 md:pt-20 pb-32 md:pb-48">
+          <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full">
 
-            <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-[2rem] p-8 md:p-0 shadow-2xl md:shadow-none gap-8 md:gap-12"> 
-              <div className="text-center md:text-right w-full md:w-auto"> 
-                <p className="font-bebas text-4xl md:text-5xl text-white">{t('hero.date')}</p> 
-                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{festivalYear}</p> 
-              </div> 
-              <div className="w-16 h-px md:w-px md:h-16 bg-white/30" /> 
-              <div className="text-center md:text-left w-full md:w-auto"> 
-                <p className="font-bebas text-4xl md:text-5xl uppercase text-white">{t('hero.location')}</p> 
-                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{t('hero.venue')}</p> 
-              </div> 
-            </div> 
+            <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center">
+              {t('hero.edition', { ordinal: editionNumber })}
+            </span>
 
-            <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 w-full md:w-auto"> 
-              <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20"> 
+            <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4.5rem] sm:text-7xl md:text-[7rem] leading-[0.9] mb-12 uppercase flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-4 text-center">
+              <span className="ambient-wave-word wave-1">SUMMER</span>
+              <span className="ambient-wave-word wave-2">SALSA</span>
+              <span className="ambient-wave-word wave-3">FEST</span>
+            </h1>
+
+            <div className="animate-fade-in delay-500 flex flex-col md:flex-row items-center justify-center mb-16 w-full max-w-[300px] md:max-w-none bg-white/10 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border border-white/20 md:border-none rounded-[2rem] p-8 md:p-0 shadow-2xl md:shadow-none gap-8 md:gap-12">
+              <div className="text-center md:text-right w-full md:w-auto">
+                <p className="font-bebas text-4xl md:text-5xl text-white">{t('hero.date')}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{festivalYear}</p>
+              </div>
+              <div className="w-16 h-px md:w-px md:h-16 bg-white/30" />
+              <div className="text-center md:text-left w-full md:w-auto">
+                <p className="font-bebas text-4xl md:text-5xl uppercase text-white">{t('hero.location')}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-white/60 md:opacity-60 uppercase tracking-[0.3em] mt-1 md:mt-0">{t('hero.venue')}</p>
+              </div>
+            </div>
+
+            <div className="animate-fade-in delay-700 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 w-full md:w-auto">
+              <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20">
                 {t('hero.buyBtn')}
-              </Button> 
+              </Button>
 
-              <Button href="/info" variant="ghost" size="lg" className="w-full max-w-[280px] sm:w-72 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 backdrop-blur-sm"> 
+              <Button href="/info" variant="ghost" size="lg" className="w-full max-w-[280px] sm:w-72 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 backdrop-blur-sm">
                 {t('hero.learnBtn')}
-              </Button> 
-            </div> 
-          </div> 
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="hidden md:flex absolute bottom-40 left-1/2 -translate-x-1/2 z-10 animate-fade-in delay-900 flex-col items-center gap-2 pointer-events-none">
@@ -225,7 +235,7 @@ export default function Home() {
           <h2 className="font-bebas tracking-wide text-5xl md:text-6xl mt-4 text-slate-900">{t('reviews.subheading')}</h2>
         </div>
 
-        <div 
+        <div
           className="relative max-w-[100vw] mx-auto group"
           onMouseEnter={stopAutoScrollAndScheduleRestart}
           onTouchStart={stopAutoScrollAndScheduleRestart}
@@ -256,7 +266,7 @@ export default function Home() {
         <p className="max-w-xl mx-auto mb-10 md:mb-12 text-lg md:text-xl font-medium opacity-80 leading-relaxed text-slate-700 px-4">
           {t('cta.desc')}
         </p>
-        
+
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 w-full">
           <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20">
             {t('hero.buyBtn')}
@@ -268,8 +278,8 @@ export default function Home() {
       </section>
 
       <Footer />
-      
-      <style dangerouslySetInnerHTML={{__html: `.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}} />
+
+      <style dangerouslySetInnerHTML={{ __html: `.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }` }} />
     </main>
   );
 }
