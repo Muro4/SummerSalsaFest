@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Cookie, X } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/routing"; // THE FIX: Custom routing
+import { useTranslations } from 'next-intl';
 
 export default function CookieBanner() {
+  const t = useTranslations('CookieBanner');
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -46,14 +48,14 @@ export default function CookieBanner() {
               <Cookie size={24} />
             </div>
             <div>
-              <h3 className="font-bebas text-3xl uppercase text-white leading-none tracking-wide">We Use Cookies</h3>
+              <h3 className="font-bebas tracking-wide text-3xl uppercase text-white leading-none">{t('title')}</h3>
             </div>
           </div>
           
           <p className="text-[11px] font-medium text-slate-400 leading-relaxed mb-6">
-            We use cookies to improve your festival experience, analyze site traffic, and serve tailored content. 
-            By clicking "Accept All", you consent to our use of cookies. 
-            Read our <Link href="/privacy" className="text-salsa-pink hover:underline font-bold">Privacy Policy</Link> for details.
+            {t('desc1')}
+            <Link href="/privacy" className="text-salsa-pink hover:underline font-bold">{t('privacyLink')}</Link>
+            {t('desc2')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -61,13 +63,13 @@ export default function CookieBanner() {
               onClick={handleAcceptAll}
               className="flex-1 bg-salsa-pink text-white px-5 py-3.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:bg-pink-500 hover:shadow-lg hover:shadow-salsa-pink/20 transition-all duration-300 cursor-pointer"
             >
-              Accept All
+              {t('btnAcceptAll')}
             </button>
             <button 
               onClick={handleAcceptEssential}
               className="flex-1 bg-white/5 text-slate-300 px-5 py-3.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all duration-300 cursor-pointer"
             >
-              Essential Only
+              {t('btnEssential')}
             </button>
           </div>
         </div>
@@ -76,7 +78,7 @@ export default function CookieBanner() {
         <button 
           onClick={handleAcceptEssential} 
           className="absolute top-5 right-5 text-slate-500 hover:text-white transition-colors cursor-pointer p-1"
-          aria-label="Close"
+          aria-label={t('ariaClose')}
         >
           <X size={18} />
         </button>

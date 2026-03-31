@@ -5,8 +5,11 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } fro
 import { usePopup } from "@/components/PopupProvider"; 
 import Button from "@/components/Button";
 import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function InboxManager({ requests = [] }) {
+  const t = useTranslations('Inbox');
+
   const [view, setView] = useState("questions");
   
   // Messages State
@@ -30,6 +33,23 @@ export default function InboxManager({ requests = [] }) {
   const [dragMode, setDragMode] = useState(true);
 
   const { showPopup } = usePopup();
+
+  // Helper to translate UI view names for search/empty states
+  const getTranslatedView = () => {
+     return view === 'questions' ? t('tabQuestions') : t('tabRequests');
+  };
+
+  // Helper to translate status tags in UI
+  const getTranslatedStatus = (statusStr) => {
+      const lower = (statusStr || '').toLowerCase();
+      if (lower === 'all') return t('filterAll');
+      if (lower === 'unread') return t('filterUnread');
+      if (lower === 'replied') return t('filterReplied');
+      if (lower === 'pending') return t('filterPending');
+      if (lower === 'approved') return t('filterApproved');
+      if (lower === 'declined') return t('filterDeclined');
+      return statusStr;
+  }
 
   // --- FETCH MESSAGES ---
   useEffect(() => {
@@ -123,7 +143,7 @@ export default function InboxManager({ requests = [] }) {
     e?.stopPropagation();
     const isQuestion = view === 'questions';
     showPopup({
-      type: "info", title: `Delete ${isQuestion ? 'Message' : 'Request'}?`, message: "Are you sure you want to permanently delete this?", confirmText: "Yes, Delete", cancelText: "Cancel",
+      type: "info", title: isQuestion ? t('delTitleQ') : t('delTitleR'), message: t('delMsgSingle'), confirmText: t('btnDelYes'), cancelText: t('btnCancel'),
       onConfirm: async () => {
         await deleteDoc(doc(db, isQuestion ? "contact_messages" : "ambassador_requests", id));
         if (selectedItem?.id === id) { setSelectedItem(null); setIsReplying(false); }
@@ -133,12 +153,12 @@ export default function InboxManager({ requests = [] }) {
 
   const handleMassDelete = () => {
     showPopup({
-      type: "info", title: "Mass Delete", message: `Are you sure you want to permanently delete ${selectedIds.length} items?`, confirmText: "Yes, Delete All", cancelText: "Cancel",
+      type: "info", title: t('massDelTitle'), message: t('massDelMsg', { count: selectedIds.length }), confirmText: t('btnMassDelYes'), cancelText: t('btnCancel'),
       onConfirm: async () => {
         const targetCollection = view === 'questions' ? "contact_messages" : "ambassador_requests";
         await Promise.all(selectedIds.map(id => deleteDoc(doc(db, targetCollection, id))));
         setSelectedIds([]);
-        showPopup({ type: "success", title: "Deleted", message: `${selectedIds.length} items removed.` });
+        showPopup({ type: "success", title: t('massDelSuccess'), message: t('massDelSuccessMsg', { count: selectedIds.length }) });
       }
     });
   };
@@ -156,7 +176,7 @@ export default function InboxManager({ requests = [] }) {
     setSendingReply(true);
     
     const isQuestion = view === 'questions';
-    const emailSubject = isQuestion ? (selectedItem.subject || selectedItem.category) : "Regarding your Guest Dancer Application";
+    const emailSubject = isQuestion ? (selectedItem.subject || selectedItem.category) : t('replySubjDefault');
     const originalContent = isQuestion ? selectedItem.message : selectedItem.pitch;
     const targetCollection = isQuestion ? "contact_messages" : "ambassador_requests";
 
@@ -171,7 +191,7 @@ export default function InboxManager({ requests = [] }) {
            originalMessage: originalContent 
         })
       });
-      if (!response.ok) throw new Error("API Route Failed");
+      if (!response.ok) throw new Error(t('replyErrApi'));
 
       let currentReplies = selectedItem.adminReplies || [];
       if (currentReplies.length === 0 && selectedItem.adminReply) currentReplies.push({ text: selectedItem.adminReply, repliedAt: selectedItem.repliedAt });
@@ -185,10 +205,10 @@ export default function InboxManager({ requests = [] }) {
       await updateDoc(doc(db, targetCollection, selectedItem.id), updateData);
       
       setReplyText(""); setIsReplying(false);
-      showPopup({ type: "success", title: "Sent!", message: "Your reply has been sent successfully." });
+      showPopup({ type: "success", title: t('replySuccessTitle'), message: t('replySuccessMsg') });
     } catch (err) {
       console.error(err);
-      showPopup({ type: "error", title: "Sending Failed", message: "Failed to send email." });
+      showPopup({ type: "error", title: t('replyFailTitle'), message: t('replyFailMsg') });
     } finally {
       setSendingReply(false);
     }
@@ -198,10 +218,9 @@ export default function InboxManager({ requests = [] }) {
   const handleApproveRequest = async (req, e) => {
     e?.stopPropagation();
     showPopup({
-       type: "info", title: "Approve Ambassador?", message: `Grant ${req.name} access to the Ambassador Dashboard?`, confirmText: "Yes, Approve", cancelText: "Cancel",
+       type: "info", title: t('apprTitle'), message: t('apprMsg', { name: req.name }), confirmText: t('btnApproveYes'), cancelText: t('btnCancel'),
        onConfirm: async () => {
           try {
-             // THE FIX: We now explicitly copy req.name into ambassadorDisplayName!
              await updateDoc(doc(db, "users", req.userId), { 
                 role: "ambassador", 
                 applicationStatus: "approved",
@@ -210,9 +229,9 @@ export default function InboxManager({ requests = [] }) {
              
              await updateDoc(doc(db, "ambassador_requests", req.id), { status: "approved" });
              if (selectedItem?.id === req.id) setSelectedItem(null);
-             showPopup({ type: "success", title: "Approved!", message: `${req.name} is now an official Guest Dancer.` });
+             showPopup({ type: "success", title: t('apprSuccessTitle'), message: t('apprSuccessMsg', { name: req.name }) });
           } catch (err) { 
-             showPopup({ type: "error", title: "Error", message: "Failed to approve user." }); 
+             showPopup({ type: "error", title: t('apprFailTitle'), message: t('apprFailMsg') }); 
           }
        }
     });
@@ -221,13 +240,13 @@ export default function InboxManager({ requests = [] }) {
   const handleRejectRequest = (req, e) => {
     e?.stopPropagation();
     showPopup({
-       type: "danger", title: "Decline Application?", message: `Are you sure you want to decline ${req.name}?`, confirmText: "Yes, Decline", cancelText: "Cancel",
+       type: "danger", title: t('rejTitle'), message: t('rejMsg', { name: req.name }), confirmText: t('btnDeclineYes'), cancelText: t('btnCancel'),
        onConfirm: async () => {
           try { 
              await updateDoc(doc(db, "users", req.userId), { applicationStatus: "rejected" }); 
              await updateDoc(doc(db, "ambassador_requests", req.id), { status: "declined" }); 
              if (selectedItem?.id === req.id) setSelectedItem(null);
-          } catch (err) { showPopup({ type: "error", title: "Error", message: "Failed to decline application." }); }
+          } catch (err) { showPopup({ type: "error", title: t('apprFailTitle'), message: t('rejFailMsg') }); }
        }
     });
   };
@@ -255,12 +274,12 @@ export default function InboxManager({ requests = [] }) {
             <div className="px-4 md:px-6 py-4 md:h-[135px] border-b border-slate-200 bg-slate-100 flex justify-between items-center transition-all shrink-0">
               <div className="flex items-center gap-2 md:gap-4">
                  <button onClick={() => setSelectedIds([])} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors cursor-pointer"><X size={20} /></button>
-                 <span className="text-xs md:text-sm font-bold text-slate-900">{selectedIds.length} selected</span>
+                 <span className="text-xs md:text-sm font-bold text-slate-900">{t('selCount', { count: selectedIds.length })}</span>
               </div>
               <div className="flex gap-2 md:gap-3">
                  {view === 'questions' && (
                     <button onClick={handleMassMarkRead} className="px-3 md:px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer flex items-center gap-2 shadow-sm">
-                      <CheckSquare size={14} className="hidden md:block"/> Read
+                      <CheckSquare size={14} className="hidden md:block"/> {t('btnRead')}
                     </button>
                  )}
                  <button onClick={handleMassDelete} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-red-500 hover:text-white hover:border-red-500 text-slate-400 transition-colors cursor-pointer shadow-sm">
@@ -280,14 +299,14 @@ export default function InboxManager({ requests = [] }) {
                    
                    <Button variant="ghost" size="subSliderTab" onClick={() => { setView('questions'); setSelectedIds([]); setSearchQuery(""); }} className={`relative z-10 ${view === 'questions' ? '!text-white' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>
                       <div className="flex items-center justify-center gap-1.5 w-full">
-                         Questions
+                         {t('tabQuestions')}
                          {messages.filter(m => m.status === 'unread').length > 0 && <span className="bg-salsa-pink text-white px-1.5 py-0.5 rounded-md text-[9px] leading-none">{messages.filter(m => m.status === 'unread').length}</span>}
                       </div>
                    </Button>
                    
                    <Button variant="ghost" size="subSliderTab" onClick={() => { setView('requests'); setSelectedIds([]); setSearchQuery(""); }} className={`relative z-10 ${view === 'requests' ? '!text-white' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>
                       <div className="flex items-center justify-center gap-1.5 w-full">
-                         Requests
+                         {t('tabRequests')}
                          {pendingRequestsCount > 0 && <span className="bg-emerald-500 text-white px-1.5 py-0.5 rounded-md text-[9px] leading-none">{pendingRequestsCount}</span>}
                       </div>
                    </Button>
@@ -297,7 +316,7 @@ export default function InboxManager({ requests = [] }) {
                  <div className="relative w-full md:w-[400px] flex items-center shrink-0">
                    <Search className="absolute left-4 text-slate-400" size={14} />
                    <input 
-                     type="text" placeholder={`Search ${view}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                     type="text" placeholder={t('searchPlaceholder', { view: getTranslatedView().toLowerCase() })} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                      className="w-full bg-white border border-gray-200 rounded-2xl pl-11 pr-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-slate-900 transition-colors uppercase"
                    />
                  </div>
@@ -306,19 +325,21 @@ export default function InboxManager({ requests = [] }) {
               {/* BOTTOM ROW: FILTERS */}
               <div className="flex justify-start w-full">
                  {view === 'questions' && (
-                    <div className="relative grid grid-cols-3 bg-slate-50 border border-gray-100 p-1 rounded-xl w-full md:w-[260px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
+                    <div className="relative grid grid-cols-3 bg-slate-50 border border-gray-100 p-1 rounded-xl w-full md:w-[340px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
                       <div className="absolute top-1 bottom-1 bg-white border border-gray-200 rounded-[0.5rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.5rem) / 3)', left: filter === 'all' ? '0.25rem' : filter === 'unread' ? 'calc(0.25rem + (100% - 0.5rem) / 3)' : 'calc(0.25rem + ((100% - 0.5rem) / 3) * 2)' }} />
                       {['all', 'unread', 'replied'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)} className={`relative z-10 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 cursor-pointer ${filter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>{f}</button>
+                        <button key={f} onClick={() => setFilter(f)} className={`relative z-10 py-2 px-1 truncate text-[9px] md:text-[10px] font-bold uppercase tracking-wide transition-colors duration-300 cursor-pointer ${filter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
+                           {getTranslatedStatus(f)}
+                        </button>
                       ))}
                     </div>
                  )}
                  {view === 'requests' && (
-                    <div className="relative grid grid-cols-4 bg-slate-50 border border-gray-100 p-1 rounded-xl w-full md:w-[360px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
+                    <div className="relative grid grid-cols-4 bg-slate-50 border border-gray-100 p-1 rounded-xl w-full md:w-[440px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
                       <div className="absolute top-1 bottom-1 bg-white border border-gray-200 rounded-[0.5rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.5rem) / 4)', left: reqFilter === 'all' ? '0.25rem' : reqFilter === 'pending' ? 'calc(0.25rem + (100% - 0.5rem) / 4)' : reqFilter === 'approved' ? 'calc(0.25rem + ((100% - 0.5rem) / 4) * 2)' : 'calc(0.25rem + ((100% - 0.5rem) / 4) * 3)' }} />
                       {['all', 'pending', 'approved', 'declined'].map(f => (
-                        <button key={f} onClick={() => setReqFilter(f)} className={`relative z-10 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 cursor-pointer ${reqFilter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
-                           {f}
+                        <button key={f} onClick={() => setReqFilter(f)} className={`relative z-10 py-2 px-1 truncate text-[9px] md:text-[10px] font-bold uppercase tracking-wide transition-colors duration-300 cursor-pointer ${reqFilter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
+                           {getTranslatedStatus(f)}
                         </button>
                       ))}
                     </div>
@@ -332,7 +353,7 @@ export default function InboxManager({ requests = [] }) {
             {currentList.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
                 <Mail size={48} className="mb-4 opacity-20" />
-                <p className="text-xs font-bold uppercase tracking-widest">No {view} found</p>
+                <p className="text-xs font-bold uppercase tracking-widest">{t('emptyMsg', { view: getTranslatedView().toLowerCase() })}</p>
               </div>
             ) : (
               <>
@@ -343,10 +364,10 @@ export default function InboxManager({ requests = [] }) {
                       <div className="w-16 flex justify-center shrink-0">
                         <input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length > 0 && selectedIds.length === currentList.length} className="w-4 h-4 rounded border-gray-300 accent-slate-900 cursor-pointer" />
                       </div>
-                      <div className="w-48">{view === 'questions' ? 'Sender' : 'Applicant'}</div>
-                      <div className="flex-1">{view === 'questions' ? 'Message' : 'Pitch'}</div>
-                      <div className="w-32 text-center">{view === 'questions' ? 'Category' : 'Status'}</div>
-                      <div className="w-40 text-right pr-8">Date</div>
+                      <div className="w-48">{view === 'questions' ? t('thSender') : t('thApplicant')}</div>
+                      <div className="flex-1">{view === 'questions' ? t('thMessage') : t('thPitch')}</div>
+                      <div className="w-32 text-center">{view === 'questions' ? t('thCategory') : t('thStatus')}</div>
+                      <div className="w-40 text-right pr-8">{t('thDate')}</div>
                     </div>
                     
                     {currentList.map((item) => {
@@ -392,12 +413,12 @@ export default function InboxManager({ requests = [] }) {
                                <span className="truncate text-sm tracking-wide">{item.name}</span>
                              </div>
                              <div className="flex-1 truncate pr-6 py-5 flex items-center text-sm">
-                               <span className="font-bold text-slate-800">Motivation Pitch</span>
+                               <span className="font-bold text-slate-800">{t('lblPitch')}</span>
                                <span className="text-slate-400 ml-2 text-xs font-medium">- "{item.pitch}"</span>
                              </div>
                              <div className="w-32 py-5 flex justify-center items-center">
                                <span className={`text-[10px] px-3 py-1 rounded-md uppercase font-black tracking-wider ${reqStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : reqStatus === 'declined' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-600'}`}>
-                                 {reqStatus}
+                                 {getTranslatedStatus(reqStatus)}
                                </span>
                              </div>
                              <div className={`w-40 pr-8 py-5 flex items-center justify-end text-xs truncate ${isPending ? 'font-bold text-salsa-pink' : 'font-semibold text-slate-400'}`}>
@@ -448,7 +469,7 @@ export default function InboxManager({ requests = [] }) {
                                 <span className="shrink-0 text-[10px] font-bold text-slate-400">{formatTime(item.createdAt)}</span>
                              </div>
                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${reqStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : reqStatus === 'declined' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-600'}`}>{reqStatus}</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${reqStatus === 'approved' ? 'bg-emerald-50 text-emerald-600' : reqStatus === 'declined' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-600'}`}>{getTranslatedStatus(reqStatus)}</span>
                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.mainStyle}</span>
                              </div>
                              <div className="text-xs text-slate-500 truncate pr-4 italic">"{item.pitch}"</div>
@@ -471,17 +492,17 @@ export default function InboxManager({ requests = [] }) {
           
           <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
             <button onClick={() => { setSelectedItem(null); setIsReplying(false); setReplyText(""); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-colors cursor-pointer">
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={16} /> {t('btnBack')}
             </button>
             {view === 'questions' ? (
-               <button onClick={(e) => deleteItem(selectedItem.id, e)} className="p-2 md:p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer" title="Delete">
+               <button onClick={(e) => deleteItem(selectedItem.id, e)} className="p-2 md:p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer" title={t('btnDelYes')}>
                  <Trash2 size={18} />
                </button>
             ) : (
                <div className="flex items-center gap-2">
-                  <button onClick={(e) => deleteItem(selectedItem.id, e)} className="p-2 md:p-3 mr-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer" title="Delete Request"><Trash2 size={18}/></button>
-                  <button onClick={(e) => handleRejectRequest(selectedItem, e)} className="bg-white border border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50 p-2 md:p-2.5 rounded-xl transition-all cursor-pointer" title="Decline"><XCircle size={18}/></button>
-                  <button onClick={(e) => handleApproveRequest(selectedItem, e)} className="bg-slate-900 text-white hover:bg-emerald-500 p-2 md:p-2.5 px-4 md:px-5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm" title="Approve"><CheckCircle2 size={16}/> <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Approve</span></button>
+                  <button onClick={(e) => deleteItem(selectedItem.id, e)} className="p-2 md:p-3 mr-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer" title={t('btnDelYes')}><Trash2 size={18}/></button>
+                  <button onClick={(e) => handleRejectRequest(selectedItem, e)} className="bg-white border border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50 p-2 md:p-2.5 rounded-xl transition-all cursor-pointer" title={t('btnCancel')}><XCircle size={18}/></button>
+                  <button onClick={(e) => handleApproveRequest(selectedItem, e)} className="bg-slate-900 text-white hover:bg-emerald-500 p-2 md:p-2.5 px-4 md:px-5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm" title={t('btnApprove')}><CheckCircle2 size={16}/> <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">{t('btnApprove')}</span></button>
                </div>
             )}
           </div>
@@ -493,9 +514,9 @@ export default function InboxManager({ requests = [] }) {
             ) : (
                <div className="mb-6 md:mb-8">
                   <div className="flex items-center gap-3 mb-3">
-                     <h2 className="text-3xl md:text-5xl font-bebas text-slate-900 tracking-wide leading-none">Ambassador Application</h2>
+                     <h2 className="text-3xl md:text-5xl font-bebas text-slate-900 tracking-wide leading-none">{t('titleApp')}</h2>
                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-md ${(selectedItem.status || 'pending') === 'approved' ? 'bg-emerald-50 text-emerald-600' : (selectedItem.status || 'pending') === 'declined' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-600'}`}>
-                        {selectedItem.status || 'pending'}
+                        {getTranslatedStatus(selectedItem.status || 'pending')}
                      </span>
                   </div>
                </div>
@@ -527,7 +548,7 @@ export default function InboxManager({ requests = [] }) {
             <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed font-medium">
                {view === 'questions' ? selectedItem.message : (
                   <div className="bg-slate-50 border border-gray-100 p-6 rounded-2xl">
-                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Motivation Pitch</p>
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{t('lblPitch')}</p>
                      <p className="italic text-slate-600">"{selectedItem.pitch}"</p>
                   </div>
                )}
@@ -539,10 +560,10 @@ export default function InboxManager({ requests = [] }) {
                 {displayReplies.map((reply, idx) => (
                   <div key={idx} className="bg-slate-50 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="bg-slate-100 px-5 md:px-8 py-3 md:py-4 border-b border-gray-200 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      <div className="flex items-center gap-2"><CornerUpLeft size={14} /> Your Reply {displayReplies.length > 1 ? `#${idx + 1}` : ''}</div>
+                      <div className="flex items-center gap-2"><CornerUpLeft size={14} /> {t('lblYourReply')} {displayReplies.length > 1 ? `#${idx + 1}` : ''}</div>
                     </div>
                     <div className="p-5 md:p-8 text-sm text-slate-700 whitespace-pre-wrap font-medium leading-relaxed">{reply.text}</div>
-                    <div className="px-5 md:px-8 pb-5 md:pb-8 pt-0 text-[10px] md:text-[11px] text-slate-400 font-bold uppercase tracking-wider">Sent on {new Date(reply.repliedAt).toLocaleString()}</div>
+                    <div className="px-5 md:px-8 pb-5 md:pb-8 pt-0 text-[10px] md:text-[11px] text-slate-400 font-bold uppercase tracking-wider">{t('lblSentOn', { date: new Date(reply.repliedAt).toLocaleString() })}</div>
                   </div>
                ))}
               </div>
@@ -554,22 +575,22 @@ export default function InboxManager({ requests = [] }) {
             {!isReplying ? (
                <div className="flex justify-start">
                <button onClick={() => setIsReplying(true)} className="bg-white border border-gray-200 text-slate-700 px-6 md:px-8 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer shadow-sm">
-                  <CornerUpLeft size={16} className="text-slate-400" /> Reply
+                  <CornerUpLeft size={16} className="text-slate-400" /> {t('btnReply')}
                </button>
                </div>
             ) : (
                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden focus-within:border-slate-900 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-300">
                <div className="bg-slate-50 px-4 md:px-6 py-3 md:py-4 border-b border-gray-100 flex justify-between items-center text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <div className="flex items-center gap-2 truncate"><CornerUpLeft size={14} className="shrink-0" /> Replying to {selectedItem.name.split(' ')[0]}</div>
-                  <button onClick={() => { setIsReplying(false); setReplyText(""); }} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer" title="Cancel"><X size={16} /></button>
+                  <div className="flex items-center gap-2 truncate"><CornerUpLeft size={14} className="shrink-0" /> {t('lblReplyingTo', { name: selectedItem.name.split(' ')[0] })}</div>
+                  <button onClick={() => { setIsReplying(false); setReplyText(""); }} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer" title={t('btnCancel')}><X size={16} /></button>
                </div>
-               <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} maxLength={5000} placeholder="Type your reply here..." className="w-full p-4 md:p-6 min-h-[140px] max-h-[300px] outline-none text-sm text-slate-700 font-medium resize-y" autoFocus />
+               <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} maxLength={5000} placeholder={t('replyPlaceholder')} className="w-full p-4 md:p-6 min-h-[140px] max-h-[300px] outline-none text-sm text-slate-700 font-medium resize-y" autoFocus />
                <div className="px-4 md:px-6 py-3 md:py-4 bg-white flex justify-between items-center border-t border-gray-50 gap-2">
                   <span className={`text-[9px] md:text-[10px] font-bold tracking-widest uppercase ${replyText.length >= 5000 ? 'text-red-500' : 'text-slate-400'}`}>{replyText.length} / 5000</span>
                   <div className="flex items-center gap-2 md:gap-4">
-                  <button onClick={() => { setIsReplying(false); setReplyText(""); }} className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer px-2">Cancel</button>
+                  <button onClick={() => { setIsReplying(false); setReplyText(""); }} className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors cursor-pointer px-2">{t('btnCancel')}</button>
                   <button onClick={handleSendReply} disabled={sendingReply || !replyText.trim()} className="bg-slate-900 text-white px-5 md:px-8 py-2.5 md:py-3.5 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-wider hover:bg-salsa-pink disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm">
-                     {sendingReply ? <Loader2 size={14} className="animate-spin"/> : <Send size={14} />} Send
+                     {sendingReply ? <Loader2 size={14} className="animate-spin"/> : <Send size={14} />} {t('btnSend')}
                   </button>
                   </div>
                </div>

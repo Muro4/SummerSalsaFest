@@ -2,21 +2,26 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, doc, getDoc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing"; // THE FIX: Custom routing
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
+import { useTranslations } from 'next-intl';
 
 // Import the modular Tabs
 import AnalyticsTab from "@/components/admin/AnalyticsTab";
 import InboxManager from "@/components/admin/InboxManager"; 
 import TicketsTab from "@/components/admin/TicketsTab";
 import UsersTab from "@/components/admin/UsersTab";
-import TabNavigation from "@/components/TabNavigation"; // <-- NEW COMPONENT IMPORT
+import TabNavigation from "@/components/TabNavigation"; 
 
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2 } from "lucide-react";
 
 export default function AdminDashboard() {
+   const t = useTranslations('AdminDashboard');
+   const router = useRouter();
+   const { showPopup } = usePopup();
+
    const [activeTab, setActiveTab] = useState("analytics");
    const [data, setData] = useState({ users: [], tickets: [], requests: [] });
    const [loading, setLoading] = useState(true);
@@ -25,9 +30,6 @@ export default function AdminDashboard() {
    
    const [unreadInboxCount, setUnreadInboxCount] = useState(0);
    
-   const router = useRouter();
-   const { showPopup } = usePopup();
-
    const [history, setHistory] = useState([{}]);
    const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -71,7 +73,7 @@ export default function AdminDashboard() {
             if (targetPath && targetPath !== window.location.pathname) {
                e.preventDefault(); e.stopPropagation();
                showPopup({
-                  type: "info", title: "Unsaved Changes", message: "You have unsaved edits! If you leave this page now, your changes will be lost.", confirmText: "Discard & Leave", cancelText: "Stay Here",
+                  type: "info", title: t('popupUnsavedTitle'), message: t('popupUnsavedMsg'), confirmText: t('btnLeave'), cancelText: t('btnStay'),
                   onConfirm: () => { setHistory([{}]); setHistoryIndex(0); router.push(targetPath); }
                });
             }
@@ -80,7 +82,7 @@ export default function AdminDashboard() {
       window.addEventListener('beforeunload', handleBeforeUnload);
       document.addEventListener('click', handleLinkClick, { capture: true });
       return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('click', handleLinkClick, { capture: true }); };
-   }, [historyIndex, router, showPopup]);
+   }, [historyIndex, router, showPopup, t]);
 
    // --- STAGING ACTIONS (Undo/Redo Logic) ---
    const handleStageChange = (collection, id, updates) => {
@@ -98,17 +100,17 @@ export default function AdminDashboard() {
             if (_deleted) await deleteDoc(doc(db, _meta.collection, _meta.id));
             else if (Object.keys(updates).length > 0) await updateDoc(doc(db, _meta.collection, _meta.id), updates);
          }
-         setHistory([{}]); setHistoryIndex(0); showPopup({ type: "success", title: "Success", message: "All changes saved to database.", confirmText: "Done" });
+         setHistory([{}]); setHistoryIndex(0); showPopup({ type: "success", title: t('popupSaveTitle'), message: t('popupSaveMsg'), confirmText: t('btnDone') });
       } catch (err) {
-         console.error(err); showPopup({ type: "error", title: "Error", message: "Failed to save changes to database." });
+         console.error(err); showPopup({ type: "error", title: t('popupErrTitle'), message: t('popupErrMsg') });
       } finally { setSaving(false); }
    };
 
    // Apply staged changes to the live data for instant preview
-   const effectiveTickets = data.tickets.map(t => history[historyIndex]?.[`tickets_${t.id}`] ? { ...t, ...history[historyIndex][`tickets_${t.id}`] } : t).filter(t => !t._deleted);
+   const effectiveTickets = data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
    const effectiveUsers = data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
 
-   // THE FIX: Only count requests that are specifically 'pending'
+   // Only count requests that are specifically 'pending'
    const pendingRequestsCount = data.requests.filter(r => (r.status || 'pending') === 'pending').length;
    
    // Unified Notification Counter
@@ -116,10 +118,10 @@ export default function AdminDashboard() {
 
    // --- DEFINE TABS HERE ---
    const adminTabs = [
-      { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-      { id: 'inbox', label: 'Inbox', icon: Mail, badge: totalInboxNotifications },
-      { id: 'tickets', label: 'Tickets', icon: Ticket },
-      { id: 'users', label: 'Users', icon: UserCog }
+      { id: 'analytics', label: t('tabAnalytics'), icon: BarChart3 },
+      { id: 'inbox', label: t('tabInbox'), icon: Mail, badge: totalInboxNotifications },
+      { id: 'tickets', label: t('tabTickets'), icon: Ticket },
+      { id: 'users', label: t('tabUsers'), icon: UserCog }
    ];
 
    if (!isAdmin || loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
@@ -132,14 +134,14 @@ export default function AdminDashboard() {
             {/* HEADER */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 relative z-30">
                <div>
-                  <h1 className="font-bebas text-6xl md:text-7xl leading-none text-slate-900 uppercase">Event Overview</h1>
-                  <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">Summer Salsa Fest Management</p>
+                  <h1 className="font-bebas tracking-wide text-6xl md:text-7xl leading-none text-slate-900 uppercase">{t('pageTitle')}</h1>
+                  <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.3em] mt-2">{t('pageSubtitle')}</p>
                </div>
             </div>
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full relative z-20">
 
-               {/* --- MAIN TAB NAVIGATOR (NEW CLEAN IMPLEMENTATION) --- */}
+               {/* --- MAIN TAB NAVIGATOR --- */}
                <div className="w-full lg:w-[680px]">
                   <TabNavigation 
                      tabs={adminTabs} 
@@ -151,14 +153,14 @@ export default function AdminDashboard() {
                {/* --- DESKTOP ACTION BUTTONS --- */}
                {['tickets', 'users'].includes(activeTab) && (
                   <div className="hidden lg:flex items-center gap-3 w-full lg:w-auto animate-in fade-in duration-300">
-                     <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title="Undo Stage" className="h-[52px] w-[52px] flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-2xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
+                     <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title={t('btnUndo')} className="h-[52px] w-[52px] flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-2xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
                         <Undo2 size={20} />
                      </button>
-                     <button onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)} disabled={historyIndex >= history.length - 1 || saving} title="Redo Stage" className="h-[52px] w-[52px] flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-2xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
+                     <button onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)} disabled={historyIndex >= history.length - 1 || saving} title={t('btnRedo')} className="h-[52px] w-[52px] flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-2xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
                         <Redo2 size={20} />
                      </button>
                      <Button variant="secondary" size="lg" icon={Save} onClick={handleSaveChanges} disabled={historyIndex === 0 || saving}>
-                        {saving ? "Saving..." : "Save"}
+                        {saving ? t('btnSaving') : t('btnSave')}
                      </Button>
                   </div>
                )}
@@ -193,7 +195,7 @@ export default function AdminDashboard() {
                
                <button onClick={handleSaveChanges} disabled={historyIndex === 0 || saving} className="bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest h-12 px-6 rounded-xl hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 flex-1 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? t('btnSaving') : t('btnSave')}
                </button>
             </div>
          </div>

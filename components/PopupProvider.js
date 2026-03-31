@@ -1,17 +1,44 @@
 "use client";
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 // 1. Create the Context
 const PopupContext = createContext();
 
 // 2. Create the Provider Component
 export function PopupProvider({ children }) {
+  const t = useTranslations('Popup');
   const [popup, setPopup] = useState(null); 
 
-  const showPopup = useCallback(({ type = "info", title, message, confirmText = "OK", cancelText = "Cancel", onConfirm = null }) => {
-    setPopup({ type, title, message, confirmText, cancelText, onConfirm });
-  }, []);
+  // OPTIMIZATION: Lock body scroll when modal is open (Crucial for mobile UX)
+  useEffect(() => {
+    if (popup) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [popup]);
+
+  const showPopup = useCallback(({ 
+    type = "info", 
+    title, 
+    message, 
+    confirmText, 
+    cancelText, 
+    onConfirm = null 
+  }) => {
+    setPopup({ 
+      type, 
+      title, 
+      message, 
+      // TRANSLATION: Fallback to translated defaults if none are provided
+      confirmText: confirmText || t('defaultOk'), 
+      cancelText: cancelText || t('defaultCancel'), 
+      onConfirm 
+    });
+  }, [t]);
 
   const closePopup = () => setPopup(null);
 
