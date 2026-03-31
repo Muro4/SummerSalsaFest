@@ -80,7 +80,7 @@ export default function LandingLoader({ onComplete }) {
       >
         <h1
           key={wordIndex}
-          className={`${modak.className} text-white text-[7vw] leading-none uppercase text-center flex overflow-hidden py-4 tracking-wide`}
+          className={`${modak.className} text-white text-[7vw] leading-none uppercase text-center flex justify-center overflow-hidden py-4 tracking-wide`}
         >
           {currentWord.split("").map((char, index) => (
             <span

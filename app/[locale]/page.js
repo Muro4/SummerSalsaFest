@@ -116,14 +116,14 @@ export default function Home() {
           }}
         />
 
-        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-16 md:pt-20 pb-32 md:pb-48"> 
+        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-24 md:pt-20 pb-32 md:pb-48"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
               {t('hero.edition', { ordinal: editionNumber })} 
             </span> 
 
-            <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
+            <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4.5rem] sm:text-7xl md:text-[7rem] leading-[0.9] mb-12 uppercase flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-4 text-center"> 
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
               <span className="ambient-wave-word wave-3">FEST</span> 
