@@ -6,10 +6,13 @@ import Button from "@/components/Button";
 import Image from "next/image"; // <-- PERFORMANCE FIX
 import { Music, Users, Sun, Star } from "lucide-react"; 
 import { useTranslations } from 'next-intl';
+import LandingLoader from "@/components/LandingLoader";
 
 export default function Home() {
   const t = useTranslations('Index');
   const tCommon = useTranslations('Common');
+  const [showLoader, setShowLoader] = useState(false);
+  
 
   const scrollContainerRef = useRef(null);
   const animationRef = useRef(null);
@@ -41,6 +44,11 @@ export default function Home() {
     const calculatedYear = d.getMonth() > 7 ? d.getFullYear() + 1 : d.getFullYear();
     setFestivalYear(calculatedYear);
     setEditionNumber(calculatedYear - 2011);
+    const hasSeenLoader = sessionStorage.getItem("hasSeenSalsaLoader");
+    if (!hasSeenLoader) {
+      setShowLoader(true);
+    }
+    
 
     startAutoScroll();
     
@@ -50,6 +58,10 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const handleLoaderComplete = () => {
+    setShowLoader(false);
+    sessionStorage.setItem("hasSeenSalsaLoader", "true");
+  };
 
   const startAutoScroll = () => {
     const scroll = () => {
@@ -85,6 +97,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white font-montserrat overflow-x-hidden">
+      {showLoader && <LandingLoader onComplete={handleLoaderComplete} />}
+
       <Navbar />
 
       {/* 1. HERO SECTION */}
@@ -102,7 +116,7 @@ export default function Home() {
           }}
         />
 
-        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-28 md:pt-32 pb-16 md:pb-24"> 
+        <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-16 md:pt-20 pb-32 md:pb-48"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center"> 
