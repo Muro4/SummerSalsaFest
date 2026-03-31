@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase"; // <-- IMPORT AUTH FOR SECURITY TOKEN
 import { doc, updateDoc } from "firebase/firestore";
 import { usePopup } from "@/components/PopupProvider"; 
 import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone, ChevronLeft, ChevronRight, Download } from "lucide-react";
@@ -112,8 +112,15 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
   const handleAddToWallet = async () => {
     setAddingToWallet(true);
     try {
+      // 🔒 SECURITY CHECK: Grab the secure token
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/google-wallet", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket })
+        method: "POST", 
+        headers, 
+        body: JSON.stringify({ ticket })
       });
       const data = await res.json();
       if (data.url) window.open(data.url, "_blank"); 
@@ -150,8 +157,15 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       const pdfBase64 = pdf.output('datauristring');
 
+      // 🔒 SECURITY CHECK: Grab the secure token
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       await fetch("/api/send-ticket", { 
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
+        method: "POST", 
+        headers, 
+        body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
       });
       
       updateDoc(doc(db, "tickets", ticket.id), { emailSentCount: (ticket.emailSentCount || 0) + 1 }).catch(console.error);

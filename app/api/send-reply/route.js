@@ -1,10 +1,40 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { adminAuth } from '@/lib/firebase-admin'; // <-- IMPORT ADMIN SDK
 
 export async function POST(request) {
   console.log("📨 POST request received at /api/send-reply");
 
   try {
+    // =======================================================================
+    // 🔒 SECURITY CHECK: VERIFY FIREBASE TOKEN & ADMIN ROLE
+    // =======================================================================
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("❌ Unauthorized: No token provided");
+      return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+
+    try {
+      // Verify the token is real and not forged
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      console.log(`✅ Authorized request from user ID: ${decodedToken.uid}`);
+      
+      // STRICT ROLE CHECK: Only Admins can send replies
+      if (decodedToken.role !== 'admin' && decodedToken.role !== 'superadmin') {
+         console.error(`❌ Forbidden: User ${decodedToken.uid} is not an admin.`);
+         return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 });
+      }
+
+    } catch (authError) {
+      console.error("❌ Unauthorized: Invalid token", authError.message);
+      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    }
+    // =======================================================================
+
     const { email, name, subject, replyText, originalMessage } = await request.json();
 
     if (!email || !replyText) {

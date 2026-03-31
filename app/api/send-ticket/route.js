@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { adminAuth } from '@/lib/firebase-admin'; // <-- IMPORT ADMIN SDK
 
 export async function GET() {
   return NextResponse.json({ message: "Success! The send-ticket API is awake and routing correctly." });
@@ -9,6 +10,34 @@ export async function POST(request) {
   console.log("📨 POST request received at /api/send-ticket");
 
   try {
+    // =======================================================================
+    // 🔒 SECURITY CHECK: VERIFY FIREBASE TOKEN (The "Bouncer")
+    // =======================================================================
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("❌ Unauthorized: No token provided");
+      return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+
+    try {
+      // Verify the token. If it's forged, expired, or from another app, this throws an error.
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      console.log(`✅ Authorized request from user ID: ${decodedToken.uid}`);
+      
+      // NOTE: If you ONLY want Admins to be able to send emails, uncomment the lines below:
+      // if (decodedToken.role !== 'admin' && decodedToken.role !== 'superadmin') {
+      //    return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 });
+      // }
+
+    } catch (authError) {
+      console.error("❌ Unauthorized: Invalid token", authError.message);
+      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    }
+    // =======================================================================
+
     const body = await request.json();
     const { email, ticket, pdfAttachment } = body;
 
@@ -32,7 +61,7 @@ export async function POST(request) {
     // 3. Clean English-Only Email Template
     const mailOptions = {
       from: `"Summer Salsa Fest" <${process.env.EMAIL_USER}>`,
-      replyTo: process.env.EMAIL_USER, // Ensures replies go to your inbox
+      replyTo: process.env.EMAIL_USER, 
       to: email,
       subject: `🎟️ Your Summer Salsa Fest Pass: ${ticket.passType}`,
       html: `

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase"; // <-- IMPORT AUTH FOR SECURITY TOKEN
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { usePopup } from "@/components/PopupProvider"; 
 import Button from "@/components/Button";
@@ -36,7 +36,7 @@ export default function InboxManager({ requests = [] }) {
 
   // Helper to translate UI view names for search/empty states
   const getTranslatedView = () => {
-     return view === 'questions' ? t('tabQuestions') : t('tabRequests');
+      return view === 'questions' ? t('tabQuestions') : t('tabRequests');
   };
 
   // Helper to translate status tags in UI
@@ -66,7 +66,6 @@ export default function InboxManager({ requests = [] }) {
     return () => unsubscribe();
   }, [selectedItem, view]);
 
-  // Update selected request if it changes
   useEffect(() => {
     if (selectedItem && view === "requests") {
       const updatedReq = requests.find(r => r.id === selectedItem.id);
@@ -181,16 +180,24 @@ export default function InboxManager({ requests = [] }) {
     const targetCollection = isQuestion ? "contact_messages" : "ambassador_requests";
 
     try {
+      // 🔒 SECURITY UPDATE: Fetch the Admin ID Token
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      
       const response = await fetch('/api/send-reply', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // <-- PASS TOKEN TO BACKEND
+        },
         body: JSON.stringify({ 
-           email: selectedItem.email, 
-           name: selectedItem.name, 
-           subject: emailSubject, 
-           replyText: replyText, 
-           originalMessage: originalContent 
+            email: selectedItem.email, 
+            name: selectedItem.name, 
+            subject: emailSubject, 
+            replyText: replyText, 
+            originalMessage: originalContent 
         })
       });
+
       if (!response.ok) throw new Error(t('replyErrApi'));
 
       let currentReplies = selectedItem.adminReplies || [];
@@ -200,7 +207,7 @@ export default function InboxManager({ requests = [] }) {
       currentReplies.push({ text: replyText, repliedAt: timestamp });
 
       const updateData = { adminReplies: currentReplies, repliedAt: timestamp };
-      if (isQuestion) updateData.status = "replied"; // Auto-mark questions as replied. We leave request status alone.
+      if (isQuestion) updateData.status = "replied"; 
 
       await updateDoc(doc(db, targetCollection, selectedItem.id), updateData);
       
@@ -290,10 +297,8 @@ export default function InboxManager({ requests = [] }) {
           ) : (
             <div className="px-4 md:px-6 py-4 border-b border-gray-100 bg-white flex flex-col gap-4 transition-all shrink-0">
               
-              {/* TOP ROW: VIEW TOGGLE & SEARCH */}
               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                  
-                 {/* VIEW TOGGLE */}
                  <div className="relative grid grid-cols-2 bg-slate-50 border border-gray-100 p-1.5 rounded-xl w-full md:w-[320px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0 shrink-0">
                    <div className="absolute top-1.5 bottom-1.5 bg-slate-900 rounded-[0.7rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.75rem) / 2)', left: view === 'questions' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }} />
                    
@@ -312,7 +317,6 @@ export default function InboxManager({ requests = [] }) {
                    </Button>
                  </div>
 
-                 {/* SEARCH BAR */}
                  <div className="relative w-full md:w-[400px] flex items-center shrink-0">
                    <Search className="absolute left-4 text-slate-400" size={14} />
                    <input 
@@ -322,15 +326,12 @@ export default function InboxManager({ requests = [] }) {
                  </div>
               </div>
 
-              {/* BOTTOM ROW: FILTERS */}
               <div className="flex justify-start w-full">
                  {view === 'questions' && (
                     <div className="relative grid grid-cols-3 bg-slate-50 border border-gray-100 p-1 rounded-xl w-full md:w-[340px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
                       <div className="absolute top-1 bottom-1 bg-white border border-gray-200 rounded-[0.5rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.5rem) / 3)', left: filter === 'all' ? '0.25rem' : filter === 'unread' ? 'calc(0.25rem + (100% - 0.5rem) / 3)' : 'calc(0.25rem + ((100% - 0.5rem) / 3) * 2)' }} />
                       {['all', 'unread', 'replied'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)} className={`relative z-10 py-2 px-1 truncate text-[9px] md:text-[10px] font-bold uppercase tracking-wide transition-colors duration-300 cursor-pointer ${filter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
-                           {getTranslatedStatus(f)}
-                        </button>
+                        <button key={f} onClick={() => setFilter(f)} className={`relative z-10 py-2 px-1 truncate text-[9px] md:text-[10px] font-bold uppercase tracking-wide transition-colors duration-300 cursor-pointer ${filter === f ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>{getTranslatedStatus(f)}</button>
                       ))}
                     </div>
                  )}
@@ -357,7 +358,6 @@ export default function InboxManager({ requests = [] }) {
               </div>
             ) : (
               <>
-                {/* --- DESKTOP TABLE VIEW --- */}
                 <div className="hidden md:block overflow-x-auto w-full pb-10">
                   <div className="min-w-[900px]">
                     <div className="flex items-center px-0 py-4 border-b border-gray-100 bg-white text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -373,7 +373,6 @@ export default function InboxManager({ requests = [] }) {
                     {currentList.map((item) => {
                       const isSelected = selectedIds.includes(item.id);
                       
-                      // QUESTIONS RENDER
                       if (view === 'questions') {
                          const isUnread = item.status === "unread";
                          return (
@@ -399,7 +398,6 @@ export default function InboxManager({ requests = [] }) {
                          );
                       }
 
-                      // REQUESTS RENDER
                       if (view === 'requests') {
                          const reqStatus = item.status || 'pending';
                          const isPending = reqStatus === 'pending';
@@ -431,7 +429,6 @@ export default function InboxManager({ requests = [] }) {
                   </div>
                 </div>
 
-                {/* --- MOBILE GMAIL-STYLE LIST VIEW --- */}
                 <div className="block md:hidden w-full pb-10">
                   {currentList.map((item) => {
                     const isSelected = selectedIds.includes(item.id);
@@ -484,10 +481,6 @@ export default function InboxManager({ requests = [] }) {
           </div>
         </div>
       ) : (
-        
-        /* ==============================================
-           DETAIL VIEW (Message OR Request)
-           ============================================== */
         <div className="flex flex-col animate-in slide-in-from-right-8 duration-300 h-full">
           
           <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
@@ -554,7 +547,6 @@ export default function InboxManager({ requests = [] }) {
                )}
             </div>
 
-            {/* UNIFIED REPLIES DISPLAY */}
             {displayReplies.length > 0 && (
               <div className="mt-10 md:mt-14 flex flex-col gap-4 md:gap-6">
                 {displayReplies.map((reply, idx) => (
@@ -570,7 +562,6 @@ export default function InboxManager({ requests = [] }) {
             )}
           </div>
 
-          {/* UNIFIED REPLY FOOTER (Now available for BOTH Questions and Requests!) */}
           <div className="p-4 md:p-8 border-t border-gray-100 bg-white shrink-0">
             {!isReplying ? (
                <div className="flex justify-start">
