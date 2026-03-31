@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function GalleryPage() {
+  const t = useTranslations('Gallery');
   const [selectedIndex, setSelectedIndex] = useState(null);
 
   // The base 9 images
@@ -21,7 +23,6 @@ export default function GalleryPage() {
   ];
 
   // Tripling the images to create a massive masonry wall
-  // Note: we add unique index keys so React doesn't complain about duplicates
   const galleryImages = [...baseImages, ...baseImages, ...baseImages].map((img, i) => ({...img, uniqueKey: i}));
 
   // --- LIGHTBOX NAVIGATION LOGIC ---
@@ -75,13 +76,13 @@ export default function GalleryPage() {
       {/* 1. GALLERY HEADER */}
       <section className="pt-40 pb-16 px-6 text-center">
         <span className="animate-fade-in delay-100 text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em] mb-4 inline-block drop-shadow-sm">
-          Memories
+          {t('heroPre')}
         </span>
-        <h1 className="animate-fade-in delay-300 font-modak text-6xl md:text-8xl text-gray-900 leading-none uppercase drop-shadow-md">
-          The <span className="text-salsa-pink">Gallery</span>
+        <h1 className="animate-fade-in delay-300 font-modak text-6xl md:text-8xl text-gray-900 leading-none uppercase drop-shadow-md flex flex-wrap justify-center gap-3">
+          {t('heroTitle1')} <span className="text-salsa-pink">{t('heroTitle2')}</span>
         </h1>
         <p className="animate-fade-in delay-500 max-w-xl mx-auto mt-6 text-gray-600 font-medium">
-          Relive the energy, the music, and the beautiful moments from our previous editions.
+          {t('heroDesc')}
         </p>
       </section>
 
@@ -153,7 +154,6 @@ export default function GalleryPage() {
           </div>
 
           {/* --- MOBILE VIEW (Swipeable Snap Carousel) --- */}
-          {/* Using snap-always ensures that 1 swipe = 1 image */}
           <div 
             className="flex md:hidden absolute inset-0 overflow-x-auto overflow-y-hidden snap-x snap-mandatory hide-scrollbar z-[105]" 
             onClick={closeLightbox}
@@ -170,7 +170,7 @@ export default function GalleryPage() {
                   {i === selectedIndex && (
                     <div className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/50 animate-pulse z-50">
                       <ChevronLeft size={16} />
-                      <span className="text-[10px] uppercase tracking-widest font-bold">Swipe</span>
+                      <span className="text-[10px] uppercase tracking-widest font-bold">{t('swipe')}</span>
                       <ChevronRight size={16} />
                     </div>
                   )}

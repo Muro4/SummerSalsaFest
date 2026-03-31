@@ -2,19 +2,23 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { MapPin, Sun, Moon, Music, Plane, ChevronDown, Map, Sparkles } from "lucide-react";
+import { MapPin, Sun, Moon, Music, Map } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function InfoPage() {
+  const t = useTranslations('Info');
   const [openFaq, setOpenFaq] = useState(null);
   
   // State to track which map is clicked/expanded on mobile
   const [activeMap, setActiveMap] = useState(null); 
 
+  // Moved inside component to dynamically translate
   const faqs = [
-    { q: "Do I need a partner to attend?", a: "Not at all! Summer Salsa Fest is incredibly social. During workshops, we constantly rotate partners, and during the parties, everyone dances with everyone." },
-    { q: "How do I get to Varna Free University?", a: "The university is located just outside the city center. We recommend taking bus lines 409 or 9, which drop you off right near the campus. Taxis are also very affordable!" },
-    { q: "Are there beginner workshops?", a: "Yes! We have dedicated bootcamps and beginner-friendly tracks happening every single day. Look for the 'Green Track' on the official schedule." },
-    { q: "What should I pack?", a: "Dance shoes (of course), swimwear for the beach socials, comfortable daytime clothes for workshops, and your best outfits for the evening gala parties!" },
+    { q: t('faq1q'), a: t('faq1a') },
+    { q: t('faq2q'), a: t('faq2a') },
+    { q: t('faq3q'), a: t('faq3a') },
+    { q: t('faq4q'), a: t('faq4a') },
   ];
 
   return (
@@ -35,27 +39,21 @@ export default function InfoPage() {
         />
         <div className="relative z-10 flex flex-col items-center animate-fade-in">
           <span className="bg-salsa-mint/20 text-salsa-mint border border-salsa-mint/30 text-[11px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
-            Everything You Need To Know
+            {t('heroPre')}
           </span>
-          <h1 className="font-modak text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-2xl">
-            Festival <span className="text-salsa-pink">Info</span>
+          <h1 className="font-modak text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-2xl flex flex-wrap justify-center gap-3">
+            {t('heroTitle1')} <span className="text-salsa-pink">{t('heroTitle2')}</span>
           </h1>
         </div>
-
-        {/* Diagonal Cut Bottom */}
-        <div className="absolute -bottom-1 left-0 w-full overflow-hidden leading-[0]">
-          <svg className="relative block w-full h-[40px] md:h-[80px]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M1200 120L0 120 0 0 1200 120z" className="fill-white"></path>
-          </svg>
-        </div>
+        {/* Diagonal Cut Bottom Removed Here */}
       </section>
 
       {/* 3. THE DAILY RHYTHM (Vertical Timeline) */}
       <section className="py-24 px-6 bg-white border-y border-gray-100">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">Schedule Preview</span>
-            <h2 className="font-bebas text-6xl text-gray-900 mt-2">The Daily Schedule</h2>
+            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em]">{t('schedulePre')}</span>
+            <h2 className="font-bebas tracking-wide text-6xl text-gray-900 mt-2">{t('scheduleTitle')}</h2>
           </div>
 
           <div className="space-y-12 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-salsa-mint before:via-salsa-pink before:to-transparent">
@@ -66,8 +64,8 @@ export default function InfoPage() {
                 <Sun size={16} className="text-salsa-mint" />
               </div>
               <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">11:00 AM - Workshops</h4>
-                <p className="text-sm text-gray-600">Masterclasses with over 50 international champions across 4 massive dance halls.</p>
+                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">{t('sch1Time')}</h4>
+                <p className="text-sm text-gray-600">{t('sch1Desc')}</p>
               </div>
             </div>
 
@@ -77,8 +75,8 @@ export default function InfoPage() {
                 <Music size={16} className="text-salsa-pink" />
               </div>
               <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">5:00 PM - Beach Socials</h4>
-                <p className="text-sm text-gray-600">Cool down from the workshops with cocktails and social dancing right on the sand.</p>
+                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">{t('sch2Time')}</h4>
+                <p className="text-sm text-gray-600">{t('sch2Desc')}</p>
               </div>
             </div>
 
@@ -88,8 +86,8 @@ export default function InfoPage() {
                 <Moon size={16} className="text-white" />
               </div>
               <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">10:00 PM - Gala Parties</h4>
-                <p className="text-sm text-gray-600">Spectacular shows, live bands, and social dancing across multiple rooms until sunrise.</p>
+                <h4 className="font-bold text-lg text-gray-900 uppercase tracking-widest mb-2">{t('sch3Time')}</h4>
+                <p className="text-sm text-gray-600">{t('sch3Desc')}</p>
               </div>
             </div>
 
@@ -101,10 +99,8 @@ export default function InfoPage() {
        <section className="relative w-full h-[600px] md:h-[500px] flex flex-col md:flex-row bg-slate-900 overflow-hidden border-t border-gray-100 selection:bg-transparent">
         
         {/* VENUE 1: DAY (Workshops) */}
-        {/* Added dynamic flex growth on mobile if active */}
         <div className={`relative group transition-all duration-700 md:hover:flex-[1.5] border-b md:border-b-0 md:border-r border-white/10 z-10 ${activeMap === 0 ? 'flex-[2] md:flex-1' : 'flex-1'}`}>
           
-          {/* Mobile Click Shield - Blocks iframe interactions until tapped */}
           <div 
             className={`absolute inset-0 z-20 md:hidden ${activeMap === 0 ? 'pointer-events-none' : 'cursor-pointer'}`}
             onClick={() => setActiveMap(0)}
@@ -120,16 +116,15 @@ export default function InfoPage() {
               loading="lazy" 
               referrerPolicy="no-referrer-when-downgrade"
             ></iframe>
-            {/* Dynamic Tint: Transparent if active on mobile, otherwise 30%. Desktop remains at 60% and fades out on hover */}
             <div className={`absolute inset-0 transition-colors duration-700 pointer-events-none md:group-hover:bg-transparent ${activeMap === 0 ? 'bg-transparent md:bg-slate-900/60' : 'bg-slate-900/30 md:bg-slate-900/60'}`}></div>
           </div>
           
           <div className="relative z-10 h-full p-6 md:p-10 flex flex-col justify-end pointer-events-none">
-            <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">The Venue</span>
-            <h3 className="font-bebas text-4xl md:text-5xl text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]">Varna Free University</h3>
+            <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{t('venue1Pre')}</span>
+            <h3 className="font-bebas tracking-wide text-4xl md:text-5xl text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]">{t('venue1Title')}</h3>
             <div className="mt-2 flex items-center gap-2 text-white/90 text-xs md:text-sm font-medium drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               <MapPin size={16} className="text-salsa-mint shrink-0" /> 
-              <span className="truncate">Чайка, ChaykaPrimorski, ул. „Янко Славчев“ 84</span>
+              <span className="truncate">{t('venue1Addr')}</span>
             </div>
           </div>
 
@@ -139,10 +134,8 @@ export default function InfoPage() {
         </div>
 
         {/* VENUE 2: NIGHT (Parties) */}
-        {/* Added dynamic flex growth on mobile if active */}
         <div className={`relative group transition-all duration-700 md:hover:flex-[1.5] z-0 ${activeMap === 1 ? 'flex-[2] md:flex-1' : 'flex-1'}`}>
           
-          {/* Mobile Click Shield - Blocks iframe interactions until tapped */}
           <div 
             className={`absolute inset-0 z-20 md:hidden ${activeMap === 1 ? 'pointer-events-none' : 'cursor-pointer'}`}
             onClick={() => setActiveMap(1)}
@@ -158,15 +151,14 @@ export default function InfoPage() {
               loading="lazy" 
               referrerPolicy="no-referrer-when-downgrade"
             ></iframe>
-            {/* Dynamic Tint: Transparent if active on mobile, otherwise 30%. Desktop remains at 60% and fades out on hover */}
             <div className={`absolute inset-0 transition-colors duration-700 pointer-events-none md:group-hover:bg-transparent ${activeMap === 1 ? 'bg-transparent md:bg-slate-900/60' : 'bg-slate-900/30 md:bg-slate-900/60'}`}></div>
           </div>
           
           <div className="relative z-10 h-full p-6 md:p-10 flex flex-col justify-end pointer-events-none">
-            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">Beach Fiesta</span>
-            <h3 className="font-bebas text-4xl md:text-5xl text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]">Kabakum Beach</h3>
+            <span className="text-salsa-pink font-black text-[11px] uppercase tracking-[0.4em] mb-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{t('venue2Pre')}</span>
+            <h3 className="font-bebas tracking-wide text-4xl md:text-5xl text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]">{t('venue2Title')}</h3>
             <div className="mt-2 flex items-center gap-2 text-white/90 text-xs md:text-sm font-medium drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              <MapPin size={16} className="text-salsa-pink shrink-0" /> Varna beach
+              <MapPin size={16} className="text-salsa-pink shrink-0" /> {t('venue2Addr')}
             </div>
           </div>
         </div>
@@ -176,8 +168,8 @@ export default function InfoPage() {
       {/* 4. FAQ ACCORDION */}
       <section className="py-24 px-6 max-w-4xl mx-auto">
         <div className="text-center mb-16">
-          <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em]">Got Questions?</span>
-          <h2 className="font-bebas text-6xl text-gray-900 mt-2">Frequently Asked</h2>
+          <span className="text-salsa-mint font-black text-[11px] uppercase tracking-[0.4em]">{t('faqPre')}</span>
+          <h2 className="font-bebas tracking-wide text-6xl text-gray-900 mt-2">{t('faqTitle')}</h2>
         </div>
 
         <div className="space-y-4">
@@ -191,10 +183,10 @@ export default function InfoPage() {
                 className="w-full px-8 py-6 flex items-center justify-between font-bold text-left text-gray-900"
               >
                 {faq.q}
-                <ChevronDown size={20} className={`text-salsa-pink transition-transform duration-300 ${openFaq === i ? 'rotate-180' : ''}`} />
+                <ChevronDown size={20} className={`text-salsa-pink transition-transform duration-300 shrink-0 ml-4 ${openFaq === i ? 'rotate-180' : ''}`} />
               </button>
               
-              <div className={`px-8 overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-40 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
+              <div className={`px-8 overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-60 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
                 <p className="text-gray-600 text-sm leading-relaxed border-t border-gray-100 pt-4">
                   {faq.a}
                 </p>

@@ -111,8 +111,8 @@ export default function PrivacyPage() {
             <p className="font-medium">
               {t('s6Text')}
             </p>
-            <a href="mailto:info@summersalsa.com" className="inline-block mt-4 text-salsa-pink font-bold hover:underline text-lg">
-              info@summersalsa.com
+            <a href="mailto:ssf.varna@gmail.com" className="inline-block mt-4 text-salsa-pink font-bold hover:underline text-lg">
+              ssf.varna@gmail.com
             </a>
           </div>
 
