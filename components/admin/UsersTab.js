@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Search, ShieldAlert, Users } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
 import { useTranslations } from 'next-intl';
@@ -19,27 +19,45 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
    const [searchTerm, setSearchTerm] = useState("");
    const [roleFilter, setRoleFilter] = useState("all");
 
-   const filteredUsers = users.filter(u =>
-      (u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (roleFilter === "all" || u.role === roleFilter)
-   );
+   // Memoize the standard role options to avoid repeating them in 3 different dropdowns
+   const baseRoleOptions = useMemo(() => [
+      { label: t('roleUser'), value: 'user', isPill: true, colorClass: getRoleStyle('user') },
+      { label: t('roleAmbassador'), value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
+      { label: t('roleAdmin'), value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
+      { label: t('roleSuperAdmin'), value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
+   ], [t]);
+
+   // Memoize filtered users for performance
+   const filteredUsers = useMemo(() => {
+      const lowerSearch = searchTerm.toLowerCase();
+      return users.filter(u =>
+         (u.displayName?.toLowerCase().includes(lowerSearch) || u.email?.toLowerCase().includes(lowerSearch)) &&
+         (roleFilter === "all" || u.role === roleFilter)
+      );
+   }, [users, searchTerm, roleFilter]);
 
    return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+         {/* FILTERS */}
          <div className="flex flex-col xl:flex-row gap-4">
             <div className="relative flex-grow group">
                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
-               <input type="text" value={searchTerm} placeholder={t('searchPlaceholder')} className="input-standard w-full" onChange={e => setSearchTerm(e.target.value)} />
+               <input 
+                  type="text" 
+                  value={searchTerm} 
+                  placeholder={t('searchPlaceholder')} 
+                  className="input-standard w-full" 
+                  onChange={e => setSearchTerm(e.target.value)} 
+               />
             </div>
             <div className="relative w-full xl:w-auto">
                <CustomDropdown
-                  icon={ShieldAlert} value={roleFilter} onChange={setRoleFilter}
+                  icon={ShieldAlert} 
+                  value={roleFilter} 
+                  onChange={setRoleFilter}
                   options={[
                      { label: t('roleAll'), value: 'all', isPill: true, colorClass: getRoleStyle('all') },
-                     { label: t('roleUser'), value: 'user', isPill: true, colorClass: getRoleStyle('user') },
-                     { label: t('roleAmbassador'), value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
-                     { label: t('roleAdmin'), value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
-                     { label: t('roleSuperAdmin'), value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
+                     ...baseRoleOptions
                   ]}
                   variant="filter"
                />
@@ -66,24 +84,31 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                         return (
                            <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                               <td className="p-6 pl-10 align-middle border-b border-gray-50">
-                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide">{u.displayName || t('lblUnregistered')}</span>
+                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide">
+                                    {u.displayName || t('lblUnregistered')}
+                                 </span>
                               </td>
                               <td className="p-6 align-middle border-b border-gray-50">
-                                 {u.role === 'ambassador' && u.ambassadorDisplayName ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {u.ambassadorDisplayName}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">-</span>}
+                                 {u.role === 'ambassador' && u.ambassadorDisplayName ? (
+                                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest">
+                                       <Users size={12} className="text-slate-400" /> {u.ambassadorDisplayName}
+                                    </span>
+                                 ) : (
+                                    <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">-</span>
+                                 )}
                               </td>
-                              <td className="p-6 align-middle text-slate-500 lowercase font-bold text-sm tracking-wide border-b border-gray-50">{u.email}</td>
+                              <td className="p-6 align-middle text-slate-500 lowercase font-bold text-sm tracking-wide border-b border-gray-50">
+                                 {u.email}
+                              </td>
                               <td className="p-6 pl-16 pr-12 align-middle border-b border-gray-50">
                                  <div className="flex justify-start">
                                     <CustomDropdown
                                        value={displayRole}
                                        onChange={(val) => onStageChange('users', u.id, { role: val })}
-                                       disabled={isMySuperAdmin} title={isMySuperAdmin ? t('tooltipCantDemote') : t('tooltipStage')} hideChevron={isMySuperAdmin}
-                                       options={[
-                                          { label: t('roleUser'), value: 'user', isPill: true, colorClass: getRoleStyle('user') }, 
-                                          { label: t('roleAmbassador'), value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, 
-                                          { label: t('roleAdmin'), value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, 
-                                          { label: t('roleSuperAdmin'), value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
-                                       ]}
+                                       disabled={isMySuperAdmin} 
+                                       title={isMySuperAdmin ? t('tooltipCantDemote') : t('tooltipStage')} 
+                                       hideChevron={isMySuperAdmin}
+                                       options={baseRoleOptions}
                                        variant="pill"
                                     />
                                  </div>
@@ -91,7 +116,13 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                            </tr>
                         )
                      })}
-                     {filteredUsers.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>}
+                     {filteredUsers.length === 0 && (
+                        <tr>
+                           <td colSpan="4" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">
+                              {t('emptyMsg')}
+                           </td>
+                        </tr>
+                     )}
                   </tbody>
                </table>
             </div>
@@ -106,7 +137,9 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                return (
                   <div key={u.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-4 relative overflow-visible">
                      <div>
-                        <span className="block text-lg font-black font-montserrat text-slate-900 tracking-wide">{u.displayName || t('lblUnregistered')}</span>
+                        <span className="block text-lg font-black font-montserrat text-slate-900 tracking-wide">
+                           {u.displayName || t('lblUnregistered')}
+                        </span>
                         <span className="block text-sm font-bold text-slate-500 lowercase mt-0.5">{u.email}</span>
                      </div>
                      <div className="flex items-center w-full relative z-10">
@@ -121,13 +154,11 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('thRole')}</span>
                         <div className="scale-[0.85] origin-right">
                            <CustomDropdown
-                              value={displayRole} onChange={(val) => onStageChange('users', u.id, { role: val })} disabled={isMySuperAdmin} hideChevron={isMySuperAdmin}
-                              options={[
-                                 { label: t('roleUser'), value: 'user', isPill: true, colorClass: getRoleStyle('user') }, 
-                                 { label: t('roleAmbassador'), value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') }, 
-                                 { label: t('roleAdmin'), value: 'admin', isPill: true, colorClass: getRoleStyle('admin') }, 
-                                 { label: t('roleSuperAdmin'), value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
-                              ]}
+                              value={displayRole} 
+                              onChange={(val) => onStageChange('users', u.id, { role: val })} 
+                              disabled={isMySuperAdmin} 
+                              hideChevron={isMySuperAdmin}
+                              options={baseRoleOptions}
                               variant="pill"
                            />
                         </div>
@@ -135,7 +166,11 @@ export default function UsersTab({ users, currentUserId, onStageChange, historyS
                   </div>
                );
             })}
-            {filteredUsers.length === 0 && <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">{t('emptyMsg')}</div>}
+            {filteredUsers.length === 0 && (
+               <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">
+                  {t('emptyMsg')}
+               </div>
+            )}
          </div>
       </div>
    );

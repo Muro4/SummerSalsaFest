@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Button from "@/components/Button";
+import Image from "next/image"; // <-- PERFORMANCE FIX
 import { Music, Users, Sun, Star } from "lucide-react"; 
 import { useTranslations } from 'next-intl';
 
@@ -101,7 +102,6 @@ export default function Home() {
           }}
         />
 
-        {/* ✅ FIXED: Added pt-28 md:pt-32 to push the content down below the fixed Navbar */}
         <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-28 md:pt-32 pb-16 md:pb-24"> 
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full"> 
             
@@ -109,7 +109,6 @@ export default function Home() {
               {t('hero.edition', { ordinal: editionNumber })} 
             </span> 
 
-            {/* This stays Modak since it's the English brand name */}
             <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4rem] sm:text-7xl md:text-[7rem] leading-none mb-12 uppercase flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 text-center"> 
               <span className="ambient-wave-word wave-1">SUMMER</span> 
               <span className="ambient-wave-word wave-2">SALSA</span> 
@@ -181,26 +180,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. FESTIVAL GALLERY */}
+      {/* 3. FESTIVAL GALLERY (PERFORMANCE FIX: NEXT/IMAGE) */}
       <section id="gallery" className="py-16 md:py-24 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-3 gap-3 md:gap-4 h-auto md:h-[1000px]">
-          <div className="md:col-span-2 md:row-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-64 md:h-auto">
-            <img src="https://www.doitinparis.com/files/2025/thumbs-1180x525/en/festivals-musique-ete-2025.jpg" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 1" />
+          <div className="relative md:col-span-2 md:row-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-64 md:h-auto">
+            <Image src="https://www.doitinparis.com/files/2025/thumbs-1180x525/en/festivals-musique-ete-2025.jpg" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 1" />
           </div>
-          <div className="md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=1000" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 2" />
+          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
+            <Image src="https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 2" />
           </div>
-          <div className="rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 3" />
+          <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
+            <Image src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 3" />
           </div>
-          <div className="rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <img src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 4" />
+          <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
+            <Image src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 4" />
           </div>
-          <div className="md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <img src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1000" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 5" />
+          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
+            <Image src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 5" />
           </div>
-          <div className="md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <img src="https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1000" className="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 6" />
+          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
+            <Image src="https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 6" />
           </div>
         </div>
       </section>

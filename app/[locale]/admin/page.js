@@ -1,21 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, doc, getDoc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing
+import { collection, doc, getDoc, updateDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
+import { useRouter } from "@/routing"; 
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import { useTranslations } from 'next-intl';
-
-// Import the modular Tabs
-import AnalyticsTab from "@/components/admin/AnalyticsTab";
-import InboxManager from "@/components/admin/InboxManager"; 
-import TicketsTab from "@/components/admin/TicketsTab";
-import UsersTab from "@/components/admin/UsersTab";
+import dynamic from 'next/dynamic'; // <-- 1. IMPORT DYNAMIC
 import TabNavigation from "@/components/TabNavigation"; 
-
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2 } from "lucide-react";
+
+// ============================================================================
+// 🚀 PERFORMANCE OPTIMIZATION: LAZY LOAD HEAVY COMPONENTS
+// These tabs will only download to the user's browser WHEN they are clicked!
+// ============================================================================
+const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), { 
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+});
+const InboxManager = dynamic(() => import("@/components/admin/InboxManager"), { 
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+});
+const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), { 
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+});
+const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), { 
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+});
 
 export default function AdminDashboard() {
    const t = useTranslations('AdminDashboard');
@@ -48,10 +59,12 @@ export default function AdminDashboard() {
                unsubUsers = onSnapshot(collection(db, "users"), (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })));
                unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); });
                
-               // Count Unread Messages
-               unsubMessages = onSnapshot(collection(db, "contact_messages"), (mS) => setUnreadInboxCount(mS.docs.filter(d => d.data().status === "unread").length));
+               // 🚀 PERFORMANCE OPTIMIZATION: ONLY FETCH UNREAD MESSAGES
+               // Prevents double-fetching the entire history of messages before the Inbox is even opened
+               const unreadQuery = query(collection(db, "contact_messages"), where("status", "==", "unread"));
+               unsubMessages = onSnapshot(unreadQuery, (mS) => setUnreadInboxCount(mS.docs.length));
                
-               // Fetch Pending Requests (Passed down to InboxManager)
+               // Fetch Pending Requests
                unsubRequests = onSnapshot(collection(db, "ambassador_requests"), (rS) => {
                   setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) }));
                });
@@ -106,12 +119,19 @@ export default function AdminDashboard() {
       } finally { setSaving(false); }
    };
 
-   // Apply staged changes to the live data for instant preview
-   const effectiveTickets = data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
-   const effectiveUsers = data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
+   // 🚀 PERFORMANCE OPTIMIZATION: MEMOIZATION
+   // These large array maps will now ONLY run when 'data' or 'history' actually changes, saving massive CPU cycles.
+   const effectiveTickets = useMemo(() => {
+       return data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
+   }, [data.tickets, history, historyIndex]);
 
-   // Only count requests that are specifically 'pending'
-   const pendingRequestsCount = data.requests.filter(r => (r.status || 'pending') === 'pending').length;
+   const effectiveUsers = useMemo(() => {
+       return data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
+   }, [data.users, history, historyIndex]);
+
+   const pendingRequestsCount = useMemo(() => {
+       return data.requests.filter(r => (r.status || 'pending') === 'pending').length;
+   }, [data.requests]);
    
    // Unified Notification Counter
    const totalInboxNotifications = unreadInboxCount + pendingRequestsCount;
