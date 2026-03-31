@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
-// --- 1. DIAGNOSTIC GET ROUTE ---
-// This lets you visit the URL in your browser to prove the file is connected
 export async function GET() {
   return NextResponse.json({ message: "Success! The send-ticket API is awake and routing correctly." });
 }
 
-// --- 2. ACTUAL POST ROUTE ---
 export async function POST(request) {
   console.log("📨 POST request received at /api/send-ticket");
 
@@ -15,11 +12,13 @@ export async function POST(request) {
     const body = await request.json();
     const { email, ticket, pdfAttachment } = body;
 
+    // 1. Strict Validation
     if (!email || !ticket || !pdfAttachment) {
       console.error("Missing fields:", { email: !!email, ticket: !!ticket, pdf: !!pdfAttachment });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // 2. Transporter Setup
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -30,24 +29,30 @@ export async function POST(request) {
 
     const base64Data = pdfAttachment.split('base64,')[1];
 
+    // 3. Clean English-Only Email Template
     const mailOptions = {
       from: `"Summer Salsa Fest" <${process.env.EMAIL_USER}>`,
+      replyTo: process.env.EMAIL_USER, // Ensures replies go to your inbox
       to: email,
-      subject: `🎟️ Your Summer Salsa Fest Ticket: ${ticket.passType}`,
+      subject: `🎟️ Your Summer Salsa Fest Pass: ${ticket.passType}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-          <h2 style="color: #e11d48; text-transform: uppercase;">You're going to Summer Salsa Fest!</h2>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6;">
+          <h2 style="color: #e11d48; text-transform: uppercase; margin-bottom: 5px;">You're going to Summer Salsa Fest!</h2>
           <p>Hi <strong>${ticket.userName}</strong>,</p>
-          <p>Your <strong>${ticket.passType}</strong> has been confirmed. You can find your official ticket attached to this email.</p>
+          <p>Your <strong>${ticket.passType}</strong> has been confirmed. You can find your official pass attached to this email.</p>
           <p>Make sure to download the PDF and have the QR code ready on your phone when you arrive at the registration desk.</p>
           <br/>
-          <p>See you on the dance floor!</p>
-          <p><strong>- The Summer Salsa Fest Team</strong></p>
+          <p style="font-size: 16px; margin-top: 10px;">
+            💃🕺 See you on the dance floor!
+          </p>
+          <p style="color: #888; font-size: 12px;">
+            <strong>- The Summer Salsa Fest Team</strong>
+          </p>
         </div>
       `,
       attachments: [
         {
-          filename: `SalsaFest_${ticket.passType.replace(/\s+/g, '_')}_${ticket.userName.replace(/\s+/g, '_')}.pdf`,
+          filename: `SalsaFest_Pass_${ticket.passType.replace(/\s+/g, '_')}_${ticket.userName.replace(/\s+/g, '_')}.pdf`,
           content: base64Data,
           encoding: 'base64',
         },

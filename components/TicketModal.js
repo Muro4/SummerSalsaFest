@@ -1,32 +1,33 @@
 "use client";
 import { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Download, Send, Mail, Loader2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { toPng } from "html-to-image";
-import jsPDF from "jspdf";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
-import { usePopup } from "@/components/PopupProvider";
+import { usePopup } from "@/components/PopupProvider"; 
+import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useTranslations } from 'next-intl';
 
-// --- UTILS ---
+// --- SHARED PASS STYLING ---
 const getPassBgColor = (type) => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('full')) return 'bg-salsa-pink';
-  if (t.includes('party')) return 'bg-violet-600';
-  if (t.includes('day')) return 'bg-teal-300';
-  if (t.includes('free')) return 'bg-yellow-400';
-  return 'bg-gray-200';
+   const t = (type || '').toLowerCase();
+   if (t.includes('full')) return 'bg-salsa-pink';
+   if (t.includes('party')) return 'bg-violet-600';
+   if (t.includes('day')) return 'bg-teal-300';
+   if (t.includes('free')) return 'bg-yellow-400';
+   return 'bg-gray-200';
 };
 
 const getPassTextColor = (type) => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('day')) return 'text-teal-950';
-  if (t.includes('free')) return 'text-yellow-900';
-  if (t.includes('full') || t.includes('party')) return 'text-white';
-  return 'text-slate-900';
+   const t = (type || '').toLowerCase();
+   if (t.includes('day')) return 'text-teal-950';
+   if (t.includes('free')) return 'text-yellow-900';
+   if (t.includes('full') || t.includes('party')) return 'text-white';
+   return 'text-slate-900';
 };
 
-const getPassStyle = (type) => `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
+const getPassStyle = (type) => {
+   return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
+};
 
 const formatDate = (isoString) => {
   if (!isoString) return { date: "Valid", time: "Pass" };
@@ -43,14 +44,26 @@ const getTicketNameSize = (name) => {
 };
 
 // --- REUSABLE TICKET VIEW ---
-function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobile }) {
+function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobile, t }) {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [addingToWallet, setAddingToWallet] = useState(false);
   const { showPopup } = usePopup();
 
+  // Helper to translate internal DB pass names for the UI
+  const translatePassDisplay = (type) => {
+      const typeLower = (type || '').toLowerCase();
+      if (typeLower.includes('full')) return t('passFull');
+      if (typeLower.includes('party')) return t('passParty');
+      if (typeLower.includes('day')) return t('passDay');
+      if (typeLower.includes('free')) return t('passFree');
+      return type;
+  };
+
   const captureTicketImage = async () => {
-    // We now reliably fetch the phantom ticket from the root level, avoiding all scroll container bugs.
+    // PERFORMANCE OPTIMIZATION: Dynamically import heavy imaging library only when needed!
+    const { toPng } = await import('html-to-image');
+
     const targetId = `phantom-ticket-${ticket.id}`;
     const element = document.getElementById(targetId);
     
@@ -75,7 +88,10 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
   const handleDownloadPDF = async () => {
     try {
       const dataUrl = await captureTicketImage();
-      if (!dataUrl) throw new Error("Capture failed");
+      if (!dataUrl) throw new Error(t('errCapture'));
+
+      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF library only when clicked!
+      const { default: jsPDF } = await import('jspdf');
 
       const img = new Image();
       img.src = dataUrl;
@@ -87,9 +103,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
 
       const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
       pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
-      pdf.save(`SalsaFest_Ticket_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
+      pdf.save(`SalsaFest_Pass_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { 
-      showPopup({ type: "error", title: "Export Error", message: "Download failed. Please try again.", confirmText: "Close" }); 
+      showPopup({ type: "error", title: t('errExportTitle'), message: t('errExportMsg'), confirmText: t('btnClose') }); 
     }
   };
 
@@ -103,7 +119,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       if (data.url) window.open(data.url, "_blank"); 
       else throw new Error(data.error || "No URL returned");
     } catch (err) {
-      showPopup({ type: "error", title: "Wallet Error", message: "Could not generate Google Wallet pass at this time.", confirmText: "Close" });
+      showPopup({ type: "error", title: t('errWalletTitle'), message: t('errWalletMsg'), confirmText: t('btnClose') });
     } finally {
       setAddingToWallet(false);
     }
@@ -112,7 +128,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
   const handleSendTicketEmail = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || !emailRegex.test(recipientEmail)) { 
-      showPopup({ type: "error", title: "Invalid Email", message: "Please enter a valid email address.", confirmText: "Try Again" }); 
+      showPopup({ type: "error", title: t('errEmailValidTitle'), message: t('errEmailValidMsg'), confirmText: t('btnTryAgain') }); 
       return; 
     }
     
@@ -120,6 +136,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     try {
       const dataUrl = await captureTicketImage();
       
+      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF library only when clicked!
+      const { default: jsPDF } = await import('jspdf');
+
       const img = new Image();
       img.src = dataUrl;
       await new Promise((resolve) => { img.onload = resolve; });
@@ -140,10 +159,10 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
         onUpdateDesktopTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
       }
       
-      showPopup({ type: "success", title: "Sent!", message: `The ticket to ${recipientEmail} has been queued.`, confirmText: "Done" });
+      showPopup({ type: "success", title: t('successSentTitle'), message: t('successSentMsg', { email: recipientEmail }), confirmText: t('btnDone') });
       setRecipientEmail(""); 
     } catch (err) {
-      showPopup({ type: "error", title: "PDF Error", message: "Failed to generate attachment.", confirmText: "Close" });
+      showPopup({ type: "error", title: t('errPdfTitle'), message: t('errPdfMsg'), confirmText: t('btnClose') });
     } finally {
       setSendingEmail(false);
     }
@@ -151,13 +170,12 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
 
   return (
     <>
-      {/* 2. VISIBLE UI (Phantom ticket is now extracted to the root level to fix mobile crash) */}
       <div className="flex flex-col gap-3 md:gap-4 w-full h-full justify-end md:justify-start items-center pb-2 md:pb-0 relative z-10" onClick={(e) => e.stopPropagation()}>
         
         {isMobile && totalTickets > 1 && (
           <div className="flex items-center gap-2 mb-1 text-white/70 animate-pulse shrink-0">
             <ChevronLeft size={16} />
-            <span className="text-[11px] uppercase tracking-widest font-bold">Swipe to view more</span>
+            <span className="text-[11px] uppercase tracking-widest font-bold">{t('swipeToView')}</span>
             <ChevronRight size={16} />
           </div>
         )}
@@ -165,7 +183,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
         {/* Locked strictly to 520px on mobile */}
         <div id={`ticket-card-${ticket.id}`} className="w-full max-w-[340px] md:max-w-none md:w-[850px] mx-auto bg-white rounded-[2rem] md:rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden shrink-0 h-[520px] md:h-[400px]" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
           
-          <button onClick={handleDownloadPDF} title="Download PDF" className="export-ignore absolute top-4 right-4 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-pink hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100">
+          <button onClick={handleDownloadPDF} title={t('btnDownloadPdf')} className="export-ignore absolute top-4 right-4 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-pink hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100">
             <Download size={20} />
           </button>
           
@@ -178,7 +196,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
           <div className="px-6 py-5 md:p-10 flex flex-col justify-start md:justify-center flex-1 relative bg-white w-full overflow-hidden">
             <div className="mb-2 relative z-10 shrink-0">
               <span className={`inline-flex items-center justify-center px-6 py-2 rounded-full text-xs md:text-[11px] font-black uppercase tracking-widest shadow-sm ${getPassStyle(ticket.passType)}`}>
-                {ticket.passType}
+                {translatePassDisplay(ticket.passType)}
               </span>
             </div>
             
@@ -188,27 +206,27 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
             >
               {ticket.userName}
             </h2>
-            <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-3 md:mb-8 relative z-10 shrink-0">ID: {ticket.ticketID}</p>
+            <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-3 md:mb-8 relative z-10 shrink-0">{t('lblId')}: {ticket.ticketID}</p>
             
             <div className="grid grid-cols-2 gap-2 md:gap-3 mt-auto relative z-10 shrink-0">
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Event</span>
+                <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblEvent')}</span>
                 <span className="block text-xs md:text-sm font-black text-slate-900 uppercase truncate">
                   <span className="md:hidden">SSF</span>
                   <span className="hidden md:inline">Salsa Fest</span> {ticket.festivalYear}
                 </span>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Price</span>
+                <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblPrice')}</span>
                 <span className="block text-xs md:text-sm font-black text-slate-900 uppercase">€{ticket.price}</span>
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
                 <div>
-                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</span>
+                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblDate')}</span>
                   <span className="block text-xs md:text-sm font-bold text-slate-900">{formatDate(ticket.purchaseDate).date}</span>
                 </div>
                 <div className="text-right">
-                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
+                  <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblTime')}</span>
                   <span className="block text-xs md:text-sm font-bold text-slate-900">{formatDate(ticket.purchaseDate).time}</span>
                 </div>
               </div>
@@ -222,25 +240,25 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
             {addingToWallet ? <Loader2 size={16} className="animate-spin" /> : (
               <svg viewBox="0 0 48 48" width="18" height="18"><path fill="#fff" d="M37 13H11c-2.2 0-4 1.8-4 4v14c0 2.2 1.8 4 4 4h26c2.2 0 4-1.8 4-4V17c0-2.2-1.8-4-4-4zm-4 15c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/></svg>
             )}
-            Save to Google Wallet
+            {t('btnSaveWallet')}
           </button>
           
           <div className="flex justify-between items-center px-1 shrink-0 mt-1">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">Email Status:</span>
+              <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest font-montserrat">{t('lblEmailStatus')}</span>
               <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full font-montserrat ${ticket.emailSentCount > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                {ticket.emailSentCount > 0 ? `Sent ${ticket.emailSentCount}` : 'Not Sent'}
+                {ticket.emailSentCount > 0 ? t('statusSent', { count: ticket.emailSentCount }) : t('statusNotSent')}
               </span>
             </div>
-            <span className="hidden md:block text-[11px] font-black text-slate-300 font-montserrat">{index + 1} of {totalTickets}</span>
+            <span className="hidden md:block text-[11px] font-black text-slate-300 font-montserrat">{t('countOfTotal', { current: index + 1, total: totalTickets })}</span>
           </div>
           
           <div className="border-t border-gray-50 pt-2 shrink-0 mt-1">
             <div className="relative flex items-center w-full">
               <Mail className="absolute left-3 md:left-4 text-gray-400" size={18} />
-              <input type="email" maxLength={50} placeholder="EMAIL" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-xs uppercase tracking-widest font-montserrat" />
+              <input type="email" maxLength={50} placeholder={t('placeholderEmail')} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-xs uppercase tracking-widest font-montserrat" />
               <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-1.5 md:right-2 bg-salsa-pink text-white px-4 py-2 rounded-lg font-black text-xs md:text-[11px] uppercase hover:bg-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm font-montserrat">
-                {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send</>}
+                {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> {t('btnSend')}</>}
               </button>
             </div>
           </div>
@@ -252,7 +270,18 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
 
 // --- MAIN WRAPPER ---
 export default function TicketModal({ ticket: activeTicket, ticketsList, setTicket, onClose }) {
+  const t = useTranslations('TicketModal');
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
+
+  // Helper to translate internal DB pass names for the UI (Used in phantom tickets)
+  const translatePassDisplay = (type) => {
+      const typeLower = (type || '').toLowerCase();
+      if (typeLower.includes('full')) return t('passFull');
+      if (typeLower.includes('party')) return t('passParty');
+      if (typeLower.includes('day')) return t('passDay');
+      if (typeLower.includes('free')) return t('passFree');
+      return type;
+  };
 
   // BODY SCROLL LOCK Logic
   useEffect(() => {
@@ -292,40 +321,40 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
         opacity 0.001 keeps it invisible but forces the browser to paint it. 
       */}
       <div className="fixed top-0 left-0 pointer-events-none" style={{ opacity: 0.001, zIndex: -10 }}>
-        {ticketsList.map((t) => (
-          <div id={`phantom-ticket-${t.id}`} key={`phantom-${t.id}`} className="w-[360px] h-[820px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
+        {ticketsList.map((ticketObj) => (
+          <div id={`phantom-ticket-${ticketObj.id}`} key={`phantom-${ticketObj.id}`} className="w-[360px] h-[820px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
               <div className="p-8 flex items-center justify-center bg-gray-50 border-b-2 border-dashed border-gray-200 shrink-0 min-h-[340px]">
                   {/* Huge 260px QR Code for the PDF */}
                   <div className="w-[260px] h-[260px] bg-white p-4 rounded-[1.5rem] border border-gray-100 flex items-center justify-center shadow-sm">
-                      <QRCodeSVG value={t.ticketID} size={256} style={{ width: "100%", height: "100%" }} level="H" />
+                      <QRCodeSVG value={ticketObj.ticketID} size={256} style={{ width: "100%", height: "100%" }} level="H" />
                   </div>
               </div>
               <div className="p-8 flex flex-col flex-1 bg-white">
                   <div className="mb-4">
-                      <span className={`inline-flex items-center justify-center px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${getPassStyle(t.passType)}`}>
-                          {t.passType}
+                      <span className={`inline-flex items-center justify-center px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${getPassStyle(ticketObj.passType)}`}>
+                          {translatePassDisplay(ticketObj.passType)}
                       </span>
                   </div>
-                  <h2 className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2 break-words">{t.userName}</h2>
-                  <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">ID: {t.ticketID}</p>
+                  <h2 className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2 break-words">{ticketObj.userName}</h2>
+                  <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">{t('lblId')}: {ticketObj.ticketID}</p>
                   
                   <div className="grid grid-cols-2 gap-3 mt-auto">
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Event</span>
-                          <span className="block text-sm font-black text-slate-900 uppercase">SSF {t.festivalYear}</span>
+                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblEvent')}</span>
+                          <span className="block text-sm font-black text-slate-900 uppercase">SSF {ticketObj.festivalYear}</span>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Price</span>
-                          <span className="block text-sm font-black text-slate-900 uppercase">€{t.price}</span>
+                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblPrice')}</span>
+                          <span className="block text-sm font-black text-slate-900 uppercase">€{ticketObj.price}</span>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
                           <div>
-                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</span>
-                              <span className="block text-sm font-bold text-slate-900">{formatDate(t.purchaseDate).date}</span>
+                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblDate')}</span>
+                              <span className="block text-sm font-bold text-slate-900">{formatDate(ticketObj.purchaseDate).date}</span>
                           </div>
                           <div className="text-right">
-                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</span>
-                              <span className="block text-sm font-bold text-slate-900">{formatDate(t.purchaseDate).time}</span>
+                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblTime')}</span>
+                              <span className="block text-sm font-bold text-slate-900">{formatDate(ticketObj.purchaseDate).time}</span>
                           </div>
                       </div>
                   </div>
@@ -354,7 +383,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
               <ChevronLeft size={32} />
             </button>
             
-            <TicketView ticket={activeTicket} index={currentIndex} totalTickets={ticketsList.length} onUpdateDesktopTicket={setTicket} isMobile={false} />
+            <TicketView ticket={activeTicket} index={currentIndex} totalTickets={ticketsList.length} onUpdateDesktopTicket={setTicket} isMobile={false} t={t} />
 
             <button 
               onClick={(e) => { e.stopPropagation(); setTicket(ticketsList[currentIndex + 1]); }} 
@@ -374,9 +403,9 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       </button>
 
       <div className="flex md:hidden absolute inset-0 overflow-x-auto overflow-y-hidden snap-x snap-mandatory hide-scrollbar z-[105] h-[100dvh] items-center" onClick={onClose}>
-        {ticketsList.map((t, i) => (
-          <div id={`mobile-slide-${t.id}`} key={t.id} className="min-w-full w-full h-full px-4 snap-center snap-always shrink-0 flex flex-col items-center justify-end pb-8 pt-10 relative">
-            <TicketView ticket={t} index={i} totalTickets={ticketsList.length} isMobile={true} />
+        {ticketsList.map((ticketObj, i) => (
+          <div id={`mobile-slide-${ticketObj.id}`} key={ticketObj.id} className="min-w-full w-full h-full px-4 snap-center snap-always shrink-0 flex flex-col items-center justify-end pb-8 pt-10 relative">
+            <TicketView ticket={ticketObj} index={i} totalTickets={ticketsList.length} isMobile={true} t={t} />
           </div>
         ))}
       </div>

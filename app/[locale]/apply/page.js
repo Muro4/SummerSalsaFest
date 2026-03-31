@@ -2,16 +2,17 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, Link } from "@/routing"; // THE FIX: Custom routing
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import { 
   Loader2, ArrowLeft, Send, Phone, 
   MessageSquare, AtSign, Mail
 } from "lucide-react";
-import Link from "next/link";
+import { useTranslations } from 'next-intl'; // THE FIX: Translations
 
 export default function ApplyPage() {
+  const t = useTranslations('Apply');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState(null);
@@ -50,7 +51,7 @@ export default function ApplyPage() {
           // Check if already applied
           const appDoc = await getDoc(doc(db, "ambassador_requests", currentUser.uid));
           if (appDoc.exists()) {
-             showPopup({ type: "info", title: "Pending", message: "You have already applied.", confirmText: "Go Back", onConfirm: () => router.push("/account") });
+             showPopup({ type: "info", title: t('popupPendingTitle'), message: t('popupPendingMsg'), confirmText: t('btnGoBack'), onConfirm: () => router.push("/account") });
              router.push("/account");
              return;
           }
@@ -64,26 +65,26 @@ export default function ApplyPage() {
       }
     });
     return () => unsub();
-  }, [router, showPopup]);
+  }, [router, showPopup, t]);
 
   // --- VALIDATION ENGINE ---
   const validateField = (name, value) => {
     const trimmed = value.trim();
     if (name === "guestDancerTag") {
-      if (!trimmed) return "Tag is required.";
-      if (trimmed.length < 2) return "Must be at least 2 characters.";
+      if (!trimmed) return t('errTagReq');
+      if (trimmed.length < 2) return t('errTagMin');
     }
     if (name === "email") {
-      if (!trimmed) return "Email is required.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Enter a valid email.";
+      if (!trimmed) return t('errEmailReq');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return t('errEmailValid');
     }
     if (name === "phone") {
-      if (!trimmed) return "Phone is required.";
-      if (trimmed.length < 5) return "Enter a valid phone number.";
+      if (!trimmed) return t('errPhoneReq');
+      if (trimmed.length < 5) return t('errPhoneValid');
     }
     if (name === "motivation") {
-      if (!trimmed) return "Motivation is required.";
-      if (trimmed.length < 10) return "Please write at least 10 characters.";
+      if (!trimmed) return t('errMotivReq');
+      if (trimmed.length < 10) return t('errMotivMin');
     }
     return "";
   };
@@ -122,11 +123,11 @@ export default function ApplyPage() {
         if (err) newErrors[key] = err;
       }
     });
-    if (!formData.mainStyle) newErrors.mainStyle = "Please select a main dance style.";
+    if (!formData.mainStyle) newErrors.mainStyle = t('errStyleReq');
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      showPopup({ type: "error", title: "Invalid Input", message: "Please fix the highlighted errors before submitting.", confirmText: "Okay" });
+      showPopup({ type: "error", title: t('popupInvalidTitle'), message: t('popupInvalidMsg'), confirmText: t('btnOkay') });
       return;
     }
 
@@ -145,13 +146,13 @@ export default function ApplyPage() {
       
       showPopup({ 
         type: "success", 
-        title: "Application Sent!", 
-        message: "Your Guest Dancer application is under review. We will contact you soon!", 
-        confirmText: "Back to Account",
+        title: t('popupSuccessTitle'), 
+        message: t('popupSuccessMsg'), 
+        confirmText: t('btnBackAccount'),
         onConfirm: () => router.push("/account")
       });
     } catch (err) {
-      showPopup({ type: "error", title: "Submission Failed", message: err.message, confirmText: "Close" });
+      showPopup({ type: "error", title: t('popupFailTitle'), message: err.message, confirmText: t('btnClose') });
       setSubmitting(false);
     }
   };
@@ -166,13 +167,13 @@ export default function ApplyPage() {
         
         {/* Back Button */}
         <Link href="/account" className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors mb-8">
-          <ArrowLeft size={16} /> Back to Account
+          <ArrowLeft size={16} /> {t('btnBackAccount')}
         </Link>
 
         {/* Header */}
         <div className="mb-10 text-center">
-          <h1 className="font-bebas text-6xl md:text-7xl uppercase text-slate-900 leading-none">Guest Dancer Request Form</h1>
-          <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.2em] mt-3">Join the official festival crew</p>
+          <h1 className="font-bebas tracking-wide text-6xl md:text-7xl uppercase text-slate-900 leading-none">{t('pageTitle')}</h1>
+          <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.2em] mt-3">{t('pageSubtitle')}</p>
         </div>
 
         {/* Form Container */}
@@ -184,15 +185,18 @@ export default function ApplyPage() {
             {/* Tag & Phone Row */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guest Dancer Tag</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('lblTag')}</label>
                 <div className="relative flex items-center">
                   <AtSign className="absolute left-4 text-slate-400" size={16} />
                   <input 
-                    type="text" name="guestDancerTag" placeholder="e.g. Salsa King"
+                    type="text" name="guestDancerTag" placeholder={t('placeholderTag')}
                     maxLength={20}
                     value={formData.guestDancerTag} 
                     onChange={handleInputChange}
                     onBlur={handleBlur}
+                    autoComplete="off"
+                    autoCapitalize="words"
+                    spellCheck="false"
                     className={`w-full bg-gray-50 border ${errors.guestDancerTag ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
                   />
                 </div>
@@ -200,15 +204,17 @@ export default function ApplyPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('lblPhone')}</label>
                 <div className="relative flex items-center">
                   <Phone className="absolute left-4 text-slate-400" size={16} />
                   <input 
-                    type="tel" name="phone" placeholder="+123 456 789"
+                    type="tel" name="phone" placeholder={t('placeholderPhone')}
                     maxLength={20}
                     value={formData.phone} 
                     onChange={handleInputChange}
                     onBlur={handleBlur}
+                    inputMode="tel"
+                    autoComplete="tel"
                     className={`w-full bg-gray-50 border ${errors.phone ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
                   />
                 </div>
@@ -218,15 +224,20 @@ export default function ApplyPage() {
 
             {/* Email Row (Full Width) */}
             <div className="space-y-2 pt-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('lblEmail')}</label>
               <div className="relative flex items-center">
                 <Mail className="absolute left-4 text-slate-400" size={16} />
                 <input 
-                  type="email" name="email" placeholder="email@example.com"
+                  type="email" name="email" placeholder={t('placeholderEmail')}
                   maxLength={50}
                   value={formData.email}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   className={`w-full bg-gray-50 border ${errors.email ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide`}
                 />
               </div>
@@ -236,7 +247,7 @@ export default function ApplyPage() {
             {/* Dance Style */}
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-end ml-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Dance Style</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('lblMainStyle')}</label>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 {["Bachata", "Zouk", "Salsa", "Kizomba"].map((style) => (
@@ -263,7 +274,7 @@ export default function ApplyPage() {
             {/* Motivation Textarea */}
             <div className="space-y-2 pt-2">
               <div className="flex justify-between items-end ml-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Why do you want to join us?</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('lblMotivation')}</label>
                 <span className={`text-[11px] font-bold ${formData.motivation.length >= 300 ? 'text-red-500' : 'text-slate-400'}`}>
                   {formData.motivation.length} / 300
                 </span>
@@ -271,11 +282,13 @@ export default function ApplyPage() {
               <div className="relative w-full">
                 <MessageSquare className="absolute left-4 top-4 text-slate-400" size={16} />
                 <textarea 
-                  name="motivation" placeholder="Tell us about your scene..."
+                  name="motivation" placeholder={t('placeholderMotivation')}
                   maxLength={300}
                   value={formData.motivation} 
                   onChange={handleInputChange}
                   onBlur={handleBlur}
+                  inputMode="text"
+                  autoCapitalize="sentences"
                   className={`w-full min-h-[150px] max-h-[250px] resize-y bg-gray-50 border ${errors.motivation ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} text-slate-900 font-bold rounded-2xl px-4 py-4 pl-12 outline-none transition-colors text-[12px] tracking-wide leading-relaxed`}
                 />
               </div>
@@ -288,7 +301,7 @@ export default function ApplyPage() {
               disabled={submitting}
               className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-salsa-pink hover:shadow-lg hover:shadow-salsa-pink/20 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
             >
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : <><Send size={18} /> Submit Application</>}
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : <><Send size={18} /> {t('btnSubmit')}</>}
             </button>
 
           </div>

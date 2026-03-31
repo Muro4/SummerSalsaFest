@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import Button from "@/components/Button";
+import { useTranslations } from 'next-intl';
 
 const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const formatDateDMY = (date) => {
@@ -13,6 +14,8 @@ const formatDateDMY = (date) => {
 };
 
 export default function AnalyticsTab({ tickets }) {
+   const t = useTranslations('AnalyticsTab');
+
    // --- SET TO DAY BY DEFAULT ---
    const [timeRange, setTimeRange] = useState("day"); 
    const [timeOffset, setTimeOffset] = useState(0); 
@@ -68,9 +71,9 @@ export default function AnalyticsTab({ tickets }) {
    // --- HEATMAP CALENDAR LOGIC ---
    const salesByDate = useMemo(() => {
       const map = {};
-      tickets.forEach(t => {
-          if (t.status === 'active' || t.status === 'used') {
-              const d = new Date(t.purchaseDate);
+      tickets.forEach(ticket => {
+          if (ticket.status === 'active' || ticket.status === 'used') {
+              const d = new Date(ticket.purchaseDate);
               if (!isNaN(d)) {
                   const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
                   map[key] = (map[key] || 0) + 1;
@@ -111,7 +114,7 @@ export default function AnalyticsTab({ tickets }) {
                      setTimeRange('day');
                      setShowCalendar(false);
                  }}
-                 className={`h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${getHeatmapColor(sales)}`}
+                 className={`cursor-pointer h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${getHeatmapColor(sales)}`}
                  title={`${sales} passes sold`}
               >
                  {d}
@@ -122,9 +125,9 @@ export default function AnalyticsTab({ tickets }) {
    };
 
    const bounds = getPeriodBounds();
-   const periodTickets = tickets.filter(t => {
-      if (t.status !== 'active' && t.status !== 'used') return false;
-      const d = new Date(t.purchaseDate);
+   const periodTickets = tickets.filter(ticket => {
+      if (ticket.status !== 'active' && ticket.status !== 'used') return false;
+      const d = new Date(ticket.purchaseDate);
       return d >= bounds.start && d <= bounds.end;
    });
 
@@ -132,19 +135,19 @@ export default function AnalyticsTab({ tickets }) {
       if (timeRange === 'day') {
          const hours = Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`);
          const chartData = Object.fromEntries(hours.map(h => [h, 0]));
-         periodTickets.forEach(t => { chartData[`${new Date(t.purchaseDate).getHours().toString().padStart(2, '0')}:00`] += chartMetric === 'revenue' ? (t.price || 0) : 1; });
+         periodTickets.forEach(ticket => { chartData[`${new Date(ticket.purchaseDate).getHours().toString().padStart(2, '0')}:00`] += chartMetric === 'revenue' ? (ticket.price || 0) : 1; });
          return hours.map(name => ({ name, value: chartData[name] }));
       }
       if (timeRange === 'week') {
-         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+         const days = [t('days.mo'), t('days.tu'), t('days.we'), t('days.th'), t('days.fr'), t('days.sa'), t('days.su')];
          const chartData = Object.fromEntries(days.map(d => [d, 0]));
-         periodTickets.forEach(t => { let idx = new Date(t.purchaseDate).getDay() - 1; chartData[days[idx === -1 ? 6 : idx]] += chartMetric === 'revenue' ? (t.price || 0) : 1; });
+         periodTickets.forEach(ticket => { let idx = new Date(ticket.purchaseDate).getDay() - 1; chartData[days[idx === -1 ? 6 : idx]] += chartMetric === 'revenue' ? (ticket.price || 0) : 1; });
          return days.map(name => ({ name, value: chartData[name] }));
       }
       if (timeRange === 'year') {
-         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+         const months = [t('months.jan'), t('months.feb'), t('months.mar'), t('months.apr'), t('months.may'), t('months.jun'), t('months.jul'), t('months.aug'), t('months.sep'), t('months.oct'), t('months.nov'), t('months.dec')];
          const chartData = Object.fromEntries(months.map(m => [m, 0]));
-         periodTickets.forEach(t => { if (new Date(t.purchaseDate).getFullYear() === getBaseDate().getFullYear()) chartData[months[new Date(t.purchaseDate).getMonth()]] += chartMetric === 'revenue' ? (t.price || 0) : 1; });
+         periodTickets.forEach(ticket => { if (new Date(ticket.purchaseDate).getFullYear() === getBaseDate().getFullYear()) chartData[months[new Date(ticket.purchaseDate).getMonth()]] += chartMetric === 'revenue' ? (ticket.price || 0) : 1; });
          return months.map(name => ({ name, value: chartData[name] }));
       }
       return [];
@@ -158,7 +161,7 @@ export default function AnalyticsTab({ tickets }) {
                <p className="font-black text-lg flex items-baseline">
                   {chartMetric === 'revenue' && <span className="font-medium text-sm mr-1">€</span>}
                   {payload[0].value}
-                  {chartMetric === 'tickets' && <span className="font-bold text-xs ml-1 text-slate-400 uppercase tracking-widest">Tickets</span>}
+                  {chartMetric === 'tickets' && <span className="font-bold text-xs ml-1 text-slate-400 uppercase tracking-widest">{t('ttTickets')}</span>}
                </p>
             </div>
          );
@@ -174,14 +177,10 @@ export default function AnalyticsTab({ tickets }) {
             
             <div className="relative grid grid-cols-3 bg-slate-50 border border-gray-100 p-1.5 rounded-xl w-full md:w-[260px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
                <div className="absolute top-1.5 bottom-1.5 bg-slate-900 rounded-[0.7rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.75rem) / 3)', left: timeRange === 'day' ? '0.375rem' : timeRange === 'week' ? 'calc(0.375rem + (100% - 0.75rem) / 3)' : 'calc(0.375rem + ((100% - 0.75rem) / 3) * 2)' }} />
-               {['day', 'week', 'year'].map(r => ( 
-                  <Button 
-                     key={r} variant="ghost" size="subSliderTab" onClick={() => {setTimeRange(r); setTimeOffset(0);}} 
-                     className={`relative z-10 ${timeRange === r ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}
-                  >
-                     {r}
-                  </Button> 
-               ))}
+               
+               <Button variant="ghost" size="subSliderTab" onClick={() => {setTimeRange('day'); setTimeOffset(0);}} className={`relative z-10 ${timeRange === 'day' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>{t('tabDay')}</Button>
+               <Button variant="ghost" size="subSliderTab" onClick={() => {setTimeRange('week'); setTimeOffset(0);}} className={`relative z-10 ${timeRange === 'week' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>{t('tabWeek')}</Button>
+               <Button variant="ghost" size="subSliderTab" onClick={() => {setTimeRange('year'); setTimeOffset(0);}} className={`relative z-10 ${timeRange === 'year' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>{t('tabYear')}</Button>
             </div>
             
             <div className="hidden md:block w-px h-8 bg-gray-100"></div>
@@ -202,19 +201,20 @@ export default function AnalyticsTab({ tickets }) {
                {/* CUSTOM HEATMAP CALENDAR POPUP */}
                {showCalendar && (
                   <>
-                     <div className="fixed inset-0 z-40" onClick={() => setShowCalendar(false)} />
+                     <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowCalendar(false)} />
                      <div className="absolute top-full mt-4 right-0 md:left-1/2 md:-translate-x-1/2 w-72 bg-white rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.1)] border border-gray-100 z-50 p-5 font-montserrat animate-in fade-in slide-in-from-top-2 duration-200">
                         
                         <div className="flex justify-between items-center mb-5">
-                           <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))} className="p-2 hover:bg-slate-50 rounded-xl text-slate-500"><ChevronLeft size={14}/></button>
+                           <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))} className="cursor-pointer p-2 hover:bg-slate-50 rounded-xl text-slate-500"><ChevronLeft size={14}/></button>
                            <span className="font-black text-xs uppercase tracking-widest text-slate-800">
+                              {/* NOTE: We let the browser's native Date formatter handle this language conversion if needed, or keep it consistent */}
                               {calDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                            </span>
-                           <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))} className="p-2 hover:bg-slate-50 rounded-xl text-slate-500"><ChevronRight size={14}/></button>
+                           <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))} className="cursor-pointer p-2 hover:bg-slate-50 rounded-xl text-slate-500"><ChevronRight size={14}/></button>
                         </div>
                         
                         <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                           {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => <div key={d} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{d}</div>)}
+                           {[t('days.mo'), t('days.tu'), t('days.we'), t('days.th'), t('days.fr'), t('days.sa'), t('days.su')].map(d => <div key={d} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{d}</div>)}
                         </div>
                         
                         <div className="grid grid-cols-7 gap-1">
@@ -222,13 +222,13 @@ export default function AnalyticsTab({ tickets }) {
                         </div>
 
                         <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                           <span>Less</span>
+                           <span>{t('btnLess')}</span>
                            <div className="w-3 h-3 rounded-sm bg-slate-50 border border-gray-100"></div>
                            <div className="w-3 h-3 rounded-sm bg-salsa-pink/20"></div>
                            <div className="w-3 h-3 rounded-sm bg-salsa-pink/50"></div>
                            <div className="w-3 h-3 rounded-sm bg-salsa-pink/80"></div>
                            <div className="w-3 h-3 rounded-sm bg-salsa-pink"></div>
-                           <span>More</span>
+                           <span>{t('btnMore')}</span>
                         </div>
                      </div>
                   </>
@@ -238,19 +238,19 @@ export default function AnalyticsTab({ tickets }) {
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
-               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Total Revenue</p>
-               <p className="font-bebas text-5xl xl:text-6xl text-emerald-500 leading-none">€{periodTickets.reduce((a, b) => a + (b.price || 0), 0)}</p>
+               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{t('totalRev')}</p>
+               <p className="font-bebas tracking-wide text-5xl xl:text-6xl text-emerald-500 leading-none">€{periodTickets.reduce((a, b) => a + (b.price || 0), 0)}</p>
             </div>
             <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
-               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Tickets Sold</p>
-               <p className="font-bebas text-5xl xl:text-6xl text-slate-900 leading-none">{periodTickets.length}</p>
+               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{t('ticketsSold')}</p>
+               <p className="font-bebas tracking-wide text-5xl xl:text-6xl text-slate-900 leading-none">{periodTickets.length}</p>
             </div>
             <div className="bg-white p-10 rounded-[3rem] border border-gray-200 shadow-xl flex flex-col justify-center">
-               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Ticket Breakdown</p>
+               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">{t('ticketBrk')}</p>
                <div className="space-y-4 font-montserrat">
-                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-salsa-pink"></div> Full Pass</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(t => t.passType === "Full Pass").length}</span></div>
-                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-violet-600"></div> Party Pass</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(t => t.passType === "Party Pass").length}</span></div>
-                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-teal-300"></div> Day Pass</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(t => t.passType === "Day Pass").length}</span></div>
+                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-salsa-pink"></div> {t('passFull')}</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(ticket => ticket.passType === "Full Pass").length}</span></div>
+                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-violet-600"></div> {t('passParty')}</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(ticket => ticket.passType === "Party Pass").length}</span></div>
+                  <div className="flex justify-between items-center"><span className="flex items-center gap-3 text-sm font-bold uppercase text-slate-500"><div className="w-4 h-4 rounded-full bg-teal-300"></div> {t('passDay')}</span> <span className="text-slate-900 text-2xl font-black leading-none">{periodTickets.filter(ticket => ticket.passType === "Day Pass").length}</span></div>
                </div>
             </div>
          </div>
@@ -258,13 +258,13 @@ export default function AnalyticsTab({ tickets }) {
          <div className="bg-white p-6 md:p-12 rounded-[3rem] md:rounded-[3.5rem] border border-gray-200 shadow-xl relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
                <div>
-                  <h2 className="font-bebas text-4xl md:text-5xl text-slate-900 uppercase tracking-tight leading-none">Performance</h2>
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">Displaying metrics for {getPeriodLabel()}</p>
+                  <h2 className="font-bebas tracking-wide text-4xl md:text-5xl text-slate-900 uppercase tracking-tight leading-none">{t('perfTitle')}</h2>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">{t('perfDesc')} {getPeriodLabel()}</p>
                </div>
                <div className="relative grid grid-cols-2 bg-slate-50 border border-gray-100 p-1.5 rounded-xl w-full md:w-[240px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] gap-0">
                   <div className="absolute top-1.5 bottom-1.5 bg-slate-900 rounded-[0.7rem] transition-all duration-300 ease-out shadow-sm" style={{ width: 'calc((100% - 0.75rem) / 2)', left: chartMetric === 'revenue' ? '0.375rem' : 'calc(0.375rem + (100% - 0.75rem) / 2)' }} />
-                  <Button variant="ghost" size="subSliderTab" onClick={() => setChartMetric('revenue')} className={`relative z-10 ${chartMetric === 'revenue' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>Revenue</Button>
-                  <Button variant="ghost" size="subSliderTab" onClick={() => setChartMetric('tickets')} className={`relative z-10 ${chartMetric === 'tickets' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>Tickets</Button>
+                  <Button variant="ghost" size="subSliderTab" onClick={() => setChartMetric('revenue')} className={`relative z-10 ${chartMetric === 'revenue' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>{t('btnRevenue')}</Button>
+                  <Button variant="ghost" size="subSliderTab" onClick={() => setChartMetric('tickets')} className={`relative z-10 ${chartMetric === 'tickets' ? '!text-white !cursor-default !active:scale-100' : '!text-slate-400 hover:!text-slate-900 transition-colors'}`}>{t('btnTickets')}</Button>
                </div>
             </div>
 
@@ -277,7 +277,7 @@ export default function AnalyticsTab({ tickets }) {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat' }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat' }} dx={-10} label={{ value: chartMetric === 'revenue' ? 'Revenue (EUR)' : 'Tickets Sold', angle: -90, position: 'insideLeft', offset: 10, fill: '#94a3b8', dy: -10, fontSize: 10, fontWeight: 700, fontFamily: 'Montserrat' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8', fontFamily: 'Montserrat' }} dx={-10} label={{ value: chartMetric === 'revenue' ? t('chartRevY') : t('chartTixY'), angle: -90, position: 'insideLeft', offset: 10, fill: '#94a3b8', dy: -10, fontSize: 10, fontWeight: 700, fontFamily: 'Montserrat' }} />
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#f1f5f9', strokeWidth: 2 }} />
                         <Area type="monotone" dataKey="value" stroke={chartMetric === 'revenue' ? "#10b981" : "#e84b8a"} strokeWidth={4} fill="url(#cs)" />
                      </AreaChart>

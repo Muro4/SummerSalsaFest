@@ -9,19 +9,21 @@ import {
   sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/routing"; // THE FIX: Custom routing
 import Button from "@/components/Button";
 import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft, Loader2, Key } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 // --- DYNAMIC PASSWORD ACCORDION ---
-function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
+function PasswordAccordion({ passReqs, isFocused, passwordLength, t }) {
   const showAccordion = isFocused || passwordLength > 0;
   
   const reqs = [
-    { label: "8+ Characters", met: passReqs.length },
-    { label: "Uppercase Letter", met: passReqs.upper },
-    { label: "Number", met: passReqs.number },
-    { label: "Special Symbol", met: passReqs.special },
+    { label: t('reqLength'), met: passReqs.length },
+    { label: t('reqUpper'), met: passReqs.upper },
+    { label: t('reqNum'), met: passReqs.number },
+    { label: t('reqSpec'), met: passReqs.special },
   ];
 
   return (
@@ -29,7 +31,7 @@ function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
       <div className="overflow-hidden">
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
           <div className="mb-1">
-            <p className="text-[11px] font-black uppercase text-slate-500 tracking-widest">Password Requirements</p>
+            <p className="text-[11px] font-black uppercase text-slate-500 tracking-widest">{t('passReqsLabel')}</p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -48,6 +50,7 @@ function PasswordAccordion({ passReqs, isFocused, passwordLength }) {
 
 // --- MAIN LOGIN LOGIC CONTENT ---
 function LoginContent() {
+  const t = useTranslations('Auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -110,7 +113,6 @@ function LoginContent() {
   
   // STRICT: All 5 requirements must be met!
   const isPasswordValid = passwordScore === 5;
-  
   const isPasswordInvalid = password.length > 0 && !isPasswordValid && !isLogin;
 
   // The Magic Trigger: Hides the Google Button when user starts typing password
@@ -120,21 +122,21 @@ function LoginContent() {
   const handleNameBlur = (e) => {
     const val = e.target.value.trim();
     if (val !== "" && val.length < 2) {
-      setNameError("Name must be at least 2 characters.");
+      setNameError(t('errNameLen'));
     }
   };
 
   const handleEmailBlur = (e) => {
     const val = e.target.value.trim();
     if (val !== "" && !emailRegex.test(val)) {
-      setEmailError("Please enter a valid email address.");
+      setEmailError(t('errEmailInvalid'));
     }
   };
 
   const handlePasswordBlur = () => {
     setTimeout(() => setPasswordFocused(false), 150);
     if (password.length > 0 && !isPasswordValid) {
-      setPasswordError("Please meet all password requirements.");
+      setPasswordError(t('errPassReqs'));
     }
   };
 
@@ -198,7 +200,7 @@ function LoginContent() {
       }
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return; 
-      setError("Google authentication failed.");
+      setError(t('errGoogleFail'));
     }
   };
 
@@ -231,9 +233,9 @@ function LoginContent() {
       
     } catch (err) {
       if (err.code === "permission-denied" || err.message.includes("Missing or insufficient permissions")) {
-        setError("Database blocked the search. Update Firestore Rules.");
+        setError(t('errDbBlocked'));
       } else {
-        setError(err.message.includes("No account found") ? err.message : "Invalid credentials.");
+        setError(err.message.includes("No account found") ? err.message : t('errInvalidCreds'));
       }
     } finally {
       setLoading(false);
@@ -248,15 +250,15 @@ function LoginContent() {
     setPasswordError("");
     
     if (name.trim().length < 2) {
-      setNameError("Name must be at least 2 characters.");
+      setNameError(t('errNameLen'));
       return;
     }
     if (!emailRegex.test(email.trim())) {
-      setEmailError("Please enter a valid email address.");
+      setEmailError(t('errEmailInvalid'));
       return;
     }
     if (!isPasswordValid) {
-      setPasswordError("Please fulfill all password requirements.");
+      setPasswordError(t('errPassReqs'));
       return;
     }
 
@@ -273,7 +275,7 @@ function LoginContent() {
         router.push("/"); 
       }
     } catch (err) {
-      setError(err.message.includes("email-already-in-use") ? "This email is already registered." : "Failed to create account.");
+      setError(err.message.includes("email-already-in-use") ? t('errEmailInUse') : t('errCreateFail'));
     } finally {
       setLoading(false);
     }
@@ -287,18 +289,18 @@ function LoginContent() {
     const targetEmail = isLogin ? identifier.trim() : email.trim();
 
     if (!targetEmail || !emailRegex.test(targetEmail)) {
-      setError("Please enter a valid email address to reset your password.");
+      setError(t('errResetEmpty'));
       return;
     }
 
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, targetEmail);
-      setSuccessMsg("Check your inbox! We've sent you a password reset link. (Also check your spam folder)");
+      setSuccessMsg(t('msgResetSuccess'));
       setResetCooldown(60);
     } catch (err) {
       console.error(err);
-      setError(err.code === 'auth/user-not-found' ? "No account found with this email." : "Failed to send reset email. Please try again.");
+      setError(err.code === 'auth/user-not-found' ? t('errResetNoUser') : t('errResetFail'));
     } finally {
       setLoading(false);
     }
@@ -328,21 +330,41 @@ function LoginContent() {
         
         {!isResetMode ? (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide">Login</h1>
+            <h1 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide">{t('loginTitle')}</h1>
             
             <form onSubmit={handleLogin} className="space-y-5 relative z-10">
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email or Name</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblEmailName')}</label>
                 <div className="relative flex items-center">
-                  <input required type="text" maxLength={30} value={identifier} onChange={e => setIdentifier(e.target.value)} className="input-standard pl-12 !normal-case" />
+                  <input 
+                    required 
+                    type="text" 
+                    maxLength={30} 
+                    value={identifier} 
+                    onChange={e => setIdentifier(e.target.value)} 
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="username"
+                    className="input-standard pl-12 !normal-case" 
+                  />
                   <UserIcon className="absolute left-4 text-gray-500" size={18} />
                 </div>
               </div>
               
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Password</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblPassword')}</label>
                 <div className="relative flex items-center">
-                  <input required type={showPassword ? "text" : "password"} maxLength={50} value={password} onChange={e => setPassword(e.target.value)} className="input-standard pl-12 pr-12 !normal-case" />
+                  <input 
+                    required 
+                    type={showPassword ? "text" : "password"} 
+                    maxLength={50} 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    className="input-standard pl-12 pr-12 !normal-case" 
+                  />
                   <Lock className="absolute left-4 text-gray-500" size={18} />
                   <div className="absolute right-1 top-1 bottom-1 w-10 bg-white flex items-center justify-center rounded-xl z-10">
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="cursor-pointer text-gray-500 hover:text-slate-900 transition">
@@ -352,7 +374,7 @@ function LoginContent() {
                 </div>
                 <div className="flex justify-end pt-1">
                   <button type="button" onClick={() => { setIsResetMode(true); setError(""); }} className="text-[10px] font-bold text-salsa-pink hover:underline uppercase tracking-widest cursor-pointer">
-                    Forgot password?
+                    {t('forgotPass')}
                   </button>
                 </div>
               </div>
@@ -360,23 +382,23 @@ function LoginContent() {
               {error && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100">{error}</p>}
               
               <Button type="submit" variant="primary" className="w-full mt-4 !py-4" disabled={loading} isLoading={loading}>
-                {loading ? "Authenticating..." : "Login"}
+                {loading ? t('btnAuthenticating') : t('btnLogin')}
               </Button>
 
               <div className="relative mb-6 mt-6 text-center">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+                <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">{t('or')}</div>
               </div>
 
               <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
-                Join with Google
+                {t('btnGoogle')}
               </Button>
               
               <div className="mt-8 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden">
-                New here?
+                {t('newHere')}
                 <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
-                  Sign Up
+                  {t('btnSignUp')}
                 </button>
               </div>
             </form>
@@ -384,14 +406,14 @@ function LoginContent() {
         ) : (
           <div className="animate-in fade-in slide-in-from-left-4 duration-300">
             <button onClick={() => { setIsResetMode(false); setError(""); setSuccessMsg(""); }} className="mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors cursor-pointer">
-              <ArrowLeft size={14} /> Back to Login
+              <ArrowLeft size={14} /> {t('btnBackLogin')}
             </button>
-            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-wide leading-none">Reset Password</h1>
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-8 leading-relaxed">Enter your email and we'll send you a link to get back into your account.</p>
+            <h1 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-wide leading-none">{t('resetTitle')}</h1>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-8 leading-relaxed">{t('resetDesc')}</p>
 
             <form onSubmit={handlePasswordReset} className="space-y-5">
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblEmail')}</label>
                 <div className="relative flex items-center">
                   <input 
                     required 
@@ -399,7 +421,11 @@ function LoginContent() {
                     maxLength={50} 
                     value={identifier} 
                     onChange={e => setIdentifier(e.target.value)} 
-                    placeholder="email@example.com"
+                    placeholder={t('placeholderEmail')}
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     className="input-standard pl-12 !normal-case" 
                   />
                   <Mail className="absolute left-4 text-gray-500" size={18} />
@@ -415,7 +441,7 @@ function LoginContent() {
                 className="w-full bg-slate-900 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-salsa-pink transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
-                {resetCooldown > 0 ? `Wait ${resetCooldown}s` : "Send Reset Link"}
+                {resetCooldown > 0 ? t('btnWait', { s: resetCooldown }) : t('btnSendReset')}
               </button>
             </form>
           </div>
@@ -426,13 +452,13 @@ function LoginContent() {
          SIGN UP FORM 
       ========================================= */}
       <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
-        <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">Create Account</h1>
+        <h1 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">{t('signUpTitle')}</h1>
         
         <form onSubmit={handleSignUp} className="space-y-3 relative z-10">
           
           {/* Name Field */}
           <div className="space-y-1">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Full Name</label>
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblName')}</label>
             <div className="relative flex items-center">
               <input 
                 required 
@@ -445,6 +471,9 @@ function LoginContent() {
                   if (nameError && val.trim().length >= 2) setNameError("");
                 }} 
                 onBlur={handleNameBlur}
+                autoComplete="name"
+                autoCapitalize="words"
+                autoCorrect="off"
                 className={`input-standard pl-12 !py-3.5 !normal-case ${nameError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
               />
               <UserIcon className={`absolute left-4 ${nameError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
@@ -458,7 +487,7 @@ function LoginContent() {
 
           {/* Email Field */}
           <div className="space-y-1">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Email Address</label>
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblEmail')}</label>
             <div className="relative flex items-center">
               <input 
                 required 
@@ -473,6 +502,10 @@ function LoginContent() {
                   }
                 }} 
                 onBlur={handleEmailBlur}
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
                 className={`input-standard pl-12 !py-3.5 !normal-case ${emailError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
               />
               <Mail className={`absolute left-4 ${emailError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
@@ -486,7 +519,7 @@ function LoginContent() {
           
           {/* Password Field */}
           <div className="space-y-1">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">Create Password</label>
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblCreatePass')}</label>
             <div className="relative flex items-center">
               <input 
                 required 
@@ -496,6 +529,9 @@ function LoginContent() {
                 onChange={e => setPassword(e.target.value)} 
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={handlePasswordBlur}
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
                 className={`input-standard pl-12 pr-12 !normal-case !py-3.5 ${passwordError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`} 
               />
               <Lock className={`absolute left-4 ${passwordError ? 'text-red-400' : 'text-gray-500'}`} size={18} />
@@ -512,13 +548,13 @@ function LoginContent() {
               </p>
             )}
 
-            <PasswordAccordion passReqs={passReqs} isFocused={passwordFocused} passwordLength={password.length} />
+            <PasswordAccordion passReqs={passReqs} isFocused={passwordFocused} passwordLength={password.length} t={t} />
           </div>
 
           {error && !isLogin && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100 mt-4">{error}</p>}
           
           <Button type="submit" variant="primary" className="w-full mt-2 !py-4" disabled={loading || !isPasswordValid || !!emailError || !!nameError} isLoading={loading}>
-            {loading ? "Creating..." : "Sign Up"}
+            {loading ? t('btnCreating') : t('btnSignUp')}
           </Button>
 
           {/* THE MAGIC DISAPPEARING GOOGLE BUTTON */}
@@ -527,21 +563,21 @@ function LoginContent() {
               <div className="p-1">
                 <div className="relative mb-4 mt-3 text-center">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                  <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">Or</div>
+                  <div className="relative inline-block bg-white px-4 text-[11px] uppercase font-black text-slate-600 tracking-widest">{t('or')}</div>
                 </div>
 
                 <Button type="button" onClick={handleGoogleAuth} variant="outline" className="w-full !py-3">
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 mr-1 bg-white rounded-full" alt="google" />
-                  Join with Google
+                  {t('btnGoogle')}
                 </Button>
               </div>
             </div>
           </div>
           
           <div className={`mt-4 text-center text-[11px] font-bold text-slate-600 uppercase tracking-widest md:hidden transition-opacity duration-300 ${hideSocials ? 'opacity-0' : 'opacity-100'}`}>
-            Already have an account?
+            {t('alreadyHaveAcc')}
             <button type="button" onClick={toggleMode} className="cursor-pointer text-salsa-pink font-black ml-1 hover:underline transition-colors">
-              Login
+              {t('btnLogin')}
             </button>
           </div>
         </form>
@@ -557,22 +593,22 @@ function LoginContent() {
         
         <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 lg:p-12">
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-12 transition-all duration-700 ${isLogin ? 'opacity-100 translate-x-0 delay-300 pointer-events-auto' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
-            <h2 className="font-bebas text-6xl mb-4 tracking-wide text-slate-900 leading-none">Welcome Back!</h2>
+            <h2 className="font-bebas tracking-wide text-6xl mb-4 text-slate-900 leading-none">{t('deskLoginTitle')}</h2>
             <p className="font-bold text-slate-800 leading-relaxed mb-8">
-              Don't have an account yet? Sign up!
+              {t('deskLoginDesc')}
             </p>
             <Button onClick={toggleMode} variant="outline" className="border-slate-900 text-slate-900 hover:bg-teal-600 hover:border-teal-600 hover:text-white px-10 py-4">
-              Sign Up
+              {t('btnSignUp')}
             </Button>
           </div>
 
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-12 transition-all duration-700 ${!isLogin ? 'opacity-100 translate-x-0 delay-300 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
-            <h2 className="font-bebas text-6xl mb-4 tracking-wide text-slate-900 leading-none">Welcome, Dancer!</h2>
+            <h2 className="font-bebas tracking-wide text-6xl mb-4 text-slate-900 leading-none">{t('deskSignupTitle')}</h2>
             <p className="font-bold text-slate-800 leading-relaxed mb-8">
-              Already registered? Login!
+              {t('deskSignupDesc')}
             </p>
             <Button onClick={toggleMode} variant="outline" className="border-slate-900 text-slate-900 hover:bg-teal-600 hover:border-teal-600 hover:text-white px-10 py-4">
-              Login
+              {t('btnLogin')}
             </Button>
           </div>
         </div>
@@ -584,6 +620,7 @@ function LoginContent() {
 
 // --- REQUIRED DEFAULT EXPORT ---
 export default function LoginPage() {
+  const t = useTranslations('Auth');
   return (
     <main className="min-h-screen bg-salsa-white flex items-center justify-center p-4 font-montserrat relative">
       <Button 
@@ -592,7 +629,7 @@ export default function LoginPage() {
         icon={ArrowLeft} 
         className="absolute top-8 left-4 md:left-8 z-50 text-slate-800 hover:text-salsa-pink border-none"
       >
-        Home
+        {t('btnHome')}
       </Button>
       <Suspense fallback={<div className="w-full max-w-4xl min-h-[700px] flex items-center justify-center"><div className="w-8 h-8 border-4 border-salsa-pink border-t-transparent rounded-full animate-spin"></div></div>}>
         <LoginContent />
