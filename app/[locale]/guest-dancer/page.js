@@ -106,7 +106,7 @@ export default function AmbassadorDashboard() {
             let finalTicketID = "";
 
             while (!isUnique) {
-               finalTicketID = generateTicketID("GRP"); // GRP prefix helps identify ambassador sales
+               finalTicketID = generateTicketID() // GRP prefix helps identify ambassador sales
 
                const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
                const snapshot = await getDocs(q);

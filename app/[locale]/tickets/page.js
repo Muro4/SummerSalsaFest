@@ -128,7 +128,7 @@ export default function TicketPage() {
       let finalTicketID = "";
 
       while (!isUnique) {
-        finalTicketID = generateTicketID("SLS"); // e.g., SLS-A9KX42
+        finalTicketID = generateTicketID() // e.g., SLS-A9KX42
 
         // Ask Firestore if this ID already exists
         const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
