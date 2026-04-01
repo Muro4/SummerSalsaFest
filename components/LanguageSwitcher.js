@@ -1,6 +1,6 @@
 "use client";
 import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from '@/routing'; // Use our custom routing
+import { usePathname, useRouter } from '@/routing'; 
 
 export default function LanguageSwitcher({ isTransparent }) {
   const locale = useLocale();
@@ -16,14 +16,34 @@ export default function LanguageSwitcher({ isTransparent }) {
   return (
     <button
       onClick={toggleLanguage}
-      className={`px-3 py-1.5 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all duration-300 cursor-pointer flex items-center gap-2
+      aria-label="Toggle Language"
+      className={`relative flex items-center p-1 rounded-full border transition-all duration-300 cursor-pointer select-none
         ${isTransparent 
-          ? 'border-white/30 text-white hover:bg-white hover:text-slate-900' 
-          : 'border-gray-200 text-slate-800 hover:border-slate-900'}`}
+          ? 'border-white/30 bg-black/10 hover:bg-black/20' 
+          : 'border-gray-200 bg-gray-100 hover:bg-gray-200'}`}
     >
-      <span className={locale === 'en' ? 'opacity-100' : 'opacity-40'}>EN</span>
-      <div className="w-px h-3 bg-current opacity-20" />
-      <span className={locale === 'bg' ? 'opacity-100' : 'opacity-40'}>BG</span>
+      {/* Sliding Background Thumb */}
+      <div 
+        className={`absolute left-1 w-6 h-6 rounded-full transition-transform duration-300 ease-out
+          ${isTransparent ? 'bg-white/30 backdrop-blur-sm' : 'bg-white shadow-sm'} 
+          ${locale === 'bg' ? 'translate-x-6' : 'translate-x-0'}`}
+      />
+      
+      {/* EN Flag */}
+      <span 
+        className={`relative z-10 flex items-center justify-center w-6 h-6 text-sm transition-all duration-300 
+          ${locale === 'en' ? 'opacity-100 grayscale-0 scale-110 drop-shadow-md' : 'opacity-40 grayscale scale-90'}`}
+      >
+        🇬🇧
+      </span>
+
+      {/* BG Flag */}
+      <span 
+        className={`relative z-10 flex items-center justify-center w-6 h-6 text-sm transition-all duration-300 
+          ${locale === 'bg' ? 'opacity-100 grayscale-0 scale-110 drop-shadow-md' : 'opacity-40 grayscale scale-90'}`}
+      >
+        🇧🇬
+      </span>
     </button>
   );
 }
