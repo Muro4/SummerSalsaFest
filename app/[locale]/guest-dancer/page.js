@@ -10,19 +10,13 @@ import TabNavigation from "@/components/TabNavigation";
 import { Loader2, Info, UserPlus, History } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { generateTicketID } from "@/lib/utils";
+import { getPriceAtDate as getPrice } from "@/lib/pricing";
 
 
 // Modular Tabs
 import DraftTab from "@/components/ambassador/DraftTab";
 import HistoryTab from "@/components/ambassador/HistoryTab";
 
-const getPrice = (type) => {
-   const t = (type || '').toLowerCase();
-   if (t.includes('full')) return 150;
-   if (t.includes('party')) return 80;
-   if (t.includes('day')) return 60;
-   return 0;
-};
 
 export default function AmbassadorDashboard() {
    const t = useTranslations('AmbassadorDashboard');

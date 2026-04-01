@@ -5,6 +5,7 @@ import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
 import { EVENT_YEARS } from "@/lib/constants";
 import { useTranslations } from 'next-intl';
+import { getPriceAtDate } from "@/lib/pricing";
 
 // --- SHARED PASS STYLING ---
 const getPassBgColor = (type) => {
@@ -212,7 +213,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                                     onChange={(val) => {
                                        const updateData = { passType: val };
                                        if (displayStatus === 'pending') {
-                                          if (val === 'Free Pass') updateData.price = 0; else if (val === 'Full Pass') updateData.price = 150; else if (val === 'Party Pass') updateData.price = 80; else if (val === 'Day Pass') updateData.price = 60;
+                                          updateData.price = getPriceAtDate(val);
                                        }
                                        onStageChange('tickets', ticket.id, updateData);
                                     }}

@@ -10,6 +10,7 @@ import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { generateTicketID } from "@/lib/utils";
+import { getPriceAtDate } from "@/lib/pricing";
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
@@ -28,9 +29,9 @@ export default function TicketPage() {
 
   // THE FIX: Moved PASSES inside the component to use the translation hook
   const PASSES = [
-    { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: 80, desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
-    { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: 150, desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
-    { id: 'day', name: t('passes.dayName'), rawName: 'Day Pass', price: 60, desc: t('passes.dayDesc'), color: 'bg-teal-300', text: 'text-teal-950' },
+    { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: getPriceAtDate('Party Pass'), desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
+    { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: getPriceAtDate('Full Pass'), desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
+    { id: 'day', name: t('passes.dayName'), rawName: 'Day Pass', price: getPriceAtDate('Day Pass'), desc: t('passes.dayDesc'), color: 'bg-teal-300', text: 'text-teal-950' },
   ];
 
   // --- NAME VALIDATION ---
