@@ -8,8 +8,8 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
-// THE FIX: Import the translation hook
 import { useTranslations } from 'next-intl';
+import { generateTicketID } from "@/lib/utils";
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
@@ -118,21 +118,41 @@ export default function TicketPage() {
         currentID = "guest_" + Math.random().toString(36).substring(2, 12);
         sessionStorage.setItem("guestSessionID", currentID);
       }
+
+      // --- THE CHECK-BEFORE-WRITE LOOP ---
+      let isUnique = false;
+      let finalTicketID = "";
+
+      while (!isUnique) {
+        finalTicketID = generateTicketID("SLS"); // e.g., SLS-A9KX42
+
+        // Ask Firestore if this ID already exists
+        const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
+        const snapshot = await getDocs(q);
+
+        // If empty, the ID is uniquely ours!
+        if (snapshot.empty) {
+          isUnique = true;
+        }
+      }
+
       await addDoc(collection(db, "tickets"), {
         userId: currentID,
         userName: realName.trim().toUpperCase(),
         guestEmail: isGuest ? guestEmail.trim().toLowerCase() : (auth.currentUser?.email || ""),
         isGuest,
-        passType: selected.rawName, // Keep database strictly in English!
+        passType: selected.rawName,
         price: selected.price,
         status: "pending",
-        festivalYear: 2026,
+        festivalYear: festivalYear, // <-- UPDATED: Dynamic Year
         purchaseDate: new Date().toISOString(),
-        ticketID: "SLS" + Math.random().toString(36).substring(2, 7).toUpperCase()
+        ticketID: finalTicketID// <-- Save the guaranteed unique ID
       });
+
       router.push("/cart");
     } catch (e) {
       showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
+    } finally {
       setLoading(false);
     }
   };
@@ -227,13 +247,13 @@ export default function TicketPage() {
                 {isGuest && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       placeholder={t('emailPlaceholder')}
-                      required 
-                      maxLength={100} 
-                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900" 
-                      onChange={e => setGuestEmail(e.target.value)} 
+                      required
+                      maxLength={100}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900"
+                      onChange={e => setGuestEmail(e.target.value)}
                     />
                   </div>
                 )}

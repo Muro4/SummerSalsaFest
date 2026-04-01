@@ -6,9 +6,11 @@ import { useRouter } from "@/routing"; // THE FIX: Custom routing
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import TicketModal from "@/components/TicketModal";
-import TabNavigation from "@/components/TabNavigation"; 
+import TabNavigation from "@/components/TabNavigation";
 import { Loader2, Info, UserPlus, History } from "lucide-react";
-import { useTranslations } from 'next-intl'; // THE FIX: Translations
+import { useTranslations } from 'next-intl';
+import { generateTicketID } from "@/lib/utils";
+
 
 // Modular Tabs
 import DraftTab from "@/components/ambassador/DraftTab";
@@ -41,8 +43,8 @@ export default function AmbassadorDashboard() {
 
    // --- TAB DEFINITION ---
    const dashboardTabs = [
-     { id: "draft", label: t('tabDraft'), icon: UserPlus },
-     { id: "history", label: t('tabHistory'), icon: History }
+      { id: "draft", label: t('tabDraft'), icon: UserPlus },
+      { id: "history", label: t('tabHistory'), icon: History }
    ];
 
    useEffect(() => {
@@ -55,7 +57,7 @@ export default function AmbassadorDashboard() {
             const uDoc = await getDoc(doc(db, "users", user.uid));
             if (uDoc.exists() && (uDoc.data().role === 'ambassador' || uDoc.data().role === 'superadmin')) {
                setUserData(uDoc.data());
-               
+
                // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state
                setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
 
@@ -103,18 +105,42 @@ export default function AmbassadorDashboard() {
       setLoading(true);
       try {
          for (const person of groupRows) {
+            // --- THE CHECK-BEFORE-WRITE LOOP ---
+            let isUnique = false;
+            let finalTicketID = "";
+
+            while (!isUnique) {
+               finalTicketID = generateTicketID("GRP"); // GRP prefix helps identify ambassador sales
+
+               const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
+               const snapshot = await getDocs(q);
+
+               if (snapshot.empty) {
+                  isUnique = true;
+               }
+            }
+
             await addDoc(collection(db, "tickets"), {
-               userId: auth.currentUser.uid, userName: person.name.trim().toUpperCase(), passType: person.type, price: getPrice(person.type),
-               status: "pending", festivalYear: 2026, purchaseDate: new Date().toISOString(), emailSentCount: 0,
-               ticketID: "GRP" + Math.random().toString(36).substring(2, 7).toUpperCase()
+               userId: auth.currentUser.uid,
+               userName: person.name.trim().toUpperCase(),
+               passType: person.type,
+               price: getPrice(person.type),
+               status: "pending",
+               festivalYear: festivalYear, // <-- UPDATED: Dynamic Year
+               purchaseDate: new Date().toISOString(),
+               emailSentCount: 0,
+               ticketID: finalTicketID// <-- Save the guaranteed unique ID
             });
          }
+
          // Reset the local state back to one empty row after successful add to cart
          saveRoster([{ id: Date.now(), name: "", type: "Full Pass" }]);
          showPopup({ type: "success", title: t('errCartTitle'), message: t('errCartMsg'), confirmText: t('btnGoCart'), onConfirm: () => router.push("/cart") });
       } catch (e) {
          showPopup({ type: "error", title: t('errGenTitle'), message: e.message, confirmText: t('btnClose') });
-      } finally { setLoading(false); }
+      } finally {
+         setLoading(false);
+      }
    };
 
    if (loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
@@ -143,23 +169,23 @@ export default function AmbassadorDashboard() {
 
          {/* --- FULLSCREEN TICKET MODAL --- */}
          {fullScreenTicket && (
-            <TicketModal 
-               ticket={fullScreenTicket} 
-               ticketsList={paidTickets} 
-               setTicket={setFullScreenTicket} 
-               onClose={() => setFullScreenTicket(null)} 
+            <TicketModal
+               ticket={fullScreenTicket}
+               ticketsList={paidTickets}
+               setTicket={setFullScreenTicket}
+               onClose={() => setFullScreenTicket(null)}
             />
          )}
 
          {/* --- MAIN DASHBOARD UI --- */}
          <div className="flex-grow max-w-7xl mx-auto px-4 md:px-6 w-full pt-32 pb-40">
-            
+
             <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-30">
                <div>
                   <div className="flex items-center gap-2 mb-2">
                      <button onClick={() => setShowInfoModal(true)} className="flex items-center gap-1.5 bg-white border border-gray-200 text-slate-500 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-slate-900 transition-colors cursor-pointer shadow-sm"><Info size={14} /> {t('infoGuideBtn')}</button>
                   </div>
-                  
+
                   <h1 className="font-bebas tracking-wide text-6xl md:text-7xl leading-none text-slate-900 uppercase">
                      {userData?.ambassadorDisplayName ? t('dashTitleUser', { name: userData.ambassadorDisplayName }) : t('dashTitleFallback')}
                   </h1>
@@ -168,15 +194,15 @@ export default function AmbassadorDashboard() {
             </div>
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 w-full relative z-20">
-               
+
                <div className="w-full md:w-[400px]">
-                  <TabNavigation 
-                     tabs={dashboardTabs} 
-                     activeTab={activeTab} 
-                     setActiveTab={setActiveTab} 
+                  <TabNavigation
+                     tabs={dashboardTabs}
+                     activeTab={activeTab}
+                     setActiveTab={setActiveTab}
                   />
                </div>
-               
+
             </div>
 
             {/* TAB RENDERING */}

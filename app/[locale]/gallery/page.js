@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Image from "next/image"; // <-- IMPORT NEXT/IMAGE
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
@@ -9,17 +10,18 @@ export default function GalleryPage() {
   const t = useTranslations('Gallery');
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  // The base 9 images
+  // THE FIX: Added width and height properties based on the Unsplash URL parameters.
+  // This is required for next/image to prevent layout shifts in a Masonry grid.
   const baseImages = [
-    { id: 1, src: "https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=800&h=1200&fit=crop", alt: "Couple dancing salsa" },
-    { id: 2, src: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000&h=700&fit=crop", alt: "Festival crowd cheering" },
-    { id: 3, src: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800&h=800&fit=crop", alt: "Live band playing" },
-    { id: 4, src: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800&h=1000&fit=crop", alt: "Night beach party" },
-    { id: 5, src: "https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1200&h=800&fit=crop", alt: "DJ spinning tracks" },
-    { id: 6, src: "https://images.unsplash.com/photo-1516997184976-55a0b7791834?q=80&w=800&h=1100&fit=crop", alt: "Dancer posing" },
-    { id: 7, src: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=900&h=700&fit=crop", alt: "Concert lights" },
-    { id: 8, src: "https://images.unsplash.com/photo-1524117853209-a2fc128ceb66?q=80&w=800&h=1200&fit=crop", alt: "Workshop instruction" },
-    { id: 9, src: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=1000&h=600&fit=crop", alt: "Outdoor stage" },
+    { id: 1, src: "https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=800&h=1200&fit=crop", width: 800, height: 1200, alt: "Couple dancing salsa" },
+    { id: 2, src: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000&h=700&fit=crop", width: 1000, height: 700, alt: "Festival crowd cheering" },
+    { id: 3, src: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800&h=800&fit=crop", width: 800, height: 800, alt: "Live band playing" },
+    { id: 4, src: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800&h=1000&fit=crop", width: 800, height: 1000, alt: "Night beach party" },
+    { id: 5, src: "https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1200&h=800&fit=crop", width: 1200, height: 800, alt: "DJ spinning tracks" },
+    { id: 6, src: "https://images.unsplash.com/photo-1516997184976-55a0b7791834?q=80&w=800&h=1100&fit=crop", width: 800, height: 1100, alt: "Dancer posing" },
+    { id: 7, src: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=900&h=700&fit=crop", width: 900, height: 700, alt: "Concert lights" },
+    { id: 8, src: "https://images.unsplash.com/photo-1524117853209-a2fc128ceb66?q=80&w=800&h=1200&fit=crop", width: 800, height: 1200, alt: "Workshop instruction" },
+    { id: 9, src: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=1000&h=600&fit=crop", width: 1000, height: 600, alt: "Outdoor stage" },
   ];
 
   // Tripling the images to create a massive masonry wall
@@ -93,13 +95,17 @@ export default function GalleryPage() {
             <div 
               key={img.uniqueKey} 
               onClick={() => setSelectedIndex(index)}
-              className="relative group overflow-hidden rounded-3xl cursor-pointer break-inside-avoid shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 bg-white"
+              className="relative group overflow-hidden rounded-3xl cursor-pointer break-inside-avoid shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 bg-slate-100"
             >
-              <img 
+              {/* THE FIX: Using next/image with specific width/height prevents masonry layout collapse */}
+              <Image 
                 src={img.src} 
                 alt={img.alt} 
+                width={img.width}
+                height={img.height}
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                priority={index < 6} // Prioritize loading the first 6 images to boost LCP score
                 className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700" 
-                loading="lazy"
               />
               <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-salsa-pink/20 transition-colors duration-500 flex items-center justify-center">
                 <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-500 scale-50 group-hover:scale-100 transform drop-shadow-lg" size={48} strokeWidth={2} />
@@ -134,12 +140,18 @@ export default function GalleryPage() {
               <ChevronLeft size={40} />
             </button>
 
-            <img 
-              src={galleryImages[selectedIndex].src} 
-              alt={galleryImages[selectedIndex].alt} 
-              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
-              onClick={(e) => e.stopPropagation()} 
-            />
+            {/* THE FIX: Use 'fill' and 'object-contain' for the lightbox image so it scales perfectly */}
+            <div className="relative w-full h-[85vh]" onClick={(e) => e.stopPropagation()}>
+              <Image 
+                src={galleryImages[selectedIndex].src} 
+                alt={galleryImages[selectedIndex].alt} 
+                fill
+                sizes="100vw"
+                quality={100}
+                priority
+                className="object-contain animate-in zoom-in-95 duration-300 drop-shadow-2xl"
+              />
+            </div>
 
             <button 
               onClick={(e) => { e.stopPropagation(); showNext(e); }}
@@ -164,25 +176,28 @@ export default function GalleryPage() {
                 key={img.uniqueKey} 
                 className="min-w-full h-full px-4 snap-center snap-always flex flex-col items-center justify-center"
               >
-                <div className="relative w-full h-full flex flex-col items-center justify-center">
+                <div className="relative w-full h-[80vh] flex flex-col items-center justify-center">
                   
                   {/* Swipe Indicator (Only show on the first image you click) */}
                   {i === selectedIndex && (
-                    <div className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/50 animate-pulse z-50">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/50 animate-pulse z-50">
                       <ChevronLeft size={16} />
                       <span className="text-[10px] uppercase tracking-widest font-bold">{t('swipe')}</span>
                       <ChevronRight size={16} />
                     </div>
                   )}
 
-                  <img 
+                  {/* THE FIX: Mobile image uses fill and contain */}
+                  <Image 
                     src={img.src} 
                     alt={img.alt} 
-                    className="max-w-[100vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                    fill
+                    sizes="100vw"
+                    className="object-contain rounded-lg shadow-2xl"
                     onClick={(e) => e.stopPropagation()} 
                   />
                   
-                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white font-black text-[10px] tracking-[0.3em] bg-black/30 px-4 py-1.5 rounded-full backdrop-blur-md">
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white font-black text-[10px] tracking-[0.3em] bg-black/30 px-4 py-1.5 rounded-full backdrop-blur-md">
                     {i + 1} / {galleryImages.length}
                   </div>
                 </div>
