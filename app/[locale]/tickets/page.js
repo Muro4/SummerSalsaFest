@@ -9,8 +9,9 @@ import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { generateTicketID } from "@/lib/utils";
+import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
 import { getPriceAtDate } from "@/lib/pricing";
+
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
@@ -114,6 +115,8 @@ export default function TicketPage() {
   const handleAddToCart = async () => {
     setLoading(true);
     try {
+      const currentFestivalYear = getActiveFestivalYear();
+      
       let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
       if (!currentID) {
         currentID = "guest_" + Math.random().toString(36).substring(2, 12);
@@ -145,7 +148,7 @@ export default function TicketPage() {
         passType: selected.rawName,
         price: selected.price,
         status: "pending",
-        festivalYear: festivalYear, // <-- UPDATED: Dynamic Year
+        festivalYear: currentFestivalYear, // <-- UPDATED: Dynamic Year
         purchaseDate: new Date().toISOString(),
         ticketID: finalTicketID// <-- Save the guaranteed unique ID
       });

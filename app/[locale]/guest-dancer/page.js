@@ -9,8 +9,9 @@ import TicketModal from "@/components/TicketModal";
 import TabNavigation from "@/components/TabNavigation";
 import { Loader2, Info, UserPlus, History } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { generateTicketID } from "@/lib/utils";
+import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
 import { getPriceAtDate as getPrice } from "@/lib/pricing";
+
 
 
 // Modular Tabs
@@ -98,6 +99,7 @@ export default function AmbassadorDashboard() {
       }
       setLoading(true);
       try {
+         const currentFestivalYear = getActiveFestivalYear();
          for (const person of groupRows) {
             // --- THE CHECK-BEFORE-WRITE LOOP ---
             let isUnique = false;
@@ -120,7 +122,7 @@ export default function AmbassadorDashboard() {
                passType: person.type,
                price: getPrice(person.type),
                status: "pending",
-               festivalYear: festivalYear, // <-- UPDATED: Dynamic Year
+               festivalYear: currentFestivalYear, // <-- UPDATED: Dynamic Year
                purchaseDate: new Date().toISOString(),
                emailSentCount: 0,
                ticketID: finalTicketID// <-- Save the guaranteed unique ID
