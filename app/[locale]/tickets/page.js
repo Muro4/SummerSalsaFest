@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 // THE FIX: Use our custom language-aware router
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -11,7 +11,6 @@ import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
 import { getPriceAtDate } from "@/lib/pricing";
-
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
@@ -24,6 +23,9 @@ export default function TicketPage() {
   const [showModal, setShowModal] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // --- SYSTEM SETTINGS STATE ---
+  const [salesEnabled, setSalesEnabled] = useState(true);
 
   const router = useRouter();
   const { showPopup } = usePopup();
@@ -40,6 +42,7 @@ export default function TicketPage() {
   const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
   const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
 
+  // --- FETCH USER ---
   useEffect(() => {
     const fetchUser = async () => {
       if (auth.currentUser) {
@@ -49,6 +52,23 @@ export default function TicketPage() {
     };
     fetchUser();
   }, [auth.currentUser]);
+
+  // --- LISTEN FOR GLOBAL KILL SWITCH ---
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "settings", "system"), 
+      (snap) => {
+        if (snap.exists()) {
+          setSalesEnabled(snap.data().salesEnabled);
+        }
+      },
+      (err) => {
+        console.error("Kill switch sync error:", err.message);
+        setSalesEnabled(true); // Fail open so sales continue if rules are misconfigured
+      }
+    );
+    return () => unsub();
+  }, []);
 
   const handleProceedToDetails = async () => {
     if (!auth.currentUser && !isGuest) {
@@ -128,7 +148,7 @@ export default function TicketPage() {
       let finalTicketID = "";
 
       while (!isUnique) {
-        finalTicketID = generateTicketID() // e.g., SLS-A9KX42
+        finalTicketID = generateTicketID(); // e.g., X7K9M2
 
         // Ask Firestore if this ID already exists
         const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
@@ -150,7 +170,7 @@ export default function TicketPage() {
         status: "pending",
         festivalYear: currentFestivalYear, // <-- UPDATED: Dynamic Year
         purchaseDate: new Date().toISOString(),
-        ticketID: finalTicketID// <-- Save the guaranteed unique ID
+        ticketID: finalTicketID // <-- Save the guaranteed unique ID
       });
 
       router.push("/cart");
@@ -281,11 +301,13 @@ export default function TicketPage() {
 
                 <button
                   onClick={handleAddToCart}
-                  disabled={!realName || isNameInvalid || (isGuest && !guestEmail) || loading}
+                  disabled={!realName || isNameInvalid || (isGuest && !guestEmail) || loading || !salesEnabled}
                   className="cursor-pointer w-full h-[52px] bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
                 >
                   {loading ? (
                     <Loader2 className="animate-spin" size={18} />
+                  ) : !salesEnabled ? (
+                    "Sales Temporarily Paused"
                   ) : (
                     t('addBtn')
                   )}

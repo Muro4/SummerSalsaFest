@@ -11,9 +11,6 @@ import dynamic from 'next/dynamic';
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2 } from "lucide-react";
 
 
-// ============================================================================
-// 🚀 LAZY LOAD HEAVY COMPONENTS
-// ============================================================================
 const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
 });
@@ -53,20 +50,32 @@ export default function AdminDashboard() {
       let unsubMessages = () => { }; 
       let unsubRequests = () => { }; 
 
-      const unsubAuth = auth.onAuthStateChanged(async (user) => {
+     const unsubAuth = auth.onAuthStateChanged(async (user) => {
          if (user) {
             const myDoc = await getDoc(doc(db, "users", user.uid));
             if (myDoc.exists() && myDoc.data().role === "superadmin") {
                setIsAdmin(true);
-               unsubUsers = onSnapshot(collection(db, "users"), (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })));
-               unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); });
+               
+               unsubUsers = onSnapshot(collection(db, "users"), 
+                  (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })),
+                  (err) => console.error("Users sync error:", err)
+               );
+               
+               unsubTickets = onSnapshot(collection(db, "tickets"), 
+                  (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); },
+                  (err) => console.error("Tickets sync error:", err)
+               );
                
                const unreadQuery = query(collection(db, "contact_messages"), where("status", "==", "unread"));
-               unsubMessages = onSnapshot(unreadQuery, (mS) => setUnreadInboxCount(mS.docs.length));
+               unsubMessages = onSnapshot(unreadQuery, 
+                  (mS) => setUnreadInboxCount(mS.docs.length),
+                  (err) => console.error("Messages sync error:", err)
+               );
                
-               unsubRequests = onSnapshot(collection(db, "ambassador_requests"), (rS) => {
-                  setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) }));
-               });
+               unsubRequests = onSnapshot(collection(db, "ambassador_requests"), 
+                  (rS) => setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) })),
+                  (err) => console.error("Requests sync error:", err)
+               );
 
             } else { router.push("/"); }
          } else { unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); router.push("/login"); }

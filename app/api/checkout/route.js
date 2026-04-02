@@ -1,14 +1,31 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getPriceAtDate } from "@/lib/pricing"; // <-- 1. Import your source of truth
+import { getPriceAtDate } from "@/lib/pricing"; 
+import { adminDb } from "@/lib/firebase-admin"; // <-- Import Admin SDK
 
 export async function POST(req) {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: "Missing Stripe Secret Key in .env.local" }, { status: 500 });
+    // 1. Fetch system settings directly from Firestore Admin
+    const sysDoc = await adminDb.collection("settings").doc("system").get();
+    const system = sysDoc.exists ? sysDoc.data() : { salesEnabled: true, stripeMode: 'test' };
+
+    // 2. Enforce Kill Switch on the backend
+    if (!system.salesEnabled) {
+       return NextResponse.json({ error: "Ticket sales are currently paused." }, { status: 403 });
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    // 3. Select the correct Stripe Environment based on the Dev Panel toggle
+    const stripeSecret = system.stripeMode === 'live' 
+        ? process.env.STRIPE_LIVE_SECRET_KEY 
+        : process.env.STRIPE_TEST_SECRET_KEY;
+
+    if (!stripeSecret) {
+      console.error(`Missing Stripe Secret Key for ${system.stripeMode} mode.`);
+      return NextResponse.json({ error: `Stripe configuration error for ${system.stripeMode} mode.` }, { status: 500 });
+    }
+
+    // Initialize Stripe with the dynamically selected key
+    const stripe = new Stripe(stripeSecret, {
       apiVersion: '2023-10-16',
     });
 
@@ -25,12 +42,12 @@ export async function POST(req) {
       return NextResponse.json({ error: "Cart items array is empty or missing" }, { status: 400 });
     }
 
-    // 2. Extract Ticket IDs so we can pass them to Stripe Metadata
+    // 4. Extract Ticket IDs so we can pass them to Stripe Metadata
     // Note: Stripe metadata has a 500 character limit per key. 
     // If users can buy 50+ tickets at once, you'd need to store this in a temporary DB doc instead.
     const ticketIds = items.map(item => item.id).join(',');
 
-    // 3. Format Line Items using SERVER-SIDE pricing
+    // 5. Format Line Items using SERVER-SIDE pricing
     const lineItems = items.map((item) => {
       // 🚨 IGNORING item.price FROM THE FRONTEND 🚨
       const serverPrice = getPriceAtDate(item.passType); 
@@ -54,7 +71,7 @@ export async function POST(req) {
 
     const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
-    // 4. Create Stripe Session with Metadata
+    // 6. Create Stripe Session with Metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
