@@ -29,15 +29,24 @@ export async function POST(req) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     
-    // Grab the ticket IDs we passed into the metadata in checkout/route.js
-    const ticketIdsString = session.metadata?.ticketIds;
+    // Grab the Firestore document reference ID from Stripe metadata
+    const checkoutSessionId = session.metadata?.checkoutSessionId;
 
-    if (ticketIdsString) {
-      const ticketIds = ticketIdsString.split(',');
-      const timestamp = new Date().toISOString();
-
+    if (checkoutSessionId) {
       try {
-        // 4. Use a Firestore Batch to activate all tickets simultaneously securely
+        // Fetch the temporary session document from Firestore
+        const checkoutDocRef = adminDb.collection("checkout_sessions").doc(checkoutSessionId);
+        const checkoutDoc = await checkoutDocRef.get();
+
+        if (!checkoutDoc.exists) {
+          console.error(`❌ Webhook Error: Checkout session doc ${checkoutSessionId} not found.`);
+          return NextResponse.json({ error: "Session document missing" }, { status: 404 });
+        }
+
+        const ticketIds = checkoutDoc.data().ticketIds;
+        const timestamp = new Date().toISOString();
+
+        // 4. Use a Firestore Batch to activate all tickets simultaneously
         const batch = adminDb.batch();
 
         ticketIds.forEach((id) => {
@@ -48,15 +57,22 @@ export async function POST(req) {
           });
         });
 
+        // 5. Mark the reference document as completed so we have a paper trail
+        batch.update(checkoutDocRef, {
+          status: "completed",
+          completedAt: timestamp
+        });
+
         await batch.commit();
-        console.log(`✅ Successfully activated tickets: ${ticketIdsString}`);
+        console.log(`✅ Successfully activated ${ticketIds.length} tickets for session: ${checkoutSessionId}`);
+        
       } catch (error) {
         console.error("❌ Failed to activate tickets in Firestore:", error);
         // Returning a 500 tells Stripe to retry this webhook later if our DB fails
         return NextResponse.json({ error: "Database update failed" }, { status: 500 });
       }
     } else {
-      console.warn("⚠️ Checkout completed, but no ticket IDs were found in metadata.");
+      console.warn("⚠️ Checkout completed, but no checkoutSessionId was found in metadata.");
     }
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { adminAuth } from '@/lib/firebase-admin'; // <-- IMPORT ADMIN SDK
+import { adminAuth, adminDb } from '@/lib/firebase-admin'; // <-- IMPORT adminDb
 
 export async function POST(req) {
   console.log("💳 POST request received at /api/google-wallet");
@@ -17,10 +17,11 @@ export async function POST(req) {
     }
 
     const token = authHeader.split('Bearer ')[1];
+    let decodedToken;
 
     try {
       // Verify the token is real and belongs to an active user
-      const decodedToken = await adminAuth.verifyIdToken(token);
+      decodedToken = await adminAuth.verifyIdToken(token);
       console.log(`✅ Authorized wallet request from user ID: ${decodedToken.uid}`);
     } catch (authError) {
       console.error("❌ Unauthorized: Invalid token", authError.message);
@@ -30,8 +31,27 @@ export async function POST(req) {
 
     const { ticket } = await req.json();
 
-    if (!ticket || !ticket.ticketID) {
+    // 1. Strict Validation
+    if (!ticket || !ticket.id) {
       return NextResponse.json({ error: 'Missing ticket data' }, { status: 400 });
+    }
+
+    // 2. Fetch the REAL ticket from the database to prevent spoofing
+    const ticketDoc = await adminDb.collection("tickets").doc(ticket.id).get();
+    
+    if (!ticketDoc.exists) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    const ticketData = ticketDoc.data();
+
+    // 3. Verify ownership (or allow if the user is an admin)
+    const isOwner = ticketData.userId === decodedToken.uid;
+    const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'superadmin';
+
+    if (!isOwner && !isAdmin) {
+      console.error(`❌ Forbidden: User ${decodedToken.uid} attempted to add ticket owned by ${ticketData.userId} to wallet`);
+      return NextResponse.json({ error: 'Forbidden: You do not own this ticket' }, { status: 403 });
     }
 
     const ISSUER_EMAIL = process.env.GOOGLE_CLIENT_EMAIL; 
@@ -46,26 +66,27 @@ export async function POST(req) {
     // Fix Vercel's environment variable formatting
     PRIVATE_KEY = PRIVATE_KEY.replace(/^"|"$/g, '').replace(/\\n/g, '\n');
 
-    // Clean the ticket ID
-    const cleanTicketID = ticket.ticketID.replace(/[^a-zA-Z0-9]/g, '');
+    // Clean the ticket ID using VERIFIED ticket data
+    const cleanTicketID = ticketData.ticketID.replace(/[^a-zA-Z0-9]/g, '');
     
     // THE FIX: Append Date.now() so Google NEVER caches a failed attempt
     const objectId = `${ISSUER_ID}.${cleanTicketID}-${Date.now()}`;
     
+    // Use REAL DATABASE DATA (ticketData) for the pass, NOT the client's payload
     const passObject = {
       id: objectId,
       classId: `${ISSUER_ID}.${CLASS_ID}`,
       state: "ACTIVE",
-      hexBackgroundColor: ticket.passType.includes("Full") ? "#e11d48" : "#4f46e5",
+      hexBackgroundColor: ticketData.passType.includes("Full") ? "#e11d48" : "#4f46e5",
       barcode: {
         type: "QR_CODE",
-        value: ticket.ticketID,
-        alternateText: ticket.ticketID,
+        value: ticketData.ticketID,
+        alternateText: ticketData.ticketID,
         renderEncoding: "UTF_8"
       },
-      ticketHolderName: ticket.userName,
+      ticketHolderName: ticketData.userName,
       ticketType: {
-        defaultValue: { language: "en", value: ticket.passType }
+        defaultValue: { language: "en", value: ticketData.passType }
       }
     };
 
