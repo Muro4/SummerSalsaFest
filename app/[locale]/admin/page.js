@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
 import { useRouter } from "@/routing"; 
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
@@ -9,7 +9,6 @@ import Button from "@/components/Button";
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic'; 
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon } from "lucide-react";
-
 
 const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
@@ -23,7 +22,6 @@ const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), {
 const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
 });
-// 1. IMPORT THE NEW ARTISTS TAB
 const ArtistsTab = dynamic(() => import("@/components/admin/ArtistsTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
 });
@@ -36,7 +34,18 @@ export default function AdminDashboard() {
    const router = useRouter();
    const { showPopup } = usePopup();
 
-   const [activeTab, setActiveTab] = useState("analytics");
+   // --- PERSISTENT TAB LOGIC ---
+   const [activeTab, setActiveTab] = useState(() => {
+      if (typeof window !== "undefined") {
+         return localStorage.getItem("admin_active_tab") || "analytics";
+      }
+      return "analytics";
+   });
+
+   useEffect(() => {
+      localStorage.setItem("admin_active_tab", activeTab);
+   }, [activeTab]);
+
    const [data, setData] = useState({ users: [], tickets: [], requests: [], artists: [] });
    const [loading, setLoading] = useState(true);
    const [isAdmin, setIsAdmin] = useState(false);
@@ -47,13 +56,11 @@ export default function AdminDashboard() {
    const [history, setHistory] = useState([{}]);
    const [historyIndex, setHistoryIndex] = useState(0);
 
+   const hasActionBar = ['tickets', 'users', 'artists'].includes(activeTab);
+
    // --- INITIAL LISTENER SETUP ---
    useEffect(() => {
-      let unsubUsers = () => { };
-      let unsubTickets = () => { };
-      let unsubMessages = () => { }; 
-      let unsubRequests = () => { }; 
-      let unsubArtists = () => { };
+      let unsubUsers = () => {}; let unsubTickets = () => {}; let unsubMessages = () => {}; let unsubRequests = () => {}; let unsubArtists = () => {};
 
      const unsubAuth = auth.onAuthStateChanged(async (user) => {
          if (user) {
@@ -61,31 +68,13 @@ export default function AdminDashboard() {
             if (myDoc.exists() && myDoc.data().role === "superadmin") {
                setIsAdmin(true);
                
-               unsubUsers = onSnapshot(collection(db, "users"), 
-                  (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })),
-                  (err) => console.error("Users sync error:", err)
-               );
-               
-               unsubTickets = onSnapshot(collection(db, "tickets"), 
-                  (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); },
-                  (err) => console.error("Tickets sync error:", err)
-               );
+               unsubUsers = onSnapshot(collection(db, "users"), (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })));
+               unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); });
+               unsubRequests = onSnapshot(collection(db, "ambassador_requests"), (rS) => setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) })));
+               unsubArtists = onSnapshot(collection(db, "artists"), (aS) => setData(prev => ({ ...prev, artists: aS.docs.map(d => ({ id: d.id, ...d.data() })) })));
                
                const unreadQuery = query(collection(db, "contact_messages"), where("status", "==", "unread"));
-               unsubMessages = onSnapshot(unreadQuery, 
-                  (mS) => setUnreadInboxCount(mS.docs.length),
-                  (err) => console.error("Messages sync error:", err)
-               );
-               
-               unsubRequests = onSnapshot(collection(db, "ambassador_requests"), 
-                  (rS) => setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) })),
-                  (err) => console.error("Requests sync error:", err)
-               );
-
-               unsubArtists = onSnapshot(collection(db, "artists"), 
-                  (aS) => setData(prev => ({ ...prev, artists: aS.docs.map(d => ({ id: d.id, ...d.data() })) })),
-                  (err) => console.error("Artists sync error:", err)
-               );
+               unsubMessages = onSnapshot(unreadQuery, (mS) => setUnreadInboxCount(mS.docs.length));
 
             } else { router.push("/"); }
          } else { unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); unsubArtists(); router.push("/login"); }
@@ -93,7 +82,7 @@ export default function AdminDashboard() {
       return () => { unsubAuth(); unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); unsubArtists(); };
    }, [router]);
 
-   // --- BROWSER REFRESH & IN-APP NAVIGATION PROTECTOR ---
+   // --- BROWSER REFRESH PROTECTOR ---
    useEffect(() => {
       const handleBeforeUnload = (e) => { if (historyIndex > 0) { e.preventDefault(); e.returnValue = ''; } };
       const handleLinkClick = (e) => {
@@ -115,7 +104,6 @@ export default function AdminDashboard() {
       return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('click', handleLinkClick, { capture: true }); };
    }, [historyIndex, router, showPopup, t]);
 
-   // --- STAGING ACTIONS (Undo/Redo Logic) ---
    const handleStageChange = (collection, id, updates) => {
       const newStaged = { ...history[historyIndex], [`${collection}_${id}`]: { ...(history[historyIndex][`${collection}_${id}`] || {}), ...updates, _meta: { collection, id } } };
       const newHistory = history.slice(0, historyIndex + 1);
@@ -131,7 +119,6 @@ export default function AdminDashboard() {
             if (_deleted) {
                await deleteDoc(doc(db, _meta.collection, _meta.id));
             } else if (Object.keys(updates).length > 0) {
-               // Use setDoc with { merge: true } so it supports both updates AND new document creation
                await setDoc(doc(db, _meta.collection, _meta.id), updates, { merge: true });
             }
          }
@@ -151,19 +138,14 @@ export default function AdminDashboard() {
 
    const effectiveArtists = useMemo(() => {
        const existing = data.artists.map(a => history[historyIndex]?.[`artists_${a.id}`] ? { ...a, ...history[historyIndex][`artists_${a.id}`] } : a).filter(a => !a._deleted);
-       // Inject newly created artists that haven't been saved to DB yet
        const stagedKeys = Object.keys(history[historyIndex] || {});
        const newArtists = stagedKeys.filter(k => k.startsWith('artists_') && history[historyIndex][k].isNew && !history[historyIndex][k]._deleted).map(k => ({ id: history[historyIndex][k]._meta.id, ...history[historyIndex][k] }));
        return [...existing, ...newArtists].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
    }, [data.artists, history, historyIndex]);
 
-   const pendingRequestsCount = useMemo(() => {
-       return data.requests.filter(r => (r.status || 'pending') === 'pending').length;
-   }, [data.requests]);
-   
+   const pendingRequestsCount = useMemo(() => data.requests.filter(r => (r.status || 'pending') === 'pending').length, [data.requests]);
    const totalInboxNotifications = unreadInboxCount + pendingRequestsCount;
 
-   // 2. ADD THE ARTISTS TAB TO THE MENU
    const adminTabs = [
       { id: 'analytics', label: t('tabAnalytics'), icon: BarChart3 },
       { id: 'inbox', label: t('tabInbox'), icon: Mail, badge: totalInboxNotifications },
@@ -179,20 +161,16 @@ export default function AdminDashboard() {
       <main className="min-h-screen bg-salsa-white font-montserrat pt-28 md:pt-32 pb-20 select-none overflow-x-hidden flex flex-col">
          <Navbar />
          
-         {/* MAIN WRAPPER: Full width (no max-w), tight padding */}
          <div className="flex-1 w-full px-4 md:px-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-20">
             
-            {/* --- STRICTLY VERTICAL SIDEBAR --- */}
-            <aside className="w-full md:w-[240px] xl:w-[280px] shrink-0 flex flex-col gap-4 md:sticky md:top-32 z-30 md:h-[calc(100vh-12rem)]">
-                  
-                  {/* Clean Sidebar Header on Desktop */}
+            {/* --- STICKY SIDE NAVIGATION --- */}
+            <aside className="w-full md:w-[240px] xl:w-[280px] shrink-0 flex flex-col gap-4 md:sticky md:top-28 z-30 md:h-fit">
                   <div className="hidden md:block mb-4 px-2 shrink-0">
                      <h1 className="font-bebas tracking-wide text-5xl text-slate-900 uppercase leading-none">Admin Panel</h1>
                      <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest mt-1.5">Summer Salsa Fest Management</p>
                   </div>
 
-                  {/* Navigation Links - flex-col md:flex-col forces the column direction! */}
-                  <div className="flex flex-col md:flex-col gap-2 w-full pb-4 md:pb-0 shrink-0">
+                  <div className="flex flex-col gap-2 w-full pb-4 md:pb-0 shrink-0">
                      {adminTabs.map((tab) => {
                         const isActive = activeTab === tab.id;
                         const Icon = tab.icon;
@@ -220,10 +198,11 @@ export default function AdminDashboard() {
                </aside>
 
             {/* --- MAIN CONTENT AREA --- */}
-            <div className="flex-1 w-full min-w-0 relative z-10 pb-20 md:pb-0 flex flex-col gap-6">
+            {/* Added dynamic md:pt-[68px] when action bar is hidden to keep vertical alignment consistent */}
+            <div className={`flex-1 w-full min-w-0 relative z-10 pb-20 md:pb-0 flex flex-col gap-6 ${!hasActionBar ? 'md:pt-[68px]' : ''}`}>
                
-               {/* 🚀 ACTION BAR RELOCATED ABOVE TABLES & ALIGNED LEFT */}
-               {['tickets', 'users', 'artists'].includes(activeTab) && (
+               {/* ACTION BAR (Tickets, Users, Artists only) */}
+               {hasActionBar && (
                   <div className="hidden md:flex justify-start items-center gap-4 animate-in fade-in duration-300 mb-2">
                      <div className="flex gap-3">
                         <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title={t('btnUndo')} className="h-11 w-12 flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
@@ -247,7 +226,6 @@ export default function AdminDashboard() {
                   </div>
                )}
 
-               {/* TAB CONTENT */}
                {activeTab === 'analytics' && <AnalyticsTab tickets={effectiveTickets} />}
                {activeTab === 'inbox' && <InboxManager requests={data.requests} />} 
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
@@ -258,9 +236,6 @@ export default function AdminDashboard() {
 
          </div>
 
-         {/* ==============================================
-             MOBILE FLOATING ACTION BAR
-             ============================================== */}
           <div 
             className={`md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] pt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex items-center justify-between transition-transform duration-500 ease-out ${
                historyIndex > 0 ? "translate-y-0" : "translate-y-full"

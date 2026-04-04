@@ -174,6 +174,7 @@ export default function Navbar() {
             <Link href="/" className={desktopLinkClass('/')}>{t('home')}</Link>
             <Link href="/tickets" className={desktopLinkClass('/tickets')}>{t('prices')}</Link>
             <Link href="/info" className={desktopLinkClass('/info')}>{t('info')}</Link>
+            <Link href="/artists" className={desktopLinkClass('/artists')}>{t('artists')}</Link>
             <Link href="/gallery" className={desktopLinkClass('/gallery')}>{t('gallery')}</Link>
             <Link href="/about" className={desktopLinkClass('/about')}>{t('about')}</Link>
             <Link href="/contact" className={desktopLinkClass('/contact')}>{t('contact')}</Link>
@@ -272,6 +273,9 @@ export default function Navbar() {
               </Link>
               <Link href="/info" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/info')}>
                 <span className={mobileTextClass('/info')}>{t('info')}</span>
+              </Link>
+              <Link href="/artists" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/artists')}>
+                <span className={mobileTextClass('/artists')}>{t('artists')}</span>
               </Link>
               <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/gallery')}>
                 <span className={mobileTextClass('/gallery')}>{t('gallery')}</span>
