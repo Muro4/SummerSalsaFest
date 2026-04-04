@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, doc, getDoc, updateDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
 import { useRouter } from "@/routing"; 
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic'; 
-import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2 } from "lucide-react";
+import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon } from "lucide-react";
 
 
 const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), { 
@@ -23,6 +23,10 @@ const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), {
 const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
 });
+// 1. IMPORT THE NEW ARTISTS TAB
+const ArtistsTab = dynamic(() => import("@/components/admin/ArtistsTab"), { 
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+});
 const DevTab = dynamic(() => import("@/components/admin/DevTab"), { 
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
 });
@@ -33,7 +37,7 @@ export default function AdminDashboard() {
    const { showPopup } = usePopup();
 
    const [activeTab, setActiveTab] = useState("analytics");
-   const [data, setData] = useState({ users: [], tickets: [], requests: [] });
+   const [data, setData] = useState({ users: [], tickets: [], requests: [], artists: [] });
    const [loading, setLoading] = useState(true);
    const [isAdmin, setIsAdmin] = useState(false);
    const [saving, setSaving] = useState(false);
@@ -49,6 +53,7 @@ export default function AdminDashboard() {
       let unsubTickets = () => { };
       let unsubMessages = () => { }; 
       let unsubRequests = () => { }; 
+      let unsubArtists = () => { };
 
      const unsubAuth = auth.onAuthStateChanged(async (user) => {
          if (user) {
@@ -77,10 +82,15 @@ export default function AdminDashboard() {
                   (err) => console.error("Requests sync error:", err)
                );
 
+               unsubArtists = onSnapshot(collection(db, "artists"), 
+                  (aS) => setData(prev => ({ ...prev, artists: aS.docs.map(d => ({ id: d.id, ...d.data() })) })),
+                  (err) => console.error("Artists sync error:", err)
+               );
+
             } else { router.push("/"); }
-         } else { unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); router.push("/login"); }
+         } else { unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); unsubArtists(); router.push("/login"); }
       });
-      return () => { unsubAuth(); unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); };
+      return () => { unsubAuth(); unsubUsers(); unsubTickets(); unsubMessages(); unsubRequests(); unsubArtists(); };
    }, [router]);
 
    // --- BROWSER REFRESH & IN-APP NAVIGATION PROTECTOR ---
@@ -117,9 +127,13 @@ export default function AdminDashboard() {
       setSaving(true);
       try {
          for (const key of Object.keys(history[historyIndex])) {
-            const { _meta, _deleted, ...updates } = history[historyIndex][key];
-            if (_deleted) await deleteDoc(doc(db, _meta.collection, _meta.id));
-            else if (Object.keys(updates).length > 0) await updateDoc(doc(db, _meta.collection, _meta.id), updates);
+            const { _meta, _deleted, isNew, ...updates } = history[historyIndex][key];
+            if (_deleted) {
+               await deleteDoc(doc(db, _meta.collection, _meta.id));
+            } else if (Object.keys(updates).length > 0) {
+               // Use setDoc with { merge: true } so it supports both updates AND new document creation
+               await setDoc(doc(db, _meta.collection, _meta.id), updates, { merge: true });
+            }
          }
          setHistory([{}]); setHistoryIndex(0); showPopup({ type: "success", title: t('popupSaveTitle'), message: t('popupSaveMsg'), confirmText: t('btnDone') });
       } catch (err) {
@@ -135,17 +149,27 @@ export default function AdminDashboard() {
        return data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
    }, [data.users, history, historyIndex]);
 
+   const effectiveArtists = useMemo(() => {
+       const existing = data.artists.map(a => history[historyIndex]?.[`artists_${a.id}`] ? { ...a, ...history[historyIndex][`artists_${a.id}`] } : a).filter(a => !a._deleted);
+       // Inject newly created artists that haven't been saved to DB yet
+       const stagedKeys = Object.keys(history[historyIndex] || {});
+       const newArtists = stagedKeys.filter(k => k.startsWith('artists_') && history[historyIndex][k].isNew && !history[historyIndex][k]._deleted).map(k => ({ id: history[historyIndex][k]._meta.id, ...history[historyIndex][k] }));
+       return [...existing, ...newArtists].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+   }, [data.artists, history, historyIndex]);
+
    const pendingRequestsCount = useMemo(() => {
        return data.requests.filter(r => (r.status || 'pending') === 'pending').length;
    }, [data.requests]);
    
    const totalInboxNotifications = unreadInboxCount + pendingRequestsCount;
 
+   // 2. ADD THE ARTISTS TAB TO THE MENU
    const adminTabs = [
       { id: 'analytics', label: t('tabAnalytics'), icon: BarChart3 },
       { id: 'inbox', label: t('tabInbox'), icon: Mail, badge: totalInboxNotifications },
       { id: 'tickets', label: t('tabTickets'), icon: Ticket },
       { id: 'users', label: t('tabUsers'), icon: UserCog },
+      { id: 'artists', label: t('tabArtists') || 'Artists', icon: ImageIcon }, 
       { id: 'dev', label: 'Dev Panel', icon: Settings2 }
    ];
 
@@ -198,8 +222,8 @@ export default function AdminDashboard() {
             {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 w-full min-w-0 relative z-10 pb-20 md:pb-0 flex flex-col gap-6">
                
-               {/* 🚀 THE FIX: ACTION BAR RELOCATED ABOVE TABLES & ALIGNED LEFT */}
-               {['tickets', 'users'].includes(activeTab) && (
+               {/* 🚀 ACTION BAR RELOCATED ABOVE TABLES & ALIGNED LEFT */}
+               {['tickets', 'users', 'artists'].includes(activeTab) && (
                   <div className="hidden md:flex justify-start items-center gap-4 animate-in fade-in duration-300 mb-2">
                      <div className="flex gap-3">
                         <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title={t('btnUndo')} className="h-11 w-12 flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
@@ -228,6 +252,7 @@ export default function AdminDashboard() {
                {activeTab === 'inbox' && <InboxManager requests={data.requests} />} 
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'users' && <UsersTab users={effectiveUsers} currentUserId={auth.currentUser?.uid} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
+               {activeTab === 'artists' && <ArtistsTab artists={effectiveArtists} onStageChange={handleStageChange} />}
                {activeTab === 'dev' && <DevTab />}
             </div>
 

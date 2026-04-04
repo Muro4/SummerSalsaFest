@@ -547,7 +547,8 @@
     "btnUndo": "Undo Stage",
     "btnRedo": "Redo Stage",
     "btnSave": "Save",
-    "btnSaving": "Saving..."
+    "btnSaving": "Saving...",
+    "tabArtists": "Artists"
   },
   "AnalyticsTab": {
     "tabDay": "Day",
@@ -764,6 +765,40 @@
     "passParty": "Party Pass",
     "passDay": "Day Pass",
     "passFree": "Free Pass"
+  },
+  "Artists": {
+    "heroPre": "The Lineup",
+    "heroTitle1": "Confirmed",
+    "heroTitle2": "Artists",
+    "heroDesc": "Get ready to learn and dance with the world's finest. Our 2026 lineup features international champions and the hottest rising stars."
+  },
+  "AdminArtistsTab": {
+    "title": "Artist Roster",
+    "subtitle": "Managing {count} artists",
+    "btnAdd": "Add Artist",
+    "empty": "No artists found in the database.",
+    "editTitle": "Edit Artist",
+    "addTitle": "Add New Artist",
+    "lblName": "Artist / Group Name",
+    "lblGenreEn": "Genre (English)",
+    "lblGenreBg": "Genre (Bulgarian)",
+    "lblCountryEn": "Country (English)",
+    "lblCountryBg": "Country (Bulgarian)",
+    "lblFlag": "Flag Emoji",
+    "lblInstagram": "Instagram URL",
+    "lblImage": "Image URL",
+    "btnSave": "Save Artist",
+    "cancel": "Cancel",
+    "saveSuccess": "Success!",
+    "createMsg": "Artist has been added to the roster.",
+    "updateMsg": "Artist details have been updated.",
+    "error": "Error",
+    "saveError": "Failed to save artist.",
+    "deleteTitle": "Delete Artist?",
+    "deleteMsg": "Are you sure you want to remove {name} from the lineup?",
+    "deleteConfirm": "Yes, Delete",
+    "deleted": "Deleted",
+    "deleteSuccess": "Artist removed successfully."
   }
   
 
