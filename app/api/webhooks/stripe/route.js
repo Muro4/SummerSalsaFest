@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { adminDb } from "@/lib/firebase-admin"; // Using Admin SDK to bypass Firestore rules
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
-
 export async function POST(req) {
+  // ✅ FIX: Initializing Stripe INSIDE the POST function.
+  // We also add a fallback string so the Next.js build never crashes even if env vars are missing.
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy_key_for_build", {
+    apiVersion: "2023-10-16",
+  });
+
   // 1. Next.js App Router requires reading the raw body as text for Stripe signature verification
   const payload = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -15,9 +17,12 @@ export async function POST(req) {
   let event;
 
   try {
+    // Only throw an error if this is a real request missing variables, not a build evaluation
     if (!sig || !webhookSecret) {
-      throw new Error("Missing Stripe signature or webhook secret.");
+      console.error("Missing Stripe signature or webhook secret.");
+      return NextResponse.json({ error: "Missing config" }, { status: 400 });
     }
+    
     // 2. Verify the event actually came from Stripe
     event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
   } catch (err) {
