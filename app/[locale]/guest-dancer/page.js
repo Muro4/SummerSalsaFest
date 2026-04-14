@@ -85,6 +85,7 @@ export default function AmbassadorDashboard() {
    };
 
    const submitGroupToCart = async () => {
+      // (Keep your existing validation checks here...)
       if (groupRows.filter(r => !r.name.trim()).length > 0) {
          showPopup({ type: "error", title: t('errMissingTitle'), message: t('errMissingMsg'), confirmText: t('errFixIt') });
          return;
@@ -97,37 +98,33 @@ export default function AmbassadorDashboard() {
             return;
          }
       }
+      
       setLoading(true);
       try {
-         const currentFestivalYear = getActiveFestivalYear();
-         for (const person of groupRows) {
-            // --- THE CHECK-BEFORE-WRITE LOOP ---
-            let isUnique = false;
-            let finalTicketID = "";
+         // Prepare the payload
+         const ticketsPayload = groupRows.map(person => ({
+           userName: person.name,
+           passType: person.type
+         }));
 
-            while (!isUnique) {
-               finalTicketID = generateTicketID() // GRP prefix helps identify ambassador sales
+         // Grab Auth token
+         const token = await auth.currentUser.getIdToken();
 
-               const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
-               const snapshot = await getDocs(q);
+         // Send to secure API
+         const res = await fetch('/api/tickets/create', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${token}`
+           },
+           body: JSON.stringify({
+             isGuest: false,
+             tickets: ticketsPayload
+           })
+         });
 
-               if (snapshot.empty) {
-                  isUnique = true;
-               }
-            }
-
-            await addDoc(collection(db, "tickets"), {
-               userId: auth.currentUser.uid,
-               userName: person.name.trim().toUpperCase(),
-               passType: person.type,
-               price: getPrice(person.type),
-               status: "pending",
-               festivalYear: currentFestivalYear, // <-- UPDATED: Dynamic Year
-               purchaseDate: new Date().toISOString(),
-               emailSentCount: 0,
-               ticketID: finalTicketID// <-- Save the guaranteed unique ID
-            });
-         }
+         const data = await res.json();
+         if (!res.ok) throw new Error(data.error || "Failed to create group tickets");
 
          // Reset the local state back to one empty row after successful add to cart
          saveRoster([{ id: Date.now(), name: "", type: "Full Pass" }]);
