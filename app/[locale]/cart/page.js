@@ -63,21 +63,25 @@ export default function Cart() {
       const currentID = user ? user.uid : sessionStorage.getItem("guestSessionID");
       if (currentID) {
         const q = query(collection(db, "tickets"), where("userId", "==", currentID), where("status", "==", "pending"));
-        const unsub = onSnapshot(q, (snap) => {
-          setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-          setLoading(false);
-        });
+        
+        // THE FIX: Added an error callback to stop the loading spinner if Firebase blocks the read
+        const unsub = onSnapshot(q, 
+          (snap) => {
+            setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Cart fetch error:", error);
+            setLoading(false); // Stop the spinner so the user isn't trapped
+          }
+        );
         return () => unsub();
-      } else { setLoading(false); }
+      } else { 
+        setLoading(false); 
+      }
     });
     return () => unsubAuth();
   }, []);
-
-  const total = items.reduce((acc, item) => acc + (item.price || 0), 0);
-  const counts = items.reduce((acc, item) => {
-    acc[item.passType] = (acc[item.passType] || 0) + 1;
-    return acc;
-  }, {});
 
   const handleClearCart = () => {
     showPopup({
