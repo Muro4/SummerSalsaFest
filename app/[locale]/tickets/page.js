@@ -135,43 +135,34 @@ export default function TicketPage() {
   const handleAddToCart = async () => {
     setLoading(true);
     try {
-      const currentFestivalYear = getActiveFestivalYear();
-      
       let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
-      if (!currentID) {
+      if (!currentID && isGuest) {
         currentID = "guest_" + Math.random().toString(36).substring(2, 12);
         sessionStorage.setItem("guestSessionID", currentID);
       }
 
-      // --- THE CHECK-BEFORE-WRITE LOOP ---
-      let isUnique = false;
-      let finalTicketID = "";
+      // Grab the auth token if logged in
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      while (!isUnique) {
-        finalTicketID = generateTicketID(); // e.g., X7K9M2
-
-        // Ask Firestore if this ID already exists
-        const q = query(collection(db, "tickets"), where("ticketID", "==", finalTicketID));
-        const snapshot = await getDocs(q);
-
-        // If empty, the ID is uniquely ours!
-        if (snapshot.empty) {
-          isUnique = true;
-        }
-      }
-
-      await addDoc(collection(db, "tickets"), {
-        userId: currentID,
-        userName: realName.trim().toUpperCase(),
-        guestEmail: isGuest ? guestEmail.trim().toLowerCase() : (auth.currentUser?.email || ""),
-        isGuest,
-        passType: selected.rawName,
-        price: selected.price,
-        status: "pending",
-        festivalYear: currentFestivalYear, // <-- UPDATED: Dynamic Year
-        purchaseDate: new Date().toISOString(),
-        ticketID: finalTicketID // <-- Save the guaranteed unique ID
+      // Call our secure backend
+      const res = await fetch('/api/tickets/create', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          isGuest,
+          guestSessionId: currentID,
+          tickets: [{
+            userName: realName,
+            passType: selected.rawName,
+            guestEmail: guestEmail
+          }]
+        })
       });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add ticket");
 
       router.push("/cart");
     } catch (e) {
