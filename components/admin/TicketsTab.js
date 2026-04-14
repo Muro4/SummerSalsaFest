@@ -183,16 +183,16 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
          {/* Desktop Table View */}
          <div className="hidden lg:flex flex-col bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10">
-            <div className="overflow-x-auto w-full">
-               <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
+            <div className="w-full">
+               <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-6 pl-10 font-bold w-48 border-b border-gray-100">{t('thGuest')}</th>
+                        <th className="p-6 pl-10 font-bold text-left w-32 border-b border-gray-100">Date</th>
+                        <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thGuest')}</th>
                         <th className="p-6 font-bold w-1/3 border-b border-gray-100">{t('thName')}</th>
                         <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thPassType')}</th>
                         <th className="p-6 font-bold text-center w-40 border-b border-gray-100">{t('thStatus')}</th>
                         <th className="p-6 font-bold text-center w-32 border-b border-gray-100">{t('thPrice')}</th>
-                        <th className="p-6 font-bold text-center w-32 border-b border-gray-100">Date</th>
                         <th className="p-6 pr-10 text-right font-bold w-32 border-b border-gray-100">{t('thAction')}</th>
                      </tr>
                   </thead>
@@ -204,7 +204,11 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
                         return (
                            <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group">
-                              <td className="p-6 pl-10 align-middle border-b border-gray-50">
+                              <td className="p-6 pl-10 align-middle text-left font-bold text-xs text-slate-400 tracking-widest uppercase border-b border-gray-50">
+                                 {new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}
+                              </td>
+                              
+                              <td className="p-6 align-middle border-b border-gray-50">
                                  {ambTag ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('lblDirect')}</span>}
                               </td>
                               
@@ -236,9 +240,6 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                                  </div>
                               </td>
                               <td className="p-6 align-middle text-center font-bold text-base text-slate-700 border-b border-gray-50">€{ticket.price}</td>
-                              <td className="p-6 align-middle text-center font-bold text-xs text-slate-400 tracking-widest uppercase border-b border-gray-50">
-                                 {new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}
-                              </td>
                               <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
                                  <div className="flex justify-end gap-2 h-full items-center">
                                     <button onClick={() => confirmDelete(ticket)} title={t('btnDeletePass')} className="text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all cursor-pointer"><Trash2 size={18} /></button>
