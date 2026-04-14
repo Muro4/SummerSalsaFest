@@ -183,7 +183,7 @@ export default function AccountPage() {
     ticket.festivalYear?.toString() === selectedYear &&
     (passFilter === "all" || ticket.passType === passFilter) &&
     (ticket.userName?.toLowerCase().includes(ticketSearch.toLowerCase()) || ticket.ticketID?.toLowerCase().includes(ticketSearch.toLowerCase()))
-  );
+  ).sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
 
   useEffect(() => {
     if (!fullScreenTicket) return;

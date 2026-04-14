@@ -112,6 +112,14 @@ export default function Navbar() {
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [mobileMenuOpen, mobileAccountOpen]);
+  const toggleAccountMenu = () => {
+    if (window.innerWidth >= 768) {
+      setDropdownOpen(!dropdownOpen);
+    } else {
+      setMobileAccountOpen(true);
+      setMobileMenuOpen(false);
+    }
+  };
 
   const handleSignOut = () => {
     setDropdownOpen(false);
@@ -202,7 +210,7 @@ export default function Navbar() {
             {/* 2. AVATAR (ACCOUNT MENU) */}
             {user ? (
               <div className="relative" ref={dropdownRef}>
-                <button onClick={() => { setDropdownOpen(!dropdownOpen); setMobileAccountOpen(true); setMobileMenuOpen(false); }} className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+                <button onClick={toggleAccountMenu} className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
                   <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center transition-colors duration-300 ${isTransparent ? 'bg-slate-900/80 text-white' : 'bg-white text-slate-800'}`}>
                     {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" /> : <UserIcon size={18} />}
                   </div>

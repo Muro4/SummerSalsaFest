@@ -115,19 +115,25 @@ export default function Cart() {
   const handleCheckout = async () => {
     setIsPaying(true);
     
-    // 🔒 THE FIX: Route Free Passes through the secure API instead of client-side updates
+    // 🔒 SECURITY: Grab the user's auth token or guest ID to prove identity
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+    const currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
+    
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    
     if (total === 0) {
       try {
         const ticketIds = items.map(item => item.id);
-        const response = await fetch("/api/activate-free", {
+        
+        // 🐛 BUG FIX: Changed from "/api/activate-free" to the correct route "/api/activate"
+        const response = await fetch("/api/activate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketIds })
+          headers, // Send the secure headers
+          body: JSON.stringify({ ticketIds, guestSessionId: currentID }) // Send the guest ID
         });
         
-        if (!response.ok) {
-          throw new Error("Failed to activate free passes securely.");
-        }
+        if (!response.ok) throw new Error("Failed to activate free passes securely.");
 
         setIsSuccess(true);
         setTimeout(() => { 
@@ -142,11 +148,12 @@ export default function Cart() {
       }
     }
 
+    // Stripe Checkout Flow
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        headers, // Send the secure headers
+        body: JSON.stringify({ items, guestSessionId: currentID }), // Send the guest ID
       });
       const data = await response.json();
       if (data.url) window.location.href = data.url;
