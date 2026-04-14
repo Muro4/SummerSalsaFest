@@ -141,12 +141,10 @@ export default function TicketPage() {
         sessionStorage.setItem("guestSessionID", currentID);
       }
 
-      // Grab the auth token if logged in
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      // Call our secure backend
       const res = await fetch('/api/tickets/create', {
         method: 'POST',
         headers,
@@ -161,6 +159,12 @@ export default function TicketPage() {
         })
       });
 
+      // THE FIX: Check if the server returned HTML (a crash) instead of JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server experienced an unexpected crash. Please check server logs.");
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add ticket");
 
@@ -168,7 +172,7 @@ export default function TicketPage() {
     } catch (e) {
       showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
     } finally {
-      setLoading(false);
+      setLoading(false); // Ensures the spinner ALWAYS turns off
     }
   };
 

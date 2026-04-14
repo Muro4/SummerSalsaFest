@@ -7,7 +7,7 @@ import { EVENT_YEARS } from "@/lib/constants";
 import { useTranslations } from 'next-intl';
 import { getPriceAtDate } from "@/lib/pricing";
 
-// --- SHARED PASS STYLING ---
+// Shared styling helpers for pass types
 const getPassBgColor = (type) => {
    const t = (type || '').toLowerCase();
    if (t.includes('full')) return 'bg-salsa-pink';
@@ -29,7 +29,7 @@ const getPassStyle = (type) => {
    return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 };
 
-// --- TEXT-BASED STATUS TOGGLE ---
+// Text-based status toggle component
 function StatusToggle({ currentStatus, onChange, t }) {
    if (currentStatus === 'pending') {
      return (
@@ -64,7 +64,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
    const [statusFilter, setStatusFilter] = useState("all");
    const [passFilter, setPassFilter] = useState("all");
    
-   // 🚀 PAGINATION STATE (Defaults to rendering Page 1 only)
+   // Pagination state setup. Defaults to page 1.
    const [currentPage, setCurrentPage] = useState(1);
    const itemsPerPage = 20;
    
@@ -73,7 +73,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
    const safeTickets = Array.isArray(tickets) ? tickets : [];
 
-   // 🚀 PERFORMANCE OPTIMIZATION: Memoize filtering logic
+   // Performance optimization: Memoize filtering and sorting logic
    const filteredTickets = useMemo(() => {
      const results = safeTickets.filter(ticket => {
         const matchesYear = ticket.festivalYear?.toString() === selectedYear;
@@ -90,6 +90,9 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
         return matchesYear && matchesSearch && matchesStatus && matchesPass;
      });
+
+     // Sort results from newest to oldest based on purchase date
+     results.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
      
      // Reset to page 1 if a filter changes and the current page is now empty
      if (currentPage > Math.ceil(results.length / itemsPerPage) && results.length > 0) {
@@ -98,12 +101,12 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
      return results;
    }, [safeTickets, selectedYear, users, historyStagedData, searchTerm, statusFilter, passFilter, currentPage, itemsPerPage]);
 
-   // 🚀 PAGINATION CALCULATIONS
+   // Pagination calculations
    const totalPages = Math.ceil(filteredTickets.length / itemsPerPage) || 1;
    const startIndex = (currentPage - 1) * itemsPerPage;
    const paginatedTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
 
-   // Helper to generate the numbered tabs (e.g., 1 2 3 ... 8 9 10)
+   // Helper to generate the numbered tabs for pagination (e.g., 1 2 3 ... 8 9 10)
    const getPageNumbers = () => {
       const pages = [];
       if (totalPages <= 5) {
@@ -120,12 +123,13 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
       return pages;
    };
 
-   // Handle Search Input
+   // Reset pagination when searching
    const handleSearch = (e) => {
      setSearchTerm(e.target.value);
      setCurrentPage(1);
    };
 
+   // Confirms deletion before staging the change
    const confirmDelete = (ticket) => {
       showPopup({
          type: "info", title: t('delTitle'), message: t('delMsg', { name: ticket.userName }), confirmText: t('btnDelYes'), cancelText: t('btnCancel'),
@@ -136,7 +140,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
    return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
          
-         {/* SEARCH & FILTERS */}
+         {/* Search and Filters Section */}
          <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">
             <div className="relative flex-grow group w-full lg:min-w-[400px]">
                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
@@ -177,13 +181,14 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
             </div>
          </div>
 
-         {/* DESKTOP TABLE */}
+         {/* Desktop Table View */}
          <div className="hidden lg:flex flex-col bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10">
-            <div className="overflow-x-auto w-full">
-               <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
+            <div className="w-full">
+               <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-6 pl-10 font-bold w-48 border-b border-gray-100">{t('thGuest')}</th>
+                        <th className="p-6 pl-10 font-bold text-left w-32 border-b border-gray-100">Date</th>
+                        <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thGuest')}</th>
                         <th className="p-6 font-bold w-1/3 border-b border-gray-100">{t('thName')}</th>
                         <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thPassType')}</th>
                         <th className="p-6 font-bold text-center w-40 border-b border-gray-100">{t('thStatus')}</th>
@@ -199,7 +204,11 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
                         return (
                            <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group">
-                              <td className="p-6 pl-10 align-middle border-b border-gray-50">
+                              <td className="p-6 pl-10 align-middle text-left font-bold text-xs text-slate-400 tracking-widest uppercase border-b border-gray-50">
+                                 {new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}
+                              </td>
+                              
+                              <td className="p-6 align-middle border-b border-gray-50">
                                  {ambTag ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('lblDirect')}</span>}
                               </td>
                               
@@ -239,12 +248,12 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                            </tr>
                         )
                      })}
-                     {paginatedTickets.length === 0 && <tr><td colSpan="6" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>}
+                     {paginatedTickets.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>}
                   </tbody>
                </table>
             </div>
 
-            {/* 🚀 NUMBERED PAGE TABS (DESKTOP) */}
+            {/* Pagination controls for desktop */}
             {filteredTickets.length > itemsPerPage && (
               <div className="flex items-center justify-between p-4 md:px-8 border-t border-gray-100 bg-slate-50/50">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
@@ -260,7 +269,6 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                      <ChevronLeft size={16} />
                    </button>
                    
-                   {/* Numbered Tabs */}
                    {getPageNumbers().map((num, i) => (
                       num === '...' ? (
                          <span key={i} className="px-2 text-slate-400 font-bold">...</span>
@@ -291,7 +299,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
             )}
          </div>
 
-         {/* MOBILE CARDS */}
+         {/* Mobile Card View */}
          <div className="lg:hidden flex flex-col gap-4 relative z-10 pb-20">
             {paginatedTickets.map((ticket, index) => {
                const purchaser = users.find(u => u.id === ticket.userId);
@@ -342,7 +350,10 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                            <button onClick={() => confirmDelete(ticket)} className="text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 p-2.5 rounded-xl transition-all cursor-pointer">
                               <Trash2 size={16} />
                            </button>
-                           {displayStatus === 'pending' && <span className="font-black text-slate-700 text-sm">€{ticket.price}</span>}
+                           <div className="flex flex-col">
+                              {displayStatus === 'pending' && <span className="font-black text-slate-700 text-sm">€{ticket.price}</span>}
+                              <span className="text-[10px] font-bold text-slate-400 tracking-widest">{new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}</span>
+                           </div>
                         </div>
                         <div className="flex items-center">
                            <StatusToggle currentStatus={displayStatus} onChange={(newStat) => onStageChange('tickets', ticket.id, { status: newStat })} t={t} />
@@ -358,7 +369,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                </div>
             )}
 
-            {/* 🚀 NUMBERED PAGE TABS (MOBILE) */}
+            {/* Pagination controls for mobile */}
             {filteredTickets.length > itemsPerPage && (
                <div className="flex flex-col items-center gap-3 mt-4">
                   <div className="flex items-center gap-1">
