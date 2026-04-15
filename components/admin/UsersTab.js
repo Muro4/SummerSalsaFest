@@ -1,318 +1,361 @@
 "use client";
-import { useState, useMemo } from "react";
-import { Search, ShieldAlert, Users, Filter, ChevronLeft, ChevronRight } from "lucide-react";
-import CustomDropdown from "@/components/CustomDropdown";
+import { useState, useEffect, useRef } from "react";
+import { auth, db } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { doc, getDoc, collection, onSnapshot, updateDoc } from "firebase/firestore";
+import Button from "@/components/Button";
+import { usePopup } from "@/components/PopupProvider";
+import logoImg from "../assets/logo.png";
+import Image from "next/image";
+import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
+
+// i18n Imports
 import { useTranslations } from 'next-intl';
+import LanguageSwitcher from "./LanguageSwitcher";
 
-const getRoleStyle = (role) => {
-   const r = (role || '').toLowerCase();
-   if (r === 'superadmin') return 'bg-slate-600 text-white border-transparent';
-   if (r === 'admin') return 'bg-salsa-pink text-white border-transparent';
-   if (r === 'scanner') return 'bg-amber-400 text-amber-950 border-transparent'; // Added Scanner Role
-   if (r === 'ambassador') return 'bg-teal-300 text-teal-950 border-transparent';
-   if (r === 'user') return 'bg-sky-200 text-sky-900 border-transparent';
-   return 'bg-gray-200 text-slate-700 border-transparent'; 
-};
 
-export default function UsersTab({ users = [], currentUserId, onStageChange, historyStagedData }) {
-   const t = useTranslations('UsersTab');
+import { Link, usePathname, useRouter } from "@/routing";
 
-   const [searchTerm, setSearchTerm] = useState("");
-   const [roleFilter, setRoleFilter] = useState("all");
-   
-   // Pagination state setup
-   const [currentPage, setCurrentPage] = useState(1);
-   const itemsPerPage = 20;
+export default function Navbar() {
+  const t = useTranslations('Navbar');
 
-   // Memoize the standard role options to avoid repeating them
-   const baseRoleOptions = useMemo(() => [
-      { label: t('roleUser') || 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') },
-      { label: t('roleAmbassador') || 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
-      { label: t('roleScanner') || 'Scanner', value: 'scanner', isPill: true, colorClass: getRoleStyle('scanner') }, // Added Scanner Role
-      { label: t('roleAdmin') || 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
-      { label: t('roleSuperAdmin') || 'Super Admin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
-   ], [t]);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
 
-   const safeUsers = Array.isArray(users) ? users : [];
+  const [dropdownOpen, setDropdownOpen] = useState(false); 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
+  const [mobileAccountOpen, setMobileAccountOpen] = useState(false); 
 
-   // Memoize filtering, searching, and pagination reset
-   const filteredUsers = useMemo(() => {
-      const results = safeUsers.filter(u => {
-         const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
-         
-         const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                               (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-         
-         const matchesRole = roleFilter === "all" || displayRole === roleFilter;
+  const [scrolled, setScrolled] = useState(false);
+  const [cartItems, setCartItems] = useState(0);
 
-         return matchesSearch && matchesRole;
-      });
+  const dropdownRef = useRef(null);
+  
+  // These now use the next-intl localized router and pathname
+  const router = useRouter();
+  const pathname = usePathname(); 
+  const { showPopup } = usePopup();
 
-      // Sort alphabetically by name
-      results.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      
-      // Reset to page 1 if a filter changes and the current page is now empty
-      if (currentPage > Math.ceil(results.length / itemsPerPage) && results.length > 0) {
-        setCurrentPage(1);
+  // ROUTING FIX: Because next-intl's usePathname strips the locale prefix (e.g., returns "/" instead of "/bg"),
+  // we can simplify the home check to just match "/".
+  const isHome = pathname === "/";
+  const isTransparent = isHome && !scrolled;
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // CART FIX: Listener for local storage & custom events (useful for guest carts)
+  useEffect(() => {
+    const updateLocalCart = () => {
+      // Only rely on local storage if there is no logged-in user
+      if (!auth.currentUser) {
+        try {
+          const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+          let total = 0;
+          localCart.forEach(item => total += (item.quantity || 1));
+          setCartItems(total);
+        } catch (e) {
+          console.warn("Error reading local cart", e);
+        }
       }
-      return results;
-   }, [safeUsers, historyStagedData, searchTerm, roleFilter, currentPage, itemsPerPage]);
+    };
 
-   // Pagination calculations
-   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
-   const startIndex = (currentPage - 1) * itemsPerPage;
-   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+    updateLocalCart();
+    window.addEventListener('cartUpdated', updateLocalCart);
+    window.addEventListener('storage', updateLocalCart);
 
-   // Helper to generate the numbered tabs for pagination
-   const getPageNumbers = () => {
-      const pages = [];
-      if (totalPages <= 5) {
-         for (let i = 1; i <= totalPages; i++) pages.push(i);
+    return () => {
+      window.removeEventListener('cartUpdated', updateLocalCart);
+      window.removeEventListener('storage', updateLocalCart);
+    };
+  }, []);
+
+  useEffect(() => {
+    let unsubCart = null;
+
+    const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser) {
+        const uDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (uDoc.exists()) {
+          const data = uDoc.data();
+          setUserData(data);
+
+          if (
+            (data.applicationStatus === "approved" || data.applicationStatus === "rejected") &&
+            !data.applicationNotified
+          ) {
+            updateDoc(doc(db, "users", currentUser.uid), { applicationNotified: true }).catch(console.error);
+
+            if (data.applicationStatus === "approved") {
+              showPopup({
+                type: "success", title: "Application Approved!", message: "Congratulations! You have been approved as a Guest Dancer. You can now access your Ambassador Dashboard.",
+                confirmText: "Go to Dashboard", cancelText: "Dismiss", onConfirm: () => router.push("/ambassador")
+              });
+            } else if (data.applicationStatus === "rejected") {
+              showPopup({
+                type: "info", title: "Application Update", message: "Thank you for applying. Unfortunately, we are unable to accept your Guest Dancer application at this time.", confirmText: "Okay"
+              });
+            }
+          }
+        }
+
+        // Firebase cart listener for authenticated users
+        if (unsubCart) unsubCart();
+        const cartRef = collection(db, "users", currentUser.uid, "cart");
+        unsubCart = onSnapshot(cartRef, (snap) => {
+          let totalItems = 0;
+          snap.forEach((itemDoc) => { totalItems += (itemDoc.data().quantity || 1); });
+          setCartItems(totalItems);
+        },
+          (error) => { if (error.code !== 'permission-denied') console.warn("Cart sync issue:", error.message); }
+        );
+
       } else {
-         if (currentPage <= 3) {
-            pages.push(1, 2, 3, 4, '...', totalPages);
-         } else if (currentPage >= totalPages - 2) {
-            pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-         } else {
-            pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-         }
+        if (unsubCart) { unsubCart(); unsubCart = null; }
+        setUserData(null);
+        // Fallback to local storage count if user logs out
+        try {
+          const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+          setCartItems(localCart.reduce((acc, item) => acc + (item.quantity || 1), 0));
+        } catch(e) { setCartItems(0); }
       }
-      return pages;
-   };
+    });
 
-   // Reset pagination when searching
-   const handleSearch = (e) => {
-     setSearchTerm(e.target.value);
-     setCurrentPage(1);
-   };
+    return () => {
+      unsubAuth();
+      if (unsubCart) unsubCart();
+    };
+  }, [router, showPopup]);
 
-   return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-         
-         {/* Search and Filters Section */}
-         <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">
-            <div className="relative flex-grow group w-full lg:min-w-[400px]">
-               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-salsa-pink transition-colors" size={16} />
-               <input 
-                 type="text" 
-                 value={searchTerm} 
-                 placeholder={t('searchPlaceholder') || "Search by name or email..."} 
-                 className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" 
-                 onChange={handleSearch} 
-               />
-            </div>
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  useEffect(() => {
+    if (mobileMenuOpen || mobileAccountOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [mobileMenuOpen, mobileAccountOpen]);
+
+  const toggleAccountMenu = () => {
+    if (window.innerWidth >= 768) {
+      setDropdownOpen(!dropdownOpen);
+    } else {
+      setMobileAccountOpen(true);
+      setMobileMenuOpen(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    setDropdownOpen(false);
+    setMobileMenuOpen(false);
+    setMobileAccountOpen(false);
+    router.push("/login");
+    setTimeout(async () => { try { await signOut(auth); } catch (err) { console.error("Sign out error:", err); } }, 800);
+  };
+
+  const navBackgroundClass = isHome
+    ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3 md:py-4' : 'bg-transparent py-4 md:py-6')
+    : 'bg-white shadow-sm py-3 md:py-4 border-b border-gray-200';
+
+  const textColorClass = isTransparent ? "text-white" : "text-slate-800";
+
+  // ROUTING FIX: Simplified active path matching because usePathname handles locale stripping natively
+  const isActive = (path) => pathname === path;
+  
+  const desktopLinkClass = (path) => 
+    `relative py-1 transition-all duration-300 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:bg-salsa-pink after:transition-all after:duration-300 ease-in-out ${
+      isActive(path) ? 'after:w-full' : 'after:w-0 hover:after:w-full'
+    }`;
+
+  const mobileWrapperClass = (path) => 
+    `px-4 py-5 border-b border-gray-50 flex items-center justify-center transition-colors w-full ${
+      isActive(path) ? 'bg-salsa-pink/10' : 'active:bg-slate-50'
+    }`;
+
+  const mobileTextClass = (path) => 
+    `font-black text-sm uppercase tracking-widest text-center transition-colors ${
+      isActive(path) ? 'text-salsa-pink' : 'text-slate-800'
+    }`;
+
+  const accountLinkClass = (path, isMobile = false) => {
+    const defaultColor = isMobile ? 'text-slate-800' : 'text-slate-600';
+    return `w-full justify-start ${isActive(path) ? '!text-salsa-pink !bg-salsa-pink/10' : defaultColor}`;
+  };
+
+  return (
+    <>
+      <nav className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 font-montserrat ${navBackgroundClass}`}>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
+
+          {/* LEFT: LOGO */}
+          <div className="flex-1 flex justify-start items-center">
+            <Link href="/" className="hover:opacity-80 transition-opacity" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }}>
+              <div className={`relative h-11 w-32 transition-all duration-300 ${isTransparent ? 'brightness-0 invert' : 'brightness-0 opacity-85'}`}>
+                <Image src={logoImg} alt="Salsa Fest Logo" fill className="object-contain object-left" priority />
+              </div>
+            </Link>
+          </div>
+
+          {/* CENTER: DESKTOP LINKS */}
+          <div className={`hidden md:flex justify-center items-center gap-8 text-[11px] font-black uppercase tracking-widest ${textColorClass}`}>
+            <Link href="/" className={desktopLinkClass('/')}>{t('home')}</Link>
+            <Link href="/tickets" className={desktopLinkClass('/tickets')}>{t('prices')}</Link>
+            <Link href="/info" className={desktopLinkClass('/info')}>{t('info')}</Link>
+            <Link href="/artists" className={desktopLinkClass('/artists')}>{t('artists')}</Link>
+            <Link href="/gallery" className={desktopLinkClass('/gallery')}>{t('gallery')}</Link>
+            <Link href="/about" className={desktopLinkClass('/about')}>{t('about')}</Link>
+            <Link href="/contact" className={desktopLinkClass('/contact')}>{t('contact')}</Link>
+          </div>
+
+          {/* RIGHT: ACTIONS & ICONS */}
+          <div className="flex-1 flex justify-end items-center gap-3 md:gap-4">
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto shrink-0 z-40">
-               <div className="relative w-full sm:w-auto">
-                  <CustomDropdown 
-                     icon={Filter} 
-                     value={roleFilter} 
-                     onChange={(val) => { setRoleFilter(val); setCurrentPage(1); }} 
-                     options={[
-                        { label: t('filterAll') || 'All Roles', value: 'all' }, 
-                        ...baseRoleOptions
-                     ]} 
-                     variant="filter"
-                  />
-               </div>
-            </div>
-         </div>
+            <LanguageSwitcher isTransparent={isTransparent} />
 
-         {/* Desktop Table View */}
-         <div className="hidden lg:flex flex-col bg-white rounded-[3rem] border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10 overflow-hidden">
-            <div 
-               className="w-full overflow-x-auto"
-               style={{ minHeight: paginatedUsers.length > 0 && paginatedUsers.length < 4 ? '420px' : 'auto' }}
-            >
-               <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
-                  <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
-                     <tr>
-                        <th className="p-6 pl-10 font-bold w-1/3 border-b border-gray-100">{t('thUser') || 'User'}</th>
-                        <th className="p-6 font-bold w-1/3 border-b border-gray-100">{t('thEmail') || 'Email'}</th>
-                        <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thAmbassador') || 'Ambassador Tag'}</th>
-                        <th className="p-6 pr-10 font-bold text-right w-48 border-b border-gray-100">{t('thRole') || 'System Role'}</th>
-                     </tr>
-                  </thead>
-                  <tbody className="uppercase text-xs">
-                     {paginatedUsers.map((u) => {
-                        const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
-                        const isMySuperAdmin = displayRole === 'superadmin' && u.id === currentUserId;
-
-                        return (
-                           <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
-                              <td className="p-6 pl-10 align-middle border-b border-gray-50">
-                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">{u.name}</span>
-                              </td>
-                              <td className="p-6 align-middle border-b border-gray-50">
-                                 <span className="text-[11px] font-bold text-slate-400 tracking-widest lowercase">{u.email}</span>
-                              </td>
-                              <td className="p-6 align-middle border-b border-gray-50">
-                                 {displayRole === 'ambassador' && u.ambassadorDisplayName ? (
-                                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest">
-                                       <Users size={12} className="text-slate-400" /> {u.ambassadorDisplayName}
-                                    </span>
-                                 ) : (
-                                    <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">-</span>
-                                 )}
-                              </td>
-                              <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
-                                 <div className="flex justify-end relative">
-                                    {isMySuperAdmin && <ShieldAlert size={16} className="absolute -left-6 top-1/2 -translate-y-1/2 text-slate-300" title="You cannot change your own superadmin role" />}
-                                    <CustomDropdown
-                                       value={displayRole} 
-                                       onChange={(val) => onStageChange('users', u.id, { role: val })} 
-                                       disabled={isMySuperAdmin} 
-                                       hideChevron={isMySuperAdmin}
-                                       options={baseRoleOptions}
-                                       variant="pill"
-                                    />
-                                 </div>
-                              </td>
-                           </tr>
-                        )
-                     })}
-                     {paginatedUsers.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>}
-                  </tbody>
-               </table>
-            </div>
-
-            {/* Pagination controls for desktop */}
-            {filteredUsers.length > itemsPerPage && (
-              <div className="flex items-center justify-between p-4 md:px-8 border-t border-gray-100 bg-slate-50/50">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                   Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
+            {/* CART ICON */}
+            <div className="relative">
+              <Link href="/cart" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }} className={`w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}>
+                <ShoppingCart size={20} className="md:w-[22px] md:h-[22px]" />
+              </Link>
+              {cartItems > 0 && (
+                <span className={`absolute top-0 right-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full text-[9px] md:text-[11px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
+                  {cartItems}
                 </span>
-                
-                <div className="flex items-center gap-1">
-                   <button 
-                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-                     disabled={currentPage === 1}
-                     className="p-2 rounded-xl text-slate-600 hover:bg-white border border-transparent hover:border-gray-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-                   >
-                     <ChevronLeft size={16} />
-                   </button>
-                   
-                   {getPageNumbers().map((num, i) => (
-                      num === '...' ? (
-                         <span key={i} className="px-2 text-slate-400 font-bold">...</span>
-                      ) : (
-                         <button 
-                           key={i} 
-                           onClick={() => setCurrentPage(num)} 
-                           className={`w-9 h-9 rounded-xl text-[11px] font-black tracking-widest transition-all cursor-pointer ${
-                              currentPage === num 
-                              ? 'bg-slate-900 text-white shadow-md' 
-                              : 'bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-gray-200'
-                           }`}
-                         >
-                           {num}
-                         </button>
-                      )
-                   ))}
+              )}
+            </div>
 
-                   <button 
-                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-                     disabled={currentPage === totalPages}
-                     className="p-2 rounded-xl text-slate-600 hover:bg-white border border-transparent hover:border-gray-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-                   >
-                     <ChevronRight size={16} />
-                   </button>
-                </div>
+            {/* AVATAR (ACCOUNT MENU) */}
+            {user ? (
+              <div className="relative" ref={dropdownRef}>
+                <button onClick={toggleAccountMenu} className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer">
+                  <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center transition-colors duration-300 ${isTransparent ? 'bg-slate-900/80 text-white' : 'bg-white text-slate-800'}`}>
+                    {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" /> : <UserIcon size={18} />}
+                  </div>
+                </button>
+
+                {/* Desktop Account Dropdown */}
+                {dropdownOpen && (
+                  <div className="hidden md:flex absolute right-0 mt-4 w-64 bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 flex-col animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                    <div className="px-4 py-3 border-b border-gray-50 mb-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shrink-0">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center">
+                          {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" /> : <UserIcon size={16} className="text-slate-400" />}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-slate-900 truncate">{userData?.displayName || "Dancer"}</p>
+                        <p className="text-[11px] font-bold text-slate-500 truncate lowercase tracking-wide mt-0.5">{user.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button href="/account" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={UserIcon} className={accountLinkClass('/account')}>{t('myAccount')}</Button>
+                      
+                      {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={Shield} className={accountLinkClass('/guest-dancer')}>{t('dashboard')}</Button>}
+                      
+                      {(userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'scanner') && <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className={accountLinkClass('/admin/scanner')}>{t('gateScanner')}</Button>}
+                      
+                      {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className={accountLinkClass('/admin')}>{t('adminPanel')}</Button>}
+                      
+                      <div className="h-px bg-gray-100 w-full my-2" />
+                      <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">{t('signOut')}</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button href="/login" variant={isTransparent ? "ghost" : "secondary"} size="sm" className={`hidden md:flex px-8 transition-all duration-300 shadow-md ${isTransparent ? '!bg-white !text-slate-900 hover:!bg-gray-100' : 'hover:!bg-salsa-pink'}`}>
+                {t('login')}
+              </Button>
+            )}
+
+            {/* HAMBURGER MENU (MOBILE NAVIGATION) */}
+            <div className="md:hidden relative">
+              <button onClick={() => { setMobileMenuOpen(true); setMobileAccountOpen(false); }} className={`p-2 transition-colors duration-300 ${textColorClass} cursor-pointer`}>
+                <Menu size={28} />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </nav>
+
+      {/* MOBILE NAVIGATION SIDE DRAWER */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setMobileMenuOpen(false)} />
+          <div className="relative w-[70%] bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-10">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+              <span className="font-black text-slate-900 uppercase tracking-widest text-xs truncate">{t('menu')}</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-salsa-pink transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto flex flex-col">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/')}><span className={mobileTextClass('/')}>{t('home')}</span></Link>
+              <Link href="/tickets" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/tickets')}><span className={mobileTextClass('/tickets')}>{t('prices')}</span></Link>
+              <Link href="/info" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/info')}><span className={mobileTextClass('/info')}>{t('info')}</span></Link>
+              <Link href="/artists" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/artists')}><span className={mobileTextClass('/artists')}>{t('artists')}</span></Link>
+              <Link href="/gallery" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/gallery')}><span className={mobileTextClass('/gallery')}>{t('gallery')}</span></Link>
+              <Link href="/about" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/about')}><span className={mobileTextClass('/about')}>{t('about')}</span></Link>
+              <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className={mobileWrapperClass('/contact')}><span className={mobileTextClass('/contact')}>{t('contact')}</span></Link>
+            </div>
+            {!user && (
+              <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
+                <Button href="/login" onClick={() => setMobileMenuOpen(false)} variant="primary" size="md" className="w-full justify-center text-xs">{t('login')}</Button>
               </div>
             )}
-         </div>
+          </div>
+        </div>
+      )}
 
-         {/* Mobile Card View */}
-         <div className="lg:hidden flex flex-col gap-4 relative z-10 pb-20">
-            {paginatedUsers.map((u, index) => {
-               const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
-               const isMySuperAdmin = displayRole === 'superadmin' && u.id === currentUserId;
+      {/* MOBILE ACCOUNT SIDE DRAWER */}
+      {mobileAccountOpen && user && (
+        <div className="md:hidden fixed inset-0 z-[100] flex justify-end font-montserrat">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setMobileAccountOpen(false)} />
+          <div className="relative w-[70%] bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-10">
 
-               return (
-                  <div key={u.id} style={{ zIndex: paginatedUsers.length - index }} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative overflow-visible">
-                     <div className="flex flex-col gap-1">
-                        <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest break-words">
-                           {u.name}
-                        </span>
-                        <span className="block text-[11px] font-bold text-slate-400 tracking-widest lowercase break-words">
-                           {u.email}
-                        </span>
-                     </div>
-                     <div className="flex items-center w-full mt-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">{t('thAmbassador') || 'Ambassador'}</span>
-                        <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
-                           <Users size={12} className="text-slate-400" />
-                           {displayRole === 'ambassador' && u.ambassadorDisplayName ? u.ambassadorDisplayName : <span className="text-slate-300">-</span>}
-                        </span>
-                     </div>
-                     <div className="flex items-center justify-between pt-4 border-t border-gray-50 w-full relative z-20">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                           {t('thRole') || 'Role'}
-                           {isMySuperAdmin && <ShieldAlert size={14} className="text-slate-300" />}
-                        </span>
-                        <div className="scale-[0.85] origin-right">
-                           <CustomDropdown
-                              value={displayRole} 
-                              onChange={(val) => onStageChange('users', u.id, { role: val })} 
-                              disabled={isMySuperAdmin} 
-                              hideChevron={isMySuperAdmin}
-                              options={baseRoleOptions}
-                              variant="pill"
-                           />
-                        </div>
-                     </div>
-                  </div>
-               );
-            })}
-            
-            {filteredUsers.length === 0 && (
-               <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">
-                  {t('emptyMsg')}
-               </div>
-            )}
+            <div className="p-4 bg-slate-50 border-b border-gray-100 flex flex-col items-center justify-center shrink-0 relative">
+              <button onClick={() => setMobileAccountOpen(false)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-salsa-pink transition-colors"><X size={20} /></button>
+              <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-salsa-pink via-violet-500 to-salsa-pink shrink-0 mb-2">
+                <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center">
+                  {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" /> : <UserIcon size={20} className="text-slate-400" />}
+                </div>
+              </div>
+              <div className="w-full text-center min-w-0">
+                <p className="text-sm font-black text-slate-900 truncate tracking-tight leading-tight">{userData?.displayName || "Dancer"}</p>
+                <p className="text-[10px] font-bold text-slate-500 truncate tracking-widest mt-0.5">{user.email}</p>
+              </div>
+            </div>
 
-            {/* Pagination controls for mobile */}
-            {filteredUsers.length > itemsPerPage && (
-               <div className="flex flex-col items-center gap-3 mt-4">
-                  <div className="flex items-center gap-1">
-                     <button 
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-                        disabled={currentPage === 1}
-                        className="p-3 rounded-xl border border-transparent bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                     >
-                        <ChevronLeft size={18} />
-                     </button>
-                     
-                     {getPageNumbers().map((num, i) => (
-                        num === '...' ? (
-                           <span key={i} className="px-1 text-slate-400 font-bold">...</span>
-                        ) : (
-                           <button 
-                              key={i} 
-                              onClick={() => setCurrentPage(num)} 
-                              className={`w-10 h-10 rounded-xl text-[11px] font-black tracking-widest transition-all ${
-                                 currentPage === num 
-                                 ? 'bg-slate-900 text-white shadow-md' 
-                                 : 'bg-white text-slate-600 shadow-sm'
-                              }`}
-                           >
-                              {num}
-                           </button>
-                        )
-                     ))}
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+              <Button href="/account" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={UserIcon} className={accountLinkClass('/account', true)}>{t('myAccount')}</Button>
+              
+              {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className={accountLinkClass('/guest-dancer', true)}>{t('dashboard')}</Button>}
+              
+              {(userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'scanner') && <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className={accountLinkClass('/admin/scanner', true)}>{t('gateScanner')}</Button>}
+              
+              {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className={accountLinkClass('/admin', true)}>{t('adminPanel')}</Button>}
+            </div>
 
-                     <button 
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-                        disabled={currentPage === totalPages}
-                        className="p-3 rounded-xl border border-transparent bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                     >
-                        <ChevronRight size={18} />
-                     </button>
-                  </div>
-               </div>
-            )}
-         </div>
-      </div>
-   );
+            <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
+              <Button onClick={handleSignOut} variant="danger" size="md" className="w-full justify-center text-xs shadow-sm">{t('signOut')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
