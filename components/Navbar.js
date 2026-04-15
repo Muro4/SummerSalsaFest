@@ -11,7 +11,7 @@ import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, S
 
 // i18n Imports
 import { useTranslations } from 'next-intl';
-import LanguageSwitcher from "./LanguageSwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 
 import { Link, usePathname, useRouter } from "@/routing";
