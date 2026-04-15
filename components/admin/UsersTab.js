@@ -7,11 +7,12 @@ import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
 import Image from "next/image";
+
 import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield } from "lucide-react";
 
 // i18n Imports
 import { useTranslations } from 'next-intl';
-import LanguageSwitcher from "./LanguageSwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 
 import { Link, usePathname, useRouter } from "@/routing";
