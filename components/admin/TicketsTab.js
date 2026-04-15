@@ -183,7 +183,8 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
 
          {/* Desktop Table View */}
          <div className="hidden lg:flex flex-col bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10">
-            <div className="w-full">
+            {/* Added pb-40 here to provide enough space for the dropdown when there is only 1 row */}
+            <div className="w-full pb-40 overflow-x-auto">
                <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>

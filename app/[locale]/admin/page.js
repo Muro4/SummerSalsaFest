@@ -2,31 +2,31 @@
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, onSnapshot, deleteDoc, query, where } from "firebase/firestore";
-import { useRouter } from "@/routing"; 
+import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import { useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic'; 
-import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon } from "lucide-react";
+import dynamic from 'next/dynamic';
+import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon, RefreshCw } from "lucide-react";
 
-const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
-const InboxManager = dynamic(() => import("@/components/admin/InboxManager"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const InboxManager = dynamic(() => import("@/components/admin/InboxManager"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
-const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
-const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
-const ArtistsTab = dynamic(() => import("@/components/admin/ArtistsTab"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const ArtistsTab = dynamic(() => import("@/components/admin/ArtistsTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
-const DevTab = dynamic(() => import("@/components/admin/DevTab"), { 
-   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div> 
+const DevTab = dynamic(() => import("@/components/admin/DevTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
 
 export default function AdminDashboard() {
@@ -50,9 +50,10 @@ export default function AdminDashboard() {
    const [loading, setLoading] = useState(true);
    const [isAdmin, setIsAdmin] = useState(false);
    const [saving, setSaving] = useState(false);
-   
+   const [isRefreshing, setIsRefreshing] = useState(false);
+
    const [unreadInboxCount, setUnreadInboxCount] = useState(0);
-   
+
    const [history, setHistory] = useState([{}]);
    const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -60,19 +61,19 @@ export default function AdminDashboard() {
 
    // --- INITIAL LISTENER SETUP ---
    useEffect(() => {
-      let unsubUsers = () => {}; let unsubTickets = () => {}; let unsubMessages = () => {}; let unsubRequests = () => {}; let unsubArtists = () => {};
+      let unsubUsers = () => { }; let unsubTickets = () => { }; let unsubMessages = () => { }; let unsubRequests = () => { }; let unsubArtists = () => { };
 
-     const unsubAuth = auth.onAuthStateChanged(async (user) => {
+      const unsubAuth = auth.onAuthStateChanged(async (user) => {
          if (user) {
             const myDoc = await getDoc(doc(db, "users", user.uid));
             if (myDoc.exists() && myDoc.data().role === "superadmin") {
                setIsAdmin(true);
-               
+
                unsubUsers = onSnapshot(collection(db, "users"), (uS) => setData(prev => ({ ...prev, users: uS.docs.map(d => ({ id: d.id, ...d.data() })) })));
                unsubTickets = onSnapshot(collection(db, "tickets"), (tS) => { setData(prev => ({ ...prev, tickets: tS.docs.map(d => ({ id: d.id, ...d.data() })) })); setLoading(false); });
                unsubRequests = onSnapshot(collection(db, "ambassador_requests"), (rS) => setData(prev => ({ ...prev, requests: rS.docs.map(d => ({ id: d.id, ...d.data() })) })));
                unsubArtists = onSnapshot(collection(db, "artists"), (aS) => setData(prev => ({ ...prev, artists: aS.docs.map(d => ({ id: d.id, ...d.data() })) })));
-               
+
                const unreadQuery = query(collection(db, "contact_messages"), where("status", "==", "unread"));
                unsubMessages = onSnapshot(unreadQuery, (mS) => setUnreadInboxCount(mS.docs.length));
 
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
    useEffect(() => {
       const handleBeforeUnload = (e) => { if (historyIndex > 0) { e.preventDefault(); e.returnValue = ''; } };
       const handleLinkClick = (e) => {
-         if (historyIndex === 0) return; 
+         if (historyIndex === 0) return;
          const anchor = e.target.closest('a');
          if (anchor && anchor.href) {
             const targetPath = new URL(anchor.href).pathname;
@@ -110,6 +111,28 @@ export default function AdminDashboard() {
       newHistory.push(newStaged); setHistory(newHistory); setHistoryIndex(newHistory.length - 1);
    };
 
+   const handleResetTable = () => {
+      const executeReset = () => {
+         setHistory([{}]);
+         setHistoryIndex(0);
+         setIsRefreshing(true);
+         setTimeout(() => setIsRefreshing(false), 600);
+      };
+
+      if (historyIndex > 0) {
+         showPopup({
+            type: "info",
+            title: "Discard Changes?",
+            message: "Resetting the preview will discard your currently unsaved changes. Continue?",
+            confirmText: "Reset Preview",
+            cancelText: "Cancel",
+            onConfirm: executeReset
+         });
+      } else {
+         executeReset();
+      }
+   };
+
    const handleSaveChanges = async () => {
       if (!history[historyIndex] || Object.keys(history[historyIndex]).length === 0) return;
       setSaving(true);
@@ -129,18 +152,18 @@ export default function AdminDashboard() {
    };
 
    const effectiveTickets = useMemo(() => {
-       return data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
+      return data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
    }, [data.tickets, history, historyIndex]);
 
    const effectiveUsers = useMemo(() => {
-       return data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
+      return data.users.map(u => history[historyIndex]?.[`users_${u.id}`] ? { ...u, ...history[historyIndex][`users_${u.id}`] } : u);
    }, [data.users, history, historyIndex]);
 
    const effectiveArtists = useMemo(() => {
-       const existing = data.artists.map(a => history[historyIndex]?.[`artists_${a.id}`] ? { ...a, ...history[historyIndex][`artists_${a.id}`] } : a).filter(a => !a._deleted);
-       const stagedKeys = Object.keys(history[historyIndex] || {});
-       const newArtists = stagedKeys.filter(k => k.startsWith('artists_') && history[historyIndex][k].isNew && !history[historyIndex][k]._deleted).map(k => ({ id: history[historyIndex][k]._meta.id, ...history[historyIndex][k] }));
-       return [...existing, ...newArtists].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      const existing = data.artists.map(a => history[historyIndex]?.[`artists_${a.id}`] ? { ...a, ...history[historyIndex][`artists_${a.id}`] } : a).filter(a => !a._deleted);
+      const stagedKeys = Object.keys(history[historyIndex] || {});
+      const newArtists = stagedKeys.filter(k => k.startsWith('artists_') && history[historyIndex][k].isNew && !history[historyIndex][k]._deleted).map(k => ({ id: history[historyIndex][k]._meta.id, ...history[historyIndex][k] }));
+      return [...existing, ...newArtists].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
    }, [data.artists, history, historyIndex]);
 
    const pendingRequestsCount = useMemo(() => data.requests.filter(r => (r.status || 'pending') === 'pending').length, [data.requests]);
@@ -151,69 +174,72 @@ export default function AdminDashboard() {
       { id: 'inbox', label: t('tabInbox'), icon: Mail, badge: totalInboxNotifications },
       { id: 'tickets', label: t('tabTickets'), icon: Ticket },
       { id: 'users', label: t('tabUsers'), icon: UserCog },
-      { id: 'artists', label: t('tabArtists') || 'Artists', icon: ImageIcon }, 
+      { id: 'artists', label: t('tabArtists') || 'Artists', icon: ImageIcon },
       { id: 'dev', label: 'Dev Panel', icon: Settings2 }
    ];
 
    if (!isAdmin || loading) return <div className="min-h-screen flex items-center justify-center bg-salsa-white"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
 
    return (
-      <main className="min-h-screen bg-salsa-white font-montserrat pt-28 md:pt-32 pb-20 select-none overflow-x-hidden flex flex-col">
-         <Navbar />
-         
-         <div className="flex-1 w-full px-4 md:px-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-20">
-            
-            {/* --- STICKY SIDE NAVIGATION --- */}
-            <aside className="w-full md:w-[240px] xl:w-[280px] shrink-0 flex flex-col gap-4 md:sticky md:top-28 z-30 md:h-fit">
-                  <div className="hidden md:block mb-4 px-2 shrink-0">
-                     <h1 className="font-bebas tracking-wide text-5xl text-slate-900 uppercase leading-none">Admin Panel</h1>
-                     <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest mt-1.5">Summer Salsa Fest Management</p>
-                  </div>
 
-                  <div className="flex flex-col gap-2 w-full pb-4 md:pb-0 shrink-0">
-                     {adminTabs.map((tab) => {
-                        const isActive = activeTab === tab.id;
-                        const Icon = tab.icon;
-                        return (
-                           <button
-                              key={tab.id}
-                              onClick={() => setActiveTab(tab.id)}
-                              className={`relative flex items-center gap-4 px-5 py-4 rounded-2xl font-bold uppercase tracking-widest text-[11px] transition-all duration-200 cursor-pointer md:w-full text-left border ${
-                                 isActive
-                                    ? "bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-900/20 scale-100"
-                                    : "bg-white text-slate-500 border-gray-100 hover:bg-slate-50 hover:text-slate-900 hover:border-gray-200 hover:scale-[1.02] shadow-sm"
+      <main className="min-h-screen bg-salsa-white font-montserrat pt-28 md:pt-32 pb-20 select-none flex flex-col">
+         <Navbar />
+
+         <div className="flex-1 w-full px-4 md:px-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-20">
+
+            {/* 2. FIXED: Added top-32, max-h, and overflow-y-auto to strictly lock the sidebar */}
+            <aside className="w-full md:w-[240px] xl:w-[280px] shrink-0 flex flex-col gap-4 md:sticky md:top-32 z-30 md:h-fit md:max-h-[calc(100vh-8rem)] md:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+               <div className="hidden md:block mb-4 px-2 shrink-0">
+                  <h1 className="font-bebas tracking-wide text-5xl text-slate-900 uppercase leading-none">Admin Panel</h1>
+                  <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest mt-1.5">Summer Salsa Fest Management</p>
+               </div>
+
+               <div className="flex flex-col gap-2 w-full pb-4 md:pb-0 shrink-0">
+                  {adminTabs.map((tab) => {
+                     const isActive = activeTab === tab.id;
+                     const Icon = tab.icon;
+                     return (
+                        <button
+                           key={tab.id}
+                           onClick={() => setActiveTab(tab.id)}
+                           className={`relative flex items-center gap-4 px-5 py-4 rounded-2xl font-bold uppercase tracking-widest text-[11px] transition-all duration-200 cursor-pointer md:w-full text-left border ${isActive
+                                 ? "bg-slate-900 text-white border-slate-900 scale-100"
+                                 : "bg-white text-slate-500 border-gray-100 hover:bg-slate-50 hover:text-slate-900 hover:border-gray-200 hover:scale-[1.02]"
                               }`}
-                           >
-                              <Icon size={18} className={isActive ? "text-white" : "text-slate-400"} />
-                              <span className="truncate flex-1">{tab.label}</span>
-                              {tab.badge > 0 && (
-                                 <span className={`ml-auto px-2 py-0.5 rounded-md text-[10px] font-black leading-none shadow-sm ${isActive ? "bg-slate-600 text-white" : "bg-slate-400 text-white"}`}>
-                                    {tab.badge}
-                                 </span>
-                              )}
-                           </button>
-                        );
-                     })}
-                  </div>
-               </aside>
+                        >
+                           <Icon size={18} className={isActive ? "text-white" : "text-slate-400"} />
+                           <span className="truncate flex-1">{tab.label}</span>
+                           {tab.badge > 0 && (
+                              <span className={`ml-auto px-2 py-0.5 rounded-md text-[10px] font-black leading-none shadow-sm ${isActive ? "bg-slate-600 text-white" : "bg-slate-400 text-white"}`}>
+                                 {tab.badge}
+                              </span>
+                           )}
+                        </button>
+                     );
+                  })}
+               </div>
+            </aside>
 
             {/* --- MAIN CONTENT AREA --- */}
-            {/* Added dynamic md:pt-[68px] when action bar is hidden to keep vertical alignment consistent */}
             <div className={`flex-1 w-full min-w-0 relative z-10 pb-20 md:pb-0 flex flex-col gap-6 ${!hasActionBar ? 'md:pt-[68px]' : ''}`}>
-               
+
                {/* ACTION BAR (Tickets, Users, Artists only) */}
                {hasActionBar && (
-                  <div className="hidden md:flex justify-start items-center gap-4 animate-in fade-in duration-300 mb-2">
+                  <div className="flex justify-between md:justify-start items-center gap-4 animate-in fade-in duration-300 mb-2">
                      <div className="flex gap-3">
-                        <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title={t('btnUndo')} className="h-11 w-12 flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
+                        <button onClick={handleResetTable} disabled={saving} title="Refresh Live Data" className="h-11 w-12 flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
+                           <RefreshCw size={14} className={isRefreshing ? "animate-spin text-salsa-pink" : ""} />
+                        </button>
+
+                        <button onClick={() => historyIndex > 0 && setHistoryIndex(historyIndex - 1)} disabled={historyIndex <= 0 || saving} title={t('btnUndo')} className="hidden md:flex h-11 w-12 items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
                            <Undo2 size={14} />
                         </button>
-                        <button onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)} disabled={historyIndex >= history.length - 1 || saving} title={t('btnRedo')} className="h-11 w-12 flex items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
+                        <button onClick={() => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1)} disabled={historyIndex >= history.length - 1 || saving} title={t('btnRedo')} className="hidden md:flex h-11 w-12 items-center justify-center bg-white border border-gray-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed">
                            <Redo2 size={14} />
                         </button>
                      </div>
 
-                     <div className="flex items-center gap-4">
+                     <div className="hidden md:flex items-center gap-4">
                         <Button variant="secondary" size="md" icon={Save} onClick={handleSaveChanges} disabled={historyIndex === 0 || saving} className="shadow-lg px-8">
                            {saving ? t('btnSaving') : t('btnSave')}
                         </Button>
@@ -227,7 +253,7 @@ export default function AdminDashboard() {
                )}
 
                {activeTab === 'analytics' && <AnalyticsTab tickets={effectiveTickets} />}
-               {activeTab === 'inbox' && <InboxManager requests={data.requests} />} 
+               {activeTab === 'inbox' && <InboxManager requests={data.requests} />}
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'users' && <UsersTab users={effectiveUsers} currentUserId={auth.currentUser?.uid} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'artists' && <ArtistsTab artists={effectiveArtists} onStageChange={handleStageChange} />}
@@ -236,10 +262,9 @@ export default function AdminDashboard() {
 
          </div>
 
-          <div 
-            className={`md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] pt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex items-center justify-between transition-transform duration-500 ease-out ${
-               historyIndex > 0 ? "translate-y-0" : "translate-y-full"
-            }`}
+         <div
+            className={`md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] pt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex items-center justify-between transition-transform duration-500 ease-out ${historyIndex > 0 ? "translate-y-0" : "translate-y-full"
+               }`}
          >
             <div className="w-full flex items-center justify-between gap-3">
                <div className="flex items-center gap-2">
@@ -250,7 +275,7 @@ export default function AdminDashboard() {
                      <Redo2 size={18} />
                   </button>
                </div>
-               
+
                <button onClick={handleSaveChanges} disabled={historyIndex === 0 || saving} className="bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest h-12 px-6 rounded-xl hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 flex-1 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                   {saving ? t('btnSaving') : t('btnSave')}

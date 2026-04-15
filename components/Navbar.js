@@ -1,10 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { doc, getDoc, collection, onSnapshot, updateDoc } from "firebase/firestore";
-import { usePathname, useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
@@ -14,6 +12,10 @@ import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, S
 // i18n Imports
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from "./LanguageSwitcher";
+
+// ROUTING FIX: Import Link, usePathname, and useRouter from your next-intl routing file 
+// instead of "next/link" and "next/navigation". This preserves the active locale across navigations.
+import { Link, usePathname, useRouter } from "@/routing";
 
 export default function Navbar() {
   const t = useTranslations('Navbar');
@@ -29,11 +31,15 @@ export default function Navbar() {
   const [cartItems, setCartItems] = useState(0);
 
   const dropdownRef = useRef(null);
+  
+  // These now use the next-intl localized router and pathname
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname(); 
   const { showPopup } = usePopup();
 
-  const isHome = pathname === "/" || pathname === "/en" || pathname === "/bg";
+  // ROUTING FIX: Because next-intl's usePathname strips the locale prefix (e.g., returns "/" instead of "/bg"),
+  // we can simplify the home check to just match "/".
+  const isHome = pathname === "/";
   const isTransparent = isHome && !scrolled;
 
   useEffect(() => {
@@ -167,12 +173,8 @@ export default function Navbar() {
 
   const textColorClass = isTransparent ? "text-white" : "text-slate-800";
 
-  const isActive = (path) => {
-    if (path === "/") {
-      return pathname === "/" || pathname === "/en" || pathname === "/bg";
-    }
-    return pathname === path || pathname === `/en${path}` || pathname === `/bg${path}`;
-  };
+  // ROUTING FIX: Simplified active path matching because usePathname handles locale stripping natively
+  const isActive = (path) => pathname === path;
   
   const desktopLinkClass = (path) => 
     `relative py-1 transition-all duration-300 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:bg-salsa-pink after:transition-all after:duration-300 ease-in-out ${

@@ -10,7 +10,7 @@ import {
   AlertCircle, ShieldAlert, XCircle 
 } from "lucide-react";
 
-// --- SHARED PASS STYLING ---
+// Shared pass styling
 const getPassBgColor = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('full')) return 'bg-salsa-pink';
@@ -32,7 +32,7 @@ const getPassStyle = (type) => {
   return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 };
 
-// --- DYNAMIC FONT SIZING FOR LONG NAMES ---
+// Dynamic font sizing for long names
 const getScannerNameSize = (name) => {
   if (!name) return "text-5xl";
   if (name.length > 22) return "text-3xl leading-tight";
@@ -48,35 +48,39 @@ export default function AdminScanner() {
   const [hasAccess, setHasAccess] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // HOT CAMERA LOCKS
+  // Camera Engine State Refs
   const isProcessingRef = useRef(false);
   const scannerInitialized = useRef(false);
+  const scannerInstance = useRef(null); // Tracks the active camera instance
 
   const { showPopup } = usePopup();
 
+  // Authentication validation
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const d = await getDoc(doc(db, "users", user.uid));
-        if (d.data()?.role === "superadmin" || d.data()?.role === "admin") setHasAccess(true);
+        // Allow superadmin, admin, and scanner roles
+        if (["superadmin", "admin", "scanner"].includes(d.data()?.role)) {
+          setHasAccess(true);
+        }
       }
       setAuthLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // Initialize camera ONLY ONCE on mount. It stays active permanently.
+  // Initialize camera ONLY ONCE on mount.
   useEffect(() => {
     if (!hasAccess || scannerInitialized.current) return;
     
     scannerInitialized.current = true;
-    let html5QrCode;
     
     const initializeScanner = async () => {
       try {
-        html5QrCode = new Html5Qrcode("reader");
+        scannerInstance.current = new Html5Qrcode("reader");
         
-        await html5QrCode.start(
+        await scannerInstance.current.start(
           { facingMode: "environment" }, 
           {
             fps: 10,
@@ -89,7 +93,7 @@ export default function AdminScanner() {
             handleLookup(text);
           },
           (errorMessage) => {
-            // Ignore background scan errors
+            // Ignore background scan errors safely
           }
         );
       } catch (err) {
@@ -100,9 +104,18 @@ export default function AdminScanner() {
 
     initializeScanner();
     
+    // Cleanup function strictly stops the camera if the component is fully unmounted
     return () => {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
+      if (scannerInstance.current) {
+        try {
+          const state = scannerInstance.current.getState();
+          // 1 = NOT_STARTED, 2 = SCANNING, 3 = PAUSED
+          if (state !== 1) {
+            scannerInstance.current.stop().then(() => scannerInstance.current.clear()).catch(console.error);
+          }
+        } catch (e) {
+          console.error("Camera cleanup error:", e);
+        }
       }
       scannerInitialized.current = false;
     };
@@ -128,8 +141,21 @@ export default function AdminScanner() {
 
       if (snap.empty) {
         setErrorMessage("Ticket not found in database.");
+        // Release the lock so they can immediately try scanning again
         setTimeout(() => { isProcessingRef.current = false; }, 1500);
       } else {
+        // SUCCESS: Explicitly pause the camera feed to prevent the browser from 
+        // silently killing the background video stream while the overlay is shown.
+        if (scannerInstance.current) {
+          try {
+            if (scannerInstance.current.getState() === 2) { // 2 = SCANNING
+              scannerInstance.current.pause(true); // 'true' pauses the video hardware
+            }
+          } catch (e) {
+            console.warn("Could not pause camera:", e);
+          }
+        }
+
         setScanResult({ id: snap.docs[0].id, ...snap.docs[0].data() });
       }
     } catch (e) {
@@ -146,14 +172,27 @@ export default function AdminScanner() {
     handleLookup(manualID);
   };
 
+  // Resets the UI and wakes the camera back up
   const resetScanner = () => {
     setScanResult(null);
     setManualID("");
     setErrorMessage(null);
     
+    // WAKE UP: Explicitly resume the camera feed
+    if (scannerInstance.current) {
+      try {
+        if (scannerInstance.current.getState() === 3) { // 3 = PAUSED
+          scannerInstance.current.resume();
+        }
+      } catch (e) {
+        console.warn("Could not resume camera:", e);
+      }
+    }
+
+    // Short delay before accepting new QR codes to prevent accidental double-scans
     setTimeout(() => {
         isProcessingRef.current = false;
-    }, 1500);
+    }, 1000);
   };
 
   const handleCheckIn = async () => {

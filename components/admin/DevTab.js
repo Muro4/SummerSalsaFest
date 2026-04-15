@@ -14,22 +14,26 @@ import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 
 export default function DevTab() {
+  // Application Time State
   const [appDate, setAppDate] = useState("");
   const [calDate, setCalDate] = useState(new Date()); 
   const [isTimeTraveling, setIsTimeTraveling] = useState(false);
   const { showPopup } = usePopup();
 
+  // System Settings and Diagnostic State
   const [system, setSystem] = useState(null);
   const [sysLoading, setSysLoading] = useState(true);
   const [healthStatus, setHealthStatus] = useState(null);
   const [runningTests, setRunningTests] = useState(false);
 
+  // Security Modal State
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
   const [passwordAttempt, setPasswordAttempt] = useState("");
   const [passError, setPassError] = useState(false);
 
   const festivalYear = getActiveFestivalYear();
 
+  // Initialize application time and detect active time travel locks
   useEffect(() => {
     const currentAppTime = getNow();
     setAppDate(currentAppTime.toISOString().split('T')[0]);
@@ -37,6 +41,7 @@ export default function DevTab() {
     setIsTimeTraveling(!!localStorage.getItem('dev_mock_date'));
   }, []);
 
+  // Time Travel Handlers
   const handleTimeTravel = () => {
     localStorage.setItem('dev_mock_date', appDate);
     setIsTimeTraveling(true);
@@ -52,6 +57,7 @@ export default function DevTab() {
     showPopup({ type: "info", title: "Time Restored", message: "Returned to present day.", confirmText: "Refresh", onConfirm: () => window.location.reload() });
   };
 
+  // Subscribe to live system configuration from Firestore
   useEffect(() => {
     const sysRef = doc(db, "settings", "system");
     const unsub = onSnapshot(sysRef, (snap) => {
@@ -65,6 +71,7 @@ export default function DevTab() {
     return () => unsub();
   }, []);
 
+  // System Control Handlers
   const toggleSales = () => {
     if (system.salesEnabled) {
       setIsPassModalOpen(true);
@@ -108,6 +115,7 @@ export default function DevTab() {
     await setDoc(doc(db, "settings", "system"), { stripeMode: mode }, { merge: true });
   };
 
+  // Diagnostic Execution
   const runDiagnostics = async () => {
     setRunningTests(true);
     try {
@@ -122,6 +130,7 @@ export default function DevTab() {
     }
   };
 
+  // Calendar UI Generator
   const renderCalendarCells = () => {
     const year = calDate.getFullYear();
     const month = calDate.getMonth();
@@ -130,8 +139,13 @@ export default function DevTab() {
     const offset = firstDay === 0 ? 6 : firstDay - 1; 
 
     const cells = [];
-    for (let i = 0; i < offset; i++) cells.push(<div key={`empty-${i}`} className="h-8"></div>);
+    
+    // Fill empty cells for previous month padding
+    for (let i = 0; i < offset; i++) {
+      cells.push(<div key={`empty-${i}`} className="h-8"></div>);
+    }
 
+    // Generate active month days
     for (let d = 1; d <= daysInMonth; d++) {
         const currentStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const isSelected = appDate === currentStr;
@@ -161,6 +175,7 @@ export default function DevTab() {
 
   if (sysLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>;
 
+  // Security Modal Render
   const passwordModal = (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setIsPassModalOpen(false)}></div>
@@ -190,7 +205,7 @@ export default function DevTab() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 relative z-10 font-montserrat pb-20">
+    <div className="space-y-6 relative z-10 font-montserrat pb-20">
       
       {isTimeTraveling && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-4 text-amber-700 shadow-sm animate-pulse">
@@ -204,6 +219,7 @@ export default function DevTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         
+        {/* System Operations Panel */}
         <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 flex flex-col gap-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
@@ -243,6 +259,7 @@ export default function DevTab() {
           </div>
         </div>
 
+        {/* Time Machine Panel */}
         <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 flex flex-col gap-6">
           <div className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-salsa-pink/10 text-salsa-pink flex items-center justify-center shrink-0">
@@ -255,7 +272,7 @@ export default function DevTab() {
           </div>
           
           <div className="flex flex-col xl:flex-row gap-6">
-            {/* 🚀 HEIGHT ADJUSTED: Reduced from 340px to 300px for a tighter, professional fit */}
+            {/* Height locked to 300px to maintain consistent layout flow across screen sizes */}
             <div className="w-full xl:w-[260px] shrink-0 bg-slate-50 rounded-2xl p-4 border border-gray-100 shadow-inner h-[300px]">
                <div className="flex justify-between items-center mb-4">
                   <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-white border border-transparent hover:border-gray-200 rounded-lg text-slate-500 transition-all cursor-pointer"><ChevronLeft size={16}/></button>
@@ -304,6 +321,7 @@ export default function DevTab() {
 
       </div>
 
+      {/* Diagnostics Panel */}
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 flex flex-col gap-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between shrink-0 gap-4">
           <div className="flex items-center gap-3">
