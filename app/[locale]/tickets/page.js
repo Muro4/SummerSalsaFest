@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 // THE FIX: Use our custom language-aware router
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -9,7 +9,6 @@ import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
 import { getPriceAtDate } from "@/lib/pricing";
 
 export default function TicketPage() {
@@ -30,7 +29,6 @@ export default function TicketPage() {
   const router = useRouter();
   const { showPopup } = usePopup();
 
-  // THE FIX: Moved PASSES inside the component to use the translation hook
   const PASSES = [
     { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: getPriceAtDate('Party Pass'), desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
     { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: getPriceAtDate('Full Pass'), desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
@@ -64,7 +62,7 @@ export default function TicketPage() {
       },
       (err) => {
         console.error("Kill switch sync error:", err.message);
-        setSalesEnabled(true); // Fail open so sales continue if rules are misconfigured
+        setSalesEnabled(true); 
       }
     );
     return () => unsub();
@@ -132,47 +130,46 @@ export default function TicketPage() {
     setStep(2);
   };
 
+  // THE FIX: Unified Cart Logic
   const handleAddToCart = async () => {
     setLoading(true);
     try {
-      let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
-      if (!currentID && isGuest) {
-        currentID = "guest_" + Math.random().toString(36).substring(2, 12);
-        sessionStorage.setItem("guestSessionID", currentID);
+      const cartItem = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+        passType: selected.rawName,
+        price: selected.price,
+        userName: realName,
+        guestEmail: guestEmail || (auth.currentUser ? auth.currentUser.email : ""),
+        quantity: 1,
+        addedAt: new Date().toISOString()
+      };
+
+      if (auth.currentUser) {
+        // ==========================================
+        // LOGGED IN USERS: Save to Firestore Cart
+        // ==========================================
+        const cartRef = doc(collection(db, "users", auth.currentUser.uid, "cart"));
+        await setDoc(cartRef, cartItem);
+      } else {
+        // ==========================================
+        // GUEST USERS: Save to Local Storage
+        // ==========================================
+        const existingCart = JSON.parse(localStorage.getItem("cart")) || [];
+        existingCart.push(cartItem);
+        localStorage.setItem("cart", JSON.stringify(existingCart));
+        
+        // Dispatch event to update the Navbar cart badge instantly
+        window.dispatchEvent(new Event("cartUpdated"));
       }
 
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch('/api/tickets/create', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          isGuest,
-          guestSessionId: currentID,
-          tickets: [{
-            userName: realName,
-            passType: selected.rawName,
-            guestEmail: guestEmail
-          }]
-        })
-      });
-
-      // THE FIX: Check if the server returned HTML (a crash) instead of JSON
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server experienced an unexpected crash. Please check server logs.");
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add ticket");
-
+      // Navigate to the cart page seamlessly
       router.push("/cart");
+      
     } catch (e) {
-      showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
+      console.error("Cart Error:", e);
+      showPopup({ type: "error", title: "Error", message: e.message || "Failed to add to cart.", confirmText: "Close" });
     } finally {
-      setLoading(false); // Ensures the spinner ALWAYS turns off
+      setLoading(false); 
     }
   };
 

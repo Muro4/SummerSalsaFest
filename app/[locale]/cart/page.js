@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc, writeBatch } from "firebase/firestore";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing for i18n
+import { collection, onSnapshot, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { useRouter } from "@/routing"; 
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -59,27 +59,48 @@ export default function Cart() {
   };
 
   useEffect(() => {
+    let unsubCart = null;
+
+    const loadGuestCart = () => {
+      try {
+        const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+        setItems(localCart);
+      } catch (e) {
+        setItems([]);
+      }
+      setLoading(false);
+    };
+
     const unsubAuth = auth.onAuthStateChanged(user => {
-      const currentID = user ? user.uid : sessionStorage.getItem("guestSessionID");
-      if (currentID) {
-        const q = query(collection(db, "tickets"), where("userId", "==", currentID), where("status", "==", "pending"));
-        const unsub = onSnapshot(q, 
-          (snap) => {
-            setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setLoading(false);
-          },
-          (error) => {
-            console.error("Cart fetch error:", error);
-            setLoading(false);
-          }
-        );
-        return () => unsub();
+      if (user) {
+        // Fetch from Firebase Cart subcollection for logged-in users
+        const cartRef = collection(db, "users", user.uid, "cart");
+        unsubCart = onSnapshot(cartRef, (snap) => {
+          setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          setLoading(false);
+        }, (error) => {
+          console.error("Cart fetch error:", error);
+          setLoading(false);
+        });
       } else { 
-        setLoading(false); 
+        // Fetch from LocalStorage for guests
+        if (unsubCart) { unsubCart(); unsubCart = null; }
+        loadGuestCart();
       }
     });
-    return () => unsubAuth();
+
+    // Listeners for guest cart changes from other tabs
+    window.addEventListener('cartUpdated', loadGuestCart);
+    window.addEventListener('storage', loadGuestCart);
+
+    return () => {
+      unsubAuth();
+      if (unsubCart) unsubCart();
+      window.removeEventListener('cartUpdated', loadGuestCart);
+      window.removeEventListener('storage', loadGuestCart);
+    };
   }, []);
+
   const total = items.reduce((acc, item) => acc + (item.price || 0), 0);
   const counts = items.reduce((acc, item) => {
     acc[item.passType] = (acc[item.passType] || 0) + 1;
@@ -94,9 +115,15 @@ export default function Cart() {
       confirmText: t('popupClearBtn'),
       cancelText: t('popupCancelBtn'),
       onConfirm: async () => {
-        const batch = writeBatch(db);
-        items.forEach(item => { batch.delete(doc(db, "tickets", item.id)); });
-        await batch.commit();
+        if (auth.currentUser) {
+          const batch = writeBatch(db);
+          items.forEach(item => { batch.delete(doc(db, "users", auth.currentUser.uid, "cart", item.id)); });
+          await batch.commit();
+        } else {
+          localStorage.removeItem("cart");
+          setItems([]);
+          window.dispatchEvent(new Event("cartUpdated"));
+        }
       }
     });
   };
@@ -108,7 +135,17 @@ export default function Cart() {
       message: t('popupRemoveMsg', { name: userName }), 
       confirmText: t('popupRemoveBtn'), 
       cancelText: t('popupKeepBtn'),
-      onConfirm: async () => await deleteDoc(doc(db, "tickets", id))
+      onConfirm: async () => {
+        if (auth.currentUser) {
+          await deleteDoc(doc(db, "users", auth.currentUser.uid, "cart", id));
+        } else {
+          const localCart = JSON.parse(localStorage.getItem("cart")) || [];
+          const updatedCart = localCart.filter(item => item.id !== id);
+          localStorage.setItem("cart", JSON.stringify(updatedCart));
+          setItems(updatedCart);
+          window.dispatchEvent(new Event("cartUpdated"));
+        }
+      }
     });
   };
 
@@ -117,7 +154,13 @@ export default function Cart() {
     
     // 🔒 SECURITY: Grab the user's auth token or guest ID to prove identity
     const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-    const currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
+    let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
+    
+    // If guest doesn't have an ID yet, make one for the checkout session
+    if (!currentID && !auth.currentUser) {
+      currentID = "guest_" + Math.random().toString(36).substring(2, 12);
+      sessionStorage.setItem("guestSessionID", currentID);
+    }
     
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -126,7 +169,6 @@ export default function Cart() {
       try {
         const ticketIds = items.map(item => item.id);
         
-        // 🐛 BUG FIX: Changed from "/api/activate-free" to the correct route "/api/activate"
         const response = await fetch("/api/activate", {
           method: "POST",
           headers, // Send the secure headers
@@ -136,6 +178,12 @@ export default function Cart() {
         if (!response.ok) throw new Error("Failed to activate free passes securely.");
 
         setIsSuccess(true);
+        // Clear local cart if guest after success
+        if (!auth.currentUser) {
+          localStorage.removeItem("cart");
+          window.dispatchEvent(new Event("cartUpdated"));
+        }
+        
         setTimeout(() => { 
           if (auth.currentUser) router.push("/account"); 
           else { sessionStorage.removeItem("guestSessionID"); router.push("/"); } 
@@ -235,7 +283,7 @@ export default function Cart() {
                         </h3>
                         <div className="flex items-center gap-4 mt-1 min-w-0">
                           <span className="text-[10px] md:text-[11px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5 truncate">
-                            <Clock size={12} className="opacity-50 shrink-0" /> <span className="truncate">{item.festivalYear} {t('edition')}</span>
+                            <Clock size={12} className="opacity-50 shrink-0" /> <span className="truncate">{item.festivalYear || 2026} {t('edition')}</span>
                           </span>
                         </div>
                       </div>
