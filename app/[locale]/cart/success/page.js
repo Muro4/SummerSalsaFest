@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, doc } from "firebase/firestore";
 import { useSearchParams } from "next/navigation"; 
 import { useRouter, Link } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -35,13 +35,11 @@ function SuccessContent() {
   const [isGuest, setIsGuest] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
   
-  // State to track if the background emails have fired (Guest Only)
   const [emailsSent, setEmailsSent] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState(t('prepEmail'));
 
   const isFreePass = searchParams.get("session_id") === "free_pass_bypass";
 
-  // Helper to translate internal DB pass names for the UI
   const translatePassDisplay = (type) => {
     const typeLower = (type || '').toLowerCase();
     if (typeLower.includes('full')) return t('passFull');
@@ -51,48 +49,84 @@ function SuccessContent() {
     return type;
   };
 
-  // FETCH TICKETS ON LOAD (No Database Writes)
+  // THE FIX: Smart Fetching to Bypass Collection Rule Restrictions
   useEffect(() => {
-    const fetchTickets = async () => {
-      // Small delay to let the webhook do its job before we fetch
+    let isMounted = true;
+
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (!isMounted) return;
+      
+      // Small delay to let the Stripe webhook activate tickets in the background
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const currentUser = auth.currentUser;
-      const currentID = currentUser ? currentUser.uid : sessionStorage.getItem("guestSessionID");
-      
-      setIsGuest(!currentUser);
+      const currentID = user ? user.uid : sessionStorage.getItem("guestSessionID");
+      setIsGuest(!user);
 
-      if (currentID) {
+      if (user) {
+        // ==========================================
+        // LOGGED-IN USERS: Can safely query the collection
+        // ==========================================
         try {
-          const q = query(
-            collection(db, "tickets"), 
-            where("userId", "==", currentID)
-          );
+          const q = query(collection(db, "tickets"), where("userId", "==", currentID));
           const snap = await getDocs(q);
           
-          const fetchedTickets = [];
+          const fetchedTickets = snap.docs.map(document => ({ 
+            ...document.data(), 
+            id: document.id,
+            purchaseDate: new Date().toISOString() 
+          }));
           
-          for (const document of snap.docs) {
-            const ticketData = { ...document.data(), id: document.id };
-            // FIX: We no longer try to updateDoc here. The webhook handles security.
-            // We just format it for the UI to display the ticket correctly.
-            fetchedTickets.push({ ...ticketData, purchaseDate: new Date().toISOString() });
+          setTickets(fetchedTickets);
+          setLoading(false);
+        } catch (error) {
+          console.error("Error fetching logged-in tickets:", error);
+          alert(t('errSync'));
+          setLoading(false);
+        }
+      } else if (currentID) {
+        // ==========================================
+        // GUEST USERS: Use individual getDoc to bypass 'list' rules
+        // ==========================================
+        try {
+          let guestTicketIds = JSON.parse(sessionStorage.getItem("guestTicketIds") || "[]");
+          const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
+          
+          // If returning from Stripe, grab the IDs, save them, and clean up the cart
+          if (localCart.length > 0) {
+            guestTicketIds = localCart.map(item => item.id);
+            sessionStorage.setItem("guestTicketIds", JSON.stringify(guestTicketIds));
+            localStorage.removeItem("cart");
+            window.dispatchEvent(new Event("cartUpdated")); // Instantly clears Navbar cart
+          }
+
+          const fetchedTickets = [];
+          for (const ticketId of guestTicketIds) {
+            const docSnap = await getDoc(doc(db, "tickets", ticketId));
+            if (docSnap.exists()) {
+              fetchedTickets.push({ 
+                ...docSnap.data(), 
+                id: docSnap.id, 
+                purchaseDate: new Date().toISOString() 
+              });
+            }
           }
           
           setTickets(fetchedTickets);
           setLoading(false);
-
         } catch (error) {
-          console.error("Error fetching tickets:", error);
+          console.error("Error fetching guest tickets:", error);
           alert(t('errSync'));
           setLoading(false);
         }
       } else {
         setLoading(false);
       }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
     };
-    
-    fetchTickets();
   }, [searchParams, t]);
 
   // AUTO-SEND EMAILS IN THE BACKGROUND (ONLY FOR GUESTS)
@@ -129,8 +163,6 @@ function SuccessContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: targetEmail, ticket: ticket, pdfAttachment: pdfBase64 })
               });
-              
-              // We removed the updateDoc here too, relying purely on the backend for email tracking if needed
             } catch (err) {
               console.error("Auto-email failed for ticket", ticket.id, err);
             }
@@ -175,7 +207,6 @@ function SuccessContent() {
   };
 
   return (
-    // Updated wrapper to flex-1 to perfectly center vertically in the remaining space
     <div className="flex-1 flex flex-col items-center justify-center w-full px-6 py-20 mt-16 md:mt-20">
       <div className="w-full max-w-4xl animate-in zoom-in duration-500 flex flex-col items-center">
           
@@ -198,7 +229,6 @@ function SuccessContent() {
                 
                 {isGuest ? (
                   <>
-                    {/* GUEST VIEW: Shows Email Status, Tickets, and Warnings */}
                     <p className={`font-bold text-sm text-center mb-12 flex items-center justify-center gap-2 ${emailsSent ? 'text-emerald-600' : 'text-slate-500 animate-pulse'}`}>
                       {!emailsSent && <Loader2 size={16} className="animate-spin" />}
                       {emailStatusMessage}
@@ -275,7 +305,6 @@ function SuccessContent() {
                   </>
                 ) : (
                   <>
-                    {/* SIGNED IN VIEW: Simple Confirmation & Redirect Links */}
                     <p className="font-bold text-slate-500 text-sm text-center mb-12">
                       {t('savedMsg')}
                     </p>
@@ -298,7 +327,6 @@ function SuccessContent() {
 }
 
 // 2. THE REQUIRED DEFAULT EXPORT 
-// (Removed the footer and added flex layout classes to center the Suspense content)
 export default function SuccessPage() {
   return (
     <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
