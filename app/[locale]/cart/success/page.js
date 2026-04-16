@@ -1,13 +1,11 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
-// THE FIX: Use standard next/navigation for search params, but custom routing for Link/useRouter
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useSearchParams } from "next/navigation"; 
 import { useRouter, Link } from "@/routing";
 import Navbar from "@/components/Navbar";
 import Button from "@/components/Button";
-import Footer from "@/components/Footer";
 import { CheckCircle, Loader2, Download, AlertTriangle, ArrowRight } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslations } from 'next-intl';
@@ -53,10 +51,11 @@ function SuccessContent() {
     return type;
   };
 
-  // ACTIVATE TICKETS ON LOAD
+  // FETCH TICKETS ON LOAD (No Database Writes)
   useEffect(() => {
-    const activateTickets = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    const fetchTickets = async () => {
+      // Small delay to let the webhook do its job before we fetch
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       const currentUser = auth.currentUser;
       const currentID = currentUser ? currentUser.uid : sessionStorage.getItem("guestSessionID");
@@ -67,27 +66,24 @@ function SuccessContent() {
         try {
           const q = query(
             collection(db, "tickets"), 
-            where("userId", "==", currentID), 
-            where("status", "==", "pending")
+            where("userId", "==", currentID)
           );
           const snap = await getDocs(q);
           
-          const activated = [];
+          const fetchedTickets = [];
           
           for (const document of snap.docs) {
             const ticketData = { ...document.data(), id: document.id };
-            await updateDoc(doc(db, "tickets", document.id), { 
-                status: "active",
-                paymentConfirmedAt: new Date().toISOString()
-            });
-            activated.push({ ...ticketData, status: "active", purchaseDate: new Date().toISOString() });
+            // FIX: We no longer try to updateDoc here. The webhook handles security.
+            // We just format it for the UI to display the ticket correctly.
+            fetchedTickets.push({ ...ticketData, purchaseDate: new Date().toISOString() });
           }
           
-          setTickets(activated);
+          setTickets(fetchedTickets);
           setLoading(false);
 
         } catch (error) {
-          console.error("Error activating tickets:", error);
+          console.error("Error fetching tickets:", error);
           alert(t('errSync'));
           setLoading(false);
         }
@@ -96,17 +92,15 @@ function SuccessContent() {
       }
     };
     
-    activateTickets();
+    fetchTickets();
   }, [searchParams, t]);
 
   // AUTO-SEND EMAILS IN THE BACKGROUND (ONLY FOR GUESTS)
   useEffect(() => {
     if (isGuest && tickets.length > 0 && !emailsSent) {
       const dispatchEmails = async () => {
-        // Wait 1.5 seconds to ensure the QR codes and fonts are fully painted
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF libraries only when guests need them!
         const { toPng } = await import('html-to-image');
         const { default: jsPDF } = await import('jspdf');
 
@@ -136,10 +130,7 @@ function SuccessContent() {
                 body: JSON.stringify({ email: targetEmail, ticket: ticket, pdfAttachment: pdfBase64 })
               });
               
-              await updateDoc(doc(db, "tickets", ticket.id), { 
-                emailSentCount: (ticket.emailSentCount || 0) + 1 
-              });
-              
+              // We removed the updateDoc here too, relying purely on the backend for email tracking if needed
             } catch (err) {
               console.error("Auto-email failed for ticket", ticket.id, err);
             }
@@ -162,7 +153,6 @@ function SuccessContent() {
     }
 
     try {
-      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF libraries only when clicked!
       const { toPng } = await import('html-to-image');
       const { default: jsPDF } = await import('jspdf');
 
@@ -185,7 +175,8 @@ function SuccessContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 py-20">
+    // Updated wrapper to flex-1 to perfectly center vertically in the remaining space
+    <div className="flex-1 flex flex-col items-center justify-center w-full px-6 py-20 mt-16 md:mt-20">
       <div className="w-full max-w-4xl animate-in zoom-in duration-500 flex flex-col items-center">
           
           {loading ? (
@@ -306,15 +297,19 @@ function SuccessContent() {
   );
 }
 
-// 2. THE REQUIRED DEFAULT EXPORT (Wrapped in Suspense for useSearchParams)
+// 2. THE REQUIRED DEFAULT EXPORT 
+// (Removed the footer and added flex layout classes to center the Suspense content)
 export default function SuccessPage() {
   return (
-    <main className="min-h-screen bg-salsa-white font-montserrat">
+    <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
       <Navbar />
-      <Suspense fallback={<div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>}>
+      <Suspense fallback={
+        <div className="flex-1 flex items-center justify-center w-full">
+          <Loader2 className="animate-spin text-salsa-pink" size={48} />
+        </div>
+      }>
         <SuccessContent />
       </Suspense>
-      <Footer />
     </main>
   );
 }
