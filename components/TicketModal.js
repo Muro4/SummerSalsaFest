@@ -1,13 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
-import { db, auth } from "@/lib/firebase"; // <-- IMPORT AUTH FOR SECURITY TOKEN
-import { doc, updateDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase"; 
 import { usePopup } from "@/components/PopupProvider"; 
-import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Send, Mail, Loader2, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslations } from 'next-intl';
 
-// --- SHARED PASS STYLING ---
+// Utility functions for ticket styling
 const getPassBgColor = (type) => {
    const t = (type || '').toLowerCase();
    if (t.includes('full')) return 'bg-salsa-pink';
@@ -29,6 +28,7 @@ const getPassStyle = (type) => {
    return `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 };
 
+// Formats ISO date strings into readable UI text
 const formatDate = (isoString) => {
   if (!isoString) return { date: "Valid", time: "Pass" };
   const d = new Date(isoString);
@@ -36,6 +36,7 @@ const formatDate = (isoString) => {
   return { date: d.toLocaleDateString('en-GB'), time: d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) };
 };
 
+// Dynamically scales the font size based on the character length of the user's name
 const getTicketNameSize = (name) => {
   if (!name) return "text-2xl md:text-4xl";
   if (name.length > 25) return "text-lg md:text-2xl";
@@ -43,14 +44,14 @@ const getTicketNameSize = (name) => {
   return "text-2xl md:text-4xl";
 };
 
-// --- REUSABLE TICKET VIEW ---
+// Reusable component that renders individual ticket data and actions
 function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobile, t }) {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [addingToWallet, setAddingToWallet] = useState(false);
   const { showPopup } = usePopup();
 
-  // Helper to translate internal DB pass names for the UI
+  // Translates internal database pass names into localized UI strings
   const translatePassDisplay = (type) => {
       const typeLower = (type || '').toLowerCase();
       if (typeLower.includes('full')) return t('passFull');
@@ -60,15 +61,16 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       return type;
   };
 
+  // Captures the DOM element as a high-quality PNG using html-to-image
   const captureTicketImage = async () => {
-    // PERFORMANCE OPTIMIZATION: Dynamically import heavy imaging library only when needed!
+    // Dynamic import to reduce initial bundle size and optimize performance
     const { toPng } = await import('html-to-image');
 
     const targetId = `phantom-ticket-${ticket.id}`;
     const element = document.getElementById(targetId);
     
     if (!element) return null;
-
+    
     try {
       return await toPng(element, { 
         quality: 1, 
@@ -85,46 +87,49 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     }
   };
 
+  // Handles generating and downloading the PDF locally
   const handleDownloadPDF = async () => {
     try {
       const dataUrl = await captureTicketImage();
       if (!dataUrl) throw new Error(t('errCapture'));
 
-      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF library only when clicked!
+      // Dynamic import for jsPDF to optimize performance
       const { default: jsPDF } = await import('jspdf');
 
       const img = new Image();
       img.src = dataUrl;
       await new Promise((resolve) => { img.onload = resolve; });
 
-      // Dynamically calculate aspect ratio so the PDF perfectly matches the tall 820px phantom ticket
-      const pdfW = 360; 
+      // Maintain aspect ratio matching the phantom ticket dimensions
+      const pdfW = 360;
       const pdfH = (img.height * pdfW) / img.width;
 
       const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
       pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       pdf.save(`SalsaFest_Pass_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) { 
-      showPopup({ type: "error", title: t('errExportTitle'), message: t('errExportMsg'), confirmText: t('btnClose') }); 
+      showPopup({ type: "error", title: t('errExportTitle'), message: t('errExportMsg'), confirmText: t('btnClose') });
     }
   };
 
+  // Handles adding the ticket to Google Wallet
   const handleAddToWallet = async () => {
     setAddingToWallet(true);
     try {
-      // 🔒 SECURITY CHECK: Grab the secure token
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
+      
       const res = await fetch("/api/google-wallet", {
         method: "POST", 
         headers, 
         body: JSON.stringify({ ticket })
       });
+      
       const data = await res.json();
       if (data.url) window.open(data.url, "_blank"); 
       else throw new Error(data.error || "No URL returned");
+      
     } catch (err) {
       showPopup({ type: "error", title: t('errWalletTitle'), message: t('errWalletMsg'), confirmText: t('btnClose') });
     } finally {
@@ -132,10 +137,11 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     }
   };
 
+  // Handles capturing the ticket, generating a PDF, and delegating the email to the backend API
   const handleSendTicketEmail = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || !emailRegex.test(recipientEmail)) { 
-      showPopup({ type: "error", title: t('errEmailValidTitle'), message: t('errEmailValidMsg'), confirmText: t('btnTryAgain') }); 
+      showPopup({ type: "error", title: t('errEmailValidTitle'), message: t('errEmailValidMsg'), confirmText: t('btnTryAgain') });
       return; 
     }
     
@@ -143,32 +149,36 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     try {
       const dataUrl = await captureTicketImage();
       
-      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF library only when clicked!
       const { default: jsPDF } = await import('jspdf');
-
+      
       const img = new Image();
       img.src = dataUrl;
       await new Promise((resolve) => { img.onload = resolve; });
-
+      
       const pdfW = 360;
       const pdfH = (img.height * pdfW) / img.width;
-
+      
       const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
       pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
       const pdfBase64 = pdf.output('datauristring');
 
-      // 🔒 SECURITY CHECK: Grab the secure token
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      await fetch("/api/send-ticket", { 
+      
+      const res = await fetch("/api/send-ticket", { 
         method: "POST", 
         headers, 
         body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
       });
-      
-      updateDoc(doc(db, "tickets", ticket.id), { emailSentCount: (ticket.emailSentCount || 0) + 1 }).catch(console.error);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send email");
+      }
+
+      // Update the local UI state without writing to Firestore from the client
+      // This bypasses the security rules restriction safely
       if (onUpdateDesktopTicket) {
         onUpdateDesktopTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
       }
@@ -176,6 +186,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       showPopup({ type: "success", title: t('successSentTitle'), message: t('successSentMsg', { email: recipientEmail }), confirmText: t('btnDone') });
       setRecipientEmail(""); 
     } catch (err) {
+      console.error("Send email error:", err);
       showPopup({ type: "error", title: t('errPdfTitle'), message: t('errPdfMsg'), confirmText: t('btnClose') });
     } finally {
       setSendingEmail(false);
@@ -194,7 +205,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
           </div>
         )}
 
-        {/* Locked strictly to 520px on mobile */}
+        {/* Display Container: Locked to 520px on mobile for consistency */}
         <div id={`ticket-card-${ticket.id}`} className="w-full max-w-[340px] md:max-w-none md:w-[850px] mx-auto bg-white rounded-[2rem] md:rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden shrink-0 h-[520px] md:h-[400px]" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
           
           <button onClick={handleDownloadPDF} title={t('btnDownloadPdf')} className="export-ignore absolute top-4 right-4 md:top-8 md:right-8 z-50 p-3 bg-gray-50 hover:bg-salsa-pink hover:text-white rounded-full transition-all duration-300 cursor-pointer shadow-sm border border-gray-100">
@@ -221,7 +232,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
               {ticket.userName}
             </h2>
             <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-3 md:mb-8 relative z-10 shrink-0">{t('lblId')}: {ticket.ticketID}</p>
-            
+ 
             <div className="grid grid-cols-2 gap-2 md:gap-3 mt-auto relative z-10 shrink-0">
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblEvent')}</span>
@@ -248,7 +259,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
           </div>
         </div>
 
-        {/* CONTROLS */}
+        {/* Action Controls */}
         <div className="w-full max-w-[340px] md:max-w-[700px] mx-auto bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl flex flex-col justify-center gap-2 shrink-0 h-auto">
           <button onClick={handleAddToWallet} disabled={addingToWallet} className="flex md:hidden w-full bg-black text-white font-black px-4 py-3 rounded-xl shadow-md hover:bg-slate-800 transition-all uppercase tracking-widest text-xs items-center justify-center gap-2 disabled:opacity-50 shrink-0">
             {addingToWallet ? <Loader2 size={16} className="animate-spin" /> : (
@@ -268,7 +279,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
           </div>
           
           <div className="border-t border-gray-50 pt-2 shrink-0 mt-1">
-            <div className="relative flex items-center w-full">
+             <div className="relative flex items-center w-full">
               <Mail className="absolute left-3 md:left-4 text-gray-400" size={18} />
               <input type="email" maxLength={50} placeholder={t('placeholderEmail')} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-xs uppercase tracking-widest font-montserrat" />
               <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-1.5 md:right-2 bg-salsa-pink text-white px-4 py-2 rounded-lg font-black text-xs md:text-[11px] uppercase hover:bg-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm font-montserrat">
@@ -282,12 +293,12 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
   );
 }
 
-// --- MAIN WRAPPER ---
+// Main Modal Wrapper Component
 export default function TicketModal({ ticket: activeTicket, ticketsList, setTicket, onClose }) {
   const t = useTranslations('TicketModal');
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
 
-  // Helper to translate internal DB pass names for the UI (Used in phantom tickets)
+  // Translates internal database pass names into localized UI strings for phantom tickets
   const translatePassDisplay = (type) => {
       const typeLower = (type || '').toLowerCase();
       if (typeLower.includes('full')) return t('passFull');
@@ -297,7 +308,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       return type;
   };
 
-  // BODY SCROLL LOCK Logic
+  // Body Scroll Lock Logic to prevent background scrolling when modal is open
   useEffect(() => {
     const originalOverflow = window.getComputedStyle(document.body).overflow;
     document.body.style.overflow = 'hidden';
@@ -306,6 +317,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
     };
   }, []);
 
+  // Keyboard Navigation Logic
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "ArrowRight" && currentIndex < ticketsList.length - 1) setTicket(ticketsList[currentIndex + 1]);
@@ -316,6 +328,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentIndex, ticketsList, setTicket, onClose]);
 
+  // Center the active ticket in mobile view
   useEffect(() => {
     const el = document.getElementById(`mobile-slide-${activeTicket.id}`);
     if (el) el.scrollIntoView({ behavior: 'instant', inline: 'center' });
@@ -328,17 +341,11 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       
       <style dangerouslySetInnerHTML={{__html: `.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}} />
 
-      {/* CRITICAL BUG FIX FOR MOBILE: 
-        The phantom tickets are now rendered here at the very root of the modal.
-        By keeping them completely outside of the mobile overflow/scroll container,
-        html-to-image will no longer silently crash on iOS/Safari.
-        opacity 0.001 keeps it invisible but forces the browser to paint it. 
-      */}
+      {/* Phantom Tickets: Rendered at the root level outside scroll containers to prevent html-to-image clipping errors on mobile devices */}
       <div className="fixed top-0 left-0 pointer-events-none" style={{ opacity: 0.001, zIndex: -10 }}>
         {ticketsList.map((ticketObj) => (
           <div id={`phantom-ticket-${ticketObj.id}`} key={`phantom-${ticketObj.id}`} className="w-[360px] h-[820px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
               <div className="p-8 flex items-center justify-center bg-gray-50 border-b-2 border-dashed border-gray-200 shrink-0 min-h-[340px]">
-                  {/* Huge 260px QR Code for the PDF */}
                   <div className="w-[260px] h-[260px] bg-white p-4 rounded-[1.5rem] border border-gray-100 flex items-center justify-center shadow-sm">
                       <QRCodeSVG value={ticketObj.ticketID} size={256} style={{ width: "100%", height: "100%" }} level="H" />
                   </div>
@@ -377,11 +384,8 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
         ))}
       </div>
 
-      {/* ======================= */}
-      {/* DESKTOP VIEW */}
-      {/* ======================= */}
+      {/* Desktop Layout */}
       <div className="hidden md:flex relative flex-col items-center justify-center p-8 z-[105]" onClick={onClose}>
-        
         <div className="w-full flex justify-end mb-4 pr-16">
             <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="cursor-pointer text-white hover:text-salsa-pink hover:scale-110 hover:rotate-90 transition-all duration-300 bg-white/10 p-2 rounded-full backdrop-blur-md">
                 <X size={24} />
@@ -409,9 +413,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
         </div>
       </div>
 
-      {/* ======================= */}
-      {/* MOBILE VIEW */}
-      {/* ======================= */}
+      {/* Mobile Layout */}
       <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="md:hidden fixed top-4 right-4 text-white hover:text-salsa-pink transition-all bg-white/10 p-2 rounded-full backdrop-blur-md z-[120]">
           <X size={24} />
       </button>
