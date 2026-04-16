@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { adminAuth, adminDb } from '@/lib/firebase-admin'; // <-- IMPORT adminDb
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
+
+// VERCEL FIX: Tell Vercel to allow this function to run for up to 60 seconds
+// Otherwise, it times out before the PDF finishes sending over SMTP!
+export const maxDuration = 60;
 
 export async function GET() {
   return NextResponse.json({ message: "Success! The send-ticket API is awake and routing correctly." });
@@ -49,9 +53,11 @@ export async function POST(request) {
       }
     } else {
       // --- GUEST FLOW ---
-      // Guests do not have an auth header. We only allow this if the ticket is specifically marked as a guest ticket
-      // AND the requested email matches the guest email on file in the database.
-      if (!ticketData.isGuest || ticketData.guestEmail !== email.toLowerCase()) {
+      // LOGIC BUG FIX: We removed the `isGuest` check and simply check if the email
+      // they provided matches the guestEmail we saved in the database during checkout.
+      const savedEmail = (ticketData.guestEmail || "").toLowerCase();
+      
+      if (!savedEmail || savedEmail !== email.toLowerCase()) {
          return NextResponse.json({ error: 'Unauthorized: Missing token or email mismatch' }, { status: 401 });
       }
     }
@@ -61,7 +67,7 @@ export async function POST(request) {
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS, 
+        pass: process.env.EMAIL_PASS, // NOTE: MUST BE A GOOGLE APP PASSWORD IN VERCEL
       },
     });
 

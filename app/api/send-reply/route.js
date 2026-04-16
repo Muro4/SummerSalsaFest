@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { adminAuth } from '@/lib/firebase-admin'; // <-- IMPORT ADMIN SDK
 
+// VERCEL FIX: Tell Vercel to allow this function to run for up to 60 seconds
+export const maxDuration = 60;
+
 export async function POST(request) {
   console.log("📨 POST request received at /api/send-reply");
 
@@ -45,7 +48,7 @@ export async function POST(request) {
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS, 
+        pass: process.env.EMAIL_PASS, // NOTE: MUST BE A GOOGLE APP PASSWORD IN VERCEL
       },
     });
 
