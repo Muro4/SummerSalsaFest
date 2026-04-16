@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getPriceAtDate } from "@/lib/pricing"; 
-import { adminDb, adminAuth } from "@/lib/firebase-admin"; // <-- ADDED adminAuth
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req) {
   try {
@@ -23,54 +23,81 @@ export async function POST(req) {
     // 🔒 1. IDENTIFY THE REQUESTER
     const authHeader = req.headers.get('authorization');
     let requesterId = null;
+    let requesterEmail = null;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split('Bearer ')[1];
       const decodedToken = await adminAuth.verifyIdToken(token);
       requesterId = decodedToken.uid;
+      requesterEmail = decodedToken.email;
     } else if (guestSessionId) {
       requesterId = guestSessionId;
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticketIdsArray = items.map(item => item.id);
-    const ticketRefs = ticketIdsArray.map(id => adminDb.collection("tickets").doc(id));
-    const ticketSnapshots = await adminDb.getAll(...ticketRefs);
-
+    const ticketIdsArray = [];
     const lineItems = [];
+    const batch = adminDb.batch(); // Use a batch to write all tickets at once efficiently
 
-    for (const docSnap of ticketSnapshots) {
-      if (!docSnap.exists) return NextResponse.json({ error: `Ticket not found.` }, { status: 404 });
-      
-      const realTicket = docSnap.data();
-
-      // 🔒 2. OWNERSHIP VERIFICATION (The IDOR Fix)
-      if (realTicket.userId !== requesterId) {
-        return NextResponse.json({ error: `Forbidden: You do not own this ticket.` }, { status: 403 });
+    // 🔒 2. SECURELY PROCESS CART ITEMS & CREATE PENDING TICKETS
+    for (const item of items) {
+      // Calculate price securely on the server to prevent client spoofing
+      const serverPrice = getPriceAtDate(item.passType); 
+      if (serverPrice === undefined || isNaN(serverPrice)) {
+        return NextResponse.json({ error: `Invalid pass type: ${item.passType}` }, { status: 400 });
       }
-      
-      const serverPrice = getPriceAtDate(realTicket.passType); 
-      if (serverPrice === undefined || isNaN(serverPrice)) throw new Error(`Invalid pass type`);
 
+      // Build Stripe Line Item
       lineItems.push({
         price_data: {
           currency: "eur",
           product_data: {
-            name: String(realTicket.passType || "Festival Ticket"),
-            description: `Attendee: ${realTicket.userName || "Guest"} | ID: ${realTicket.ticketID || "N/A"}`,
+            name: String(item.passType || "Festival Ticket"),
+            description: `Attendee: ${item.userName || "Guest"}`,
           },
           unit_amount: Math.round(serverPrice * 100), 
         },
         quantity: 1,
       });
+
+      // Generate a nice readable Ticket ID (e.g., SSF-A8F2B)
+      const friendlyTicketID = `SSF-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+      // We use the item.id from the cart as the document ID. 
+      // If the user clicks "Checkout", goes back, and clicks "Checkout" again, 
+      // it just overwrites the same pending ticket instead of making duplicates!
+      const ticketRef = adminDb.collection("tickets").doc(item.id);
+      ticketIdsArray.push(item.id);
+
+      batch.set(ticketRef, {
+        userId: requesterId,
+        userName: item.userName || "Guest",
+        guestEmail: item.guestEmail || requesterEmail || null,
+        passType: item.passType,
+        price: serverPrice,
+        status: "pending", // Important: Stays pending until Stripe webhook confirms payment
+        festivalYear: 2026,
+        ticketID: friendlyTicketID,
+        createdAt: new Date().toISOString()
+      }, { merge: true });
     }
 
+    // Commit all new pending tickets to Firestore
+    await batch.commit();
+
+    // 3. CREATE CHECKOUT SESSION TRACKER
     const checkoutSessionRef = adminDb.collection("checkout_sessions").doc();
-    await checkoutSessionRef.set({ ticketIds: ticketIdsArray, status: "pending", createdAt: new Date().toISOString() });
+    await checkoutSessionRef.set({ 
+      ticketIds: ticketIdsArray, 
+      status: "pending", 
+      userId: requesterId,
+      createdAt: new Date().toISOString() 
+    });
 
     const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
+    // 4. INITIATE STRIPE SESSION
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
@@ -82,6 +109,7 @@ export async function POST(req) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Checkout Error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred during checkout." }, { status: 500 });
   }
 }
