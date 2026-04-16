@@ -308,7 +308,9 @@
     "passParty": "Party Pass",
     "passFull": "Full Pass",
     "passDay": "Day Pass",
-    "passFree": "Free Pass"
+    "passFree": "Free Pass",
+    "lblDate": "Date",
+    "lblTime": "Time"
   },
   "Account": {
     "tabPasses": "Active Passes",
@@ -800,7 +802,22 @@
     "deleteConfirm": "Yes, Delete",
     "deleted": "Deleted",
     "deleteSuccess": "Artist removed successfully."
-  }
+  },
+  "UsersTab": {
+  "roleUser": "User",
+  "roleAmbassador": "Ambassador",
+  "roleScanner": "Scanner",
+  "roleAdmin": "Admin",
+  "roleSuperAdmin": "Super Admin",
+  "searchPlaceholder": "Search by name or email...",
+  "filterAll": "All Roles",
+  "thUser": "User",
+  "thEmail": "Email",
+  "thAmbassador": "Ambassador Tag",
+  "thRole": "System Role",
+  "emptyMsg": "No users found.",
+  "unnamedUser": "Unknown"
+}
   
 
 }

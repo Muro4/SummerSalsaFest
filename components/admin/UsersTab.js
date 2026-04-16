@@ -26,11 +26,11 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
 
    // Memoize the standard role options to avoid repeating them
    const baseRoleOptions = useMemo(() => [
-      { label: t('roleUser') || 'User', value: 'user', isPill: true, colorClass: getRoleStyle('user') },
-      { label: t('roleAmbassador') || 'Ambassador', value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
-      { label: t('roleScanner') || 'Scanner', value: 'scanner', isPill: true, colorClass: getRoleStyle('scanner') },
-      { label: t('roleAdmin') || 'Admin', value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
-      { label: t('roleSuperAdmin') || 'Super Admin', value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
+      { label: t('roleUser'), value: 'user', isPill: true, colorClass: getRoleStyle('user') },
+      { label: t('roleAmbassador'), value: 'ambassador', isPill: true, colorClass: getRoleStyle('ambassador') },
+      { label: t('roleScanner'), value: 'scanner', isPill: true, colorClass: getRoleStyle('scanner') },
+      { label: t('roleAdmin'), value: 'admin', isPill: true, colorClass: getRoleStyle('admin') },
+      { label: t('roleSuperAdmin'), value: 'superadmin', isPill: true, colorClass: getRoleStyle('superadmin') }
    ], [t]);
 
    const safeUsers = Array.isArray(users) ? users : [];
@@ -40,7 +40,10 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
       const results = safeUsers.filter(u => {
          const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
          
-         const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+         // SMART FALLBACK: If name is missing, use the prefix of the email address
+         const displayName = u.name || (u.email ? u.email.split('@')[0] : t('unnamedUser'));
+         
+         const matchesSearch = displayName.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
          
          const matchesRole = roleFilter === "all" || displayRole === roleFilter;
@@ -48,15 +51,19 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
          return matchesSearch && matchesRole;
       });
 
-      // Sort alphabetically by name
-      results.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      // Sort alphabetically by name (or fallback email prefix)
+      results.sort((a, b) => {
+          const nameA = a.name || (a.email ? a.email.split('@')[0] : "");
+          const nameB = b.name || (b.email ? b.email.split('@')[0] : "");
+          return nameA.localeCompare(nameB);
+      });
       
       // Reset to page 1 if a filter changes and the current page is now empty
       if (currentPage > Math.ceil(results.length / itemsPerPage) && results.length > 0) {
         setCurrentPage(1);
       }
       return results;
-   }, [safeUsers, historyStagedData, searchTerm, roleFilter, currentPage, itemsPerPage]);
+   }, [safeUsers, historyStagedData, searchTerm, roleFilter, currentPage, itemsPerPage, t]);
 
    // Pagination calculations
    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
@@ -96,7 +103,7 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
                <input 
                  type="text" 
                  value={searchTerm} 
-                 placeholder={t('searchPlaceholder') || "Search by name or email..."} 
+                 placeholder={t('searchPlaceholder')} 
                  className="w-full p-5 pl-14 bg-white border border-gray-200 rounded-2xl font-bold text-xs uppercase outline-none focus:border-slate-900 transition-all font-montserrat text-slate-900 shadow-sm" 
                  onChange={handleSearch} 
                />
@@ -109,7 +116,7 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
                      value={roleFilter} 
                      onChange={(val) => { setRoleFilter(val); setCurrentPage(1); }} 
                      options={[
-                        { label: t('filterAll') || 'All Roles', value: 'all' }, 
+                        { label: t('filterAll'), value: 'all' }, 
                         ...baseRoleOptions
                      ]} 
                      variant="filter"
@@ -127,21 +134,26 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
                <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-6 pl-10 font-bold w-1/3 border-b border-gray-100">{t('thUser') || 'User'}</th>
-                        <th className="p-6 font-bold w-1/3 border-b border-gray-100">{t('thEmail') || 'Email'}</th>
-                        <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thAmbassador') || 'Ambassador Tag'}</th>
-                        <th className="p-6 pr-10 font-bold text-right w-48 border-b border-gray-100">{t('thRole') || 'System Role'}</th>
+                        <th className="p-6 pl-10 font-bold w-1/3 border-b border-gray-100">{t('thUser')}</th>
+                        <th className="p-6 font-bold w-1/3 border-b border-gray-100">{t('thEmail')}</th>
+                        <th className="p-6 font-bold w-48 border-b border-gray-100">{t('thAmbassador')}</th>
+                        <th className="p-6 pr-10 font-bold text-right w-48 border-b border-gray-100">{t('thRole')}</th>
                      </tr>
                   </thead>
                   <tbody className="uppercase text-xs">
                      {paginatedUsers.map((u) => {
                         const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
                         const isMySuperAdmin = displayRole === 'superadmin' && u.id === currentUserId;
+                        
+                        // Apply the smart fallback for rendering
+                        const displayName = u.name || (u.email ? u.email.split('@')[0] : t('unnamedUser'));
 
                         return (
                            <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                               <td className="p-6 pl-10 align-middle border-b border-gray-50">
-                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">{u.name}</span>
+                                 <span className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">
+                                    {displayName}
+                                 </span>
                               </td>
                               <td className="p-6 align-middle border-b border-gray-50">
                                  <span className="text-[11px] font-bold text-slate-400 tracking-widest lowercase">{u.email}</span>
@@ -227,19 +239,22 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
             {paginatedUsers.map((u, index) => {
                const displayRole = historyStagedData?.[`users_${u.id}`]?.role || u.role || 'user';
                const isMySuperAdmin = displayRole === 'superadmin' && u.id === currentUserId;
+               
+               // Apply the smart fallback for rendering
+               const displayName = u.name || (u.email ? u.email.split('@')[0] : t('unnamedUser'));
 
                return (
                   <div key={u.id} style={{ zIndex: paginatedUsers.length - index }} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative overflow-visible">
                      <div className="flex flex-col gap-1">
                         <span className="block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest break-words">
-                           {u.name}
+                           {displayName}
                         </span>
                         <span className="block text-[11px] font-bold text-slate-400 tracking-widest lowercase break-words">
                            {u.email}
                         </span>
                      </div>
                      <div className="flex items-center w-full mt-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">{t('thAmbassador') || 'Ambassador'}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">{t('thAmbassador')}</span>
                         <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
                         <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
                            <Users size={12} className="text-slate-400" />
@@ -248,7 +263,7 @@ export default function UsersTab({ users = [], currentUserId, onStageChange, his
                      </div>
                      <div className="flex items-center justify-between pt-4 border-t border-gray-50 w-full relative z-20">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                           {t('thRole') || 'Role'}
+                           {t('thRole')}
                            {isMySuperAdmin && <ShieldAlert size={14} className="text-slate-300" />}
                         </span>
                         <div className="scale-[0.85] origin-right">

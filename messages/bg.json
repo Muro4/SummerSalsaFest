@@ -304,9 +304,11 @@
     "btnAccount": "Към моя акаунт",
     "btnHome": "Начална страница",
     "passParty": "Парти Пас",
-    "passFull": "фул пас",
+    "passFull": "Фул пас",
     "passDay": "Дневен Пас",
-    "passFree": "Безплатен Пас"
+    "passFree": "Безплатен Пас",
+    "lblDate": "Дата",
+     "lblTime": "Час"
   },
   "Account": {
     "tabPasses": "Активни Пасове",
@@ -826,6 +828,21 @@
     "deleteConfirm": "Да, Изтрий",
     "deleted": "Изтрит",
     "deleteSuccess": "Артистът беше успешно премахнат."
-  }
+  },
+  "UsersTab": {
+  "roleUser": "Потребител",
+  "roleAmbassador": "Амбасадор",
+  "roleScanner": "Скенер",
+  "roleAdmin": "Админ",
+  "roleSuperAdmin": "Супер Админ",
+  "searchPlaceholder": "Търси по име или имейл...",
+  "filterAll": "Всички роли",
+  "thUser": "Потребител",
+  "thEmail": "Имейл",
+  "thAmbassador": "Амбасадорски таг",
+  "thRole": "Системна роля",
+  "emptyMsg": "Няма намерени потребители.",
+  "unnamedUser": "Неизвестен"
+}
   
 }
