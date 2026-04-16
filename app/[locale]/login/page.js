@@ -10,12 +10,14 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing
+import { useRouter } from "@/routing"; 
 import Button from "@/components/Button";
 import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft, Loader2, Key } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
-// --- DYNAMIC PASSWORD ACCORDION ---
+// -----------------------------------------------------------------------------
+// DYNAMIC PASSWORD VALIDATOR ACCORDION
+// -----------------------------------------------------------------------------
 function PasswordAccordion({ passReqs, isFocused, passwordLength, t }) {
   const showAccordion = isFocused || passwordLength > 0;
   
@@ -48,7 +50,9 @@ function PasswordAccordion({ passReqs, isFocused, passwordLength, t }) {
   );
 }
 
-// --- MAIN LOGIN LOGIC CONTENT ---
+// -----------------------------------------------------------------------------
+// MAIN AUTHENTICATION CONTENT
+// -----------------------------------------------------------------------------
 function LoginContent() {
   const t = useTranslations('Auth');
   const router = useRouter();
@@ -56,39 +60,37 @@ function LoginContent() {
   
   const urlMode = searchParams.get('mode');
 
-  // Default to Login, unless the URL says 'signup' or they are a guest
+  // Mode States
   const [isLogin, setIsLogin] = useState(urlMode !== 'signup');
   const [isResetMode, setIsResetMode] = useState(false);
   
+  // UI States
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
   
-  // Form State
+  // Form Data States
   const [name, setName] = useState(""); 
-  const [identifier, setIdentifier] = useState(""); 
-  const [email, setEmail] = useState(""); 
+  const [identifier, setIdentifier] = useState(""); // Used for Login (Email or Name)
+  const [email, setEmail] = useState(""); // Used for Signup
   const [password, setPassword] = useState(""); 
   
-  // Status State
+  // Error & Success States
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  
-  // Real-time onBlur Validation States
   const [nameError, setNameError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  
-  const [loading, setLoading] = useState(false);
-  const [resetCooldown, setResetCooldown] = useState(0);
 
-  // --- AUTO-DETECT GUESTS ---
+  // Detect Guest Session or specific URL modes on mount
   useEffect(() => {
     if (sessionStorage.getItem("guestSessionID") || urlMode === 'signup') {
       setIsLogin(false);
     }
   }, [urlMode]);
 
-  // Handle Cooldown Timer
+  // Handle Password Reset Cooldown Timer
   useEffect(() => {
     let timer;
     if (resetCooldown > 0) {
@@ -97,7 +99,7 @@ function LoginContent() {
     return () => clearInterval(timer);
   }, [resetCooldown]);
 
-  // --- REGEX & VALIDATION ---
+  // Validation Rules
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
   const getPasswordReqs = (pass) => ({
@@ -110,15 +112,14 @@ function LoginContent() {
   
   const passReqs = getPasswordReqs(password);
   const passwordScore = Object.values(passReqs).filter(Boolean).length;
-  
-  // STRICT: All 5 requirements must be met!
   const isPasswordValid = passwordScore === 5;
-  const isPasswordInvalid = password.length > 0 && !isPasswordValid && !isLogin;
 
-  // The Magic Trigger: Hides the Google Button when user starts typing password
+  // Hides social login buttons to prevent UI clutter when focusing on password requirements
   const hideSocials = passwordFocused || password.length > 0;
 
-  // --- ONBLUR HANDLERS ---
+  // ---------------------------------------------------------------------------
+  // INPUT BLUR HANDLERS (Real-time Validation)
+  // ---------------------------------------------------------------------------
   const handleNameBlur = (e) => {
     const val = e.target.value.trim();
     if (val !== "" && val.length < 2) {
@@ -140,14 +141,16 @@ function LoginContent() {
     }
   };
 
-  // Auto-clear password error when it becomes valid
+  // Clear password error automatically once requirements are met
   useEffect(() => {
     if (passwordError && isPasswordValid) {
       setPasswordError("");
     }
   }, [isPasswordValid, passwordError]);
 
-  // --- FIRESTORE SYNC ---
+  // ---------------------------------------------------------------------------
+  // DATABASE SYNC & GUEST TRANSFER LOGIC
+  // ---------------------------------------------------------------------------
   const syncUserToFirestore = async (user, displayName) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
@@ -185,7 +188,9 @@ function LoginContent() {
     }
   };
 
-  // --- AUTH METHODS ---
+  // ---------------------------------------------------------------------------
+  // AUTHENTICATION SUBMISSION HANDLERS
+  // ---------------------------------------------------------------------------
   const handleGoogleAuth = async () => {
     setError("");
     try {
@@ -212,7 +217,7 @@ function LoginContent() {
     try {
       let loginEmail = identifier.trim();
 
-      // If they typed a name instead of an email, look it up in Firestore
+      // Look up email by displayName if user input does not match email pattern
       if (!emailRegex.test(loginEmail)) {
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("displayName", "==", loginEmail));
@@ -249,6 +254,7 @@ function LoginContent() {
     setNameError("");
     setPasswordError("");
     
+    // Final pre-flight validation
     if (name.trim().length < 2) {
       setNameError(t('errNameLen'));
       return;
@@ -264,9 +270,13 @@ function LoginContent() {
 
     setLoading(true);
     try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(res.user, { displayName: name.trim() });
-      await syncUserToFirestore(res.user, name.trim());
+      // FIX: Ensure email is trimmed before sending to Firebase to prevent 400 Errors
+      const safeEmail = email.trim(); 
+      const safeName = name.trim();
+
+      const res = await createUserWithEmailAndPassword(auth, safeEmail, password);
+      await updateProfile(res.user, { displayName: safeName });
+      await syncUserToFirestore(res.user, safeName);
       
       const transferred = await transferGuestTickets(res.user.uid);
       if (transferred) {
@@ -275,7 +285,8 @@ function LoginContent() {
         router.push("/"); 
       }
     } catch (err) {
-      setError(err.message.includes("email-already-in-use") ? t('errEmailInUse') : t('errCreateFail'));
+      console.error("Signup Auth Error:", err.code, err.message);
+      setError(err.code === "auth/email-already-in-use" ? t('errEmailInUse') : t('errCreateFail'));
     } finally {
       setLoading(false);
     }
@@ -299,13 +310,13 @@ function LoginContent() {
       setSuccessMsg(t('msgResetSuccess'));
       setResetCooldown(60);
     } catch (err) {
-      console.error(err);
       setError(err.code === 'auth/user-not-found' ? t('errResetNoUser') : t('errResetFail'));
     } finally {
       setLoading(false);
     }
   };
 
+  // Resets entire form state when switching between Login/Signup views
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setIsResetMode(false);
@@ -323,9 +334,9 @@ function LoginContent() {
   return (
     <div className="relative w-full max-w-4xl min-h-[750px] md:min-h-[600px] md:h-[clamp(600px,90vh,700px)] bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-16 md:mt-0">
       
-      {/* =========================================
-         LOGIN / RESET FORM
-      ========================================= */}
+      {/* ----------------------------------------------------------------------
+          LOGIN / RESET PASSWORD VIEW
+      ---------------------------------------------------------------------- */}
       <div className={`${isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-12 absolute top-0 md:left-0 h-full z-10 bg-white md:bg-transparent`}>
         
         {!isResetMode ? (
@@ -448,15 +459,14 @@ function LoginContent() {
         )}
       </div>
 
-      {/* =========================================
-         SIGN UP FORM 
-      ========================================= */}
+      {/* ----------------------------------------------------------------------
+          SIGN UP VIEW
+      ---------------------------------------------------------------------- */}
       <div className={`${!isLogin ? 'flex' : 'hidden'} md:flex flex-col justify-center w-full md:w-1/2 p-8 lg:p-10 absolute top-0 md:right-0 h-full z-10 bg-white md:bg-transparent`}>
         <h1 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mb-6 uppercase text-center tracking-wide leading-none">{t('signUpTitle')}</h1>
         
         <form onSubmit={handleSignUp} className="space-y-3 relative z-10">
           
-          {/* Name Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblName')}</label>
             <div className="relative flex items-center">
@@ -485,7 +495,6 @@ function LoginContent() {
             )}
           </div>
 
-          {/* Email Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblEmail')}</label>
             <div className="relative flex items-center">
@@ -517,7 +526,6 @@ function LoginContent() {
             )}
           </div>
           
-          {/* Password Field */}
           <div className="space-y-1">
             <label className="text-[11px] font-black uppercase tracking-widest text-slate-800 ml-2">{t('lblCreatePass')}</label>
             <div className="relative flex items-center">
@@ -557,7 +565,6 @@ function LoginContent() {
             {loading ? t('btnCreating') : t('btnSignUp')}
           </Button>
 
-          {/* THE MAGIC DISAPPEARING GOOGLE BUTTON */}
           <div className={`grid transition-all duration-500 ease-in-out ${hideSocials ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
             <div className="overflow-hidden">
               <div className="p-1">
@@ -583,9 +590,9 @@ function LoginContent() {
         </form>
       </div>
 
-      {/* =========================================
-         THE MAGIC SLIDING OVERLAY
-      ========================================= */}
+      {/* ----------------------------------------------------------------------
+          THE SLIDING DESKTOP OVERLAY
+      ---------------------------------------------------------------------- */}
       <div className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full z-30 transition-transform duration-700 ease-in-out ${isLogin ? 'translate-x-full' : 'translate-x-0'}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-teal-100 to-salsa-mint shadow-2xl">
           <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #0a0024 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
@@ -618,7 +625,9 @@ function LoginContent() {
   );
 }
 
-// --- REQUIRED DEFAULT EXPORT ---
+// -----------------------------------------------------------------------------
+// REQUIRED DEFAULT EXPORT
+// -----------------------------------------------------------------------------
 export default function LoginPage() {
   const t = useTranslations('Auth');
   return (
