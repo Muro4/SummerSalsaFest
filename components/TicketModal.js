@@ -51,7 +51,6 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
   const [addingToWallet, setAddingToWallet] = useState(false);
   const { showPopup } = usePopup();
 
-  // Translates internal database pass names into localized UI strings
   const translatePassDisplay = (type) => {
       const typeLower = (type || '').toLowerCase();
       if (typeLower.includes('full')) return t('passFull');
@@ -61,10 +60,9 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       return type;
   };
 
-  // Captures the DOM element as a high-quality PNG using html-to-image
-  const captureTicketImage = async () => {
-    // Dynamic import to reduce initial bundle size and optimize performance
-    const { toPng } = await import('html-to-image');
+  // Captures the DOM element using html-to-image with dynamic compression
+  const captureTicketImage = async (forEmail = false) => {
+    const { toPng, toJpeg } = await import('html-to-image');
 
     const targetId = `phantom-ticket-${ticket.id}`;
     const element = document.getElementById(targetId);
@@ -72,35 +70,46 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     if (!element) return null;
     
     try {
-      return await toPng(element, { 
-        quality: 1, 
-        pixelRatio: 2, 
-        backgroundColor: "#ffffff", 
-        skipFonts: true,
-        fontEmbedCSS: '',
-        filter: (node) => !node.classList?.contains('export-ignore'),
-        style: { boxShadow: "none", margin: "0", padding: "0" } 
-      });
+      if (forEmail) {
+        // VERCEL FIX: Heavily compress to JPEG for email payloads to bypass the 4.5MB limit
+        return await toJpeg(element, { 
+          quality: 0.7, 
+          pixelRatio: 1.5, 
+          backgroundColor: "#ffffff", 
+          skipFonts: true,
+          fontEmbedCSS: '',
+          filter: (node) => !node.classList?.contains('export-ignore'),
+          style: { boxShadow: "none", margin: "0", padding: "0" } 
+        });
+      } else {
+        // MAXIMUM QUALITY: Uncompressed PNG for direct device downloads
+        return await toPng(element, { 
+          quality: 1, 
+          pixelRatio: 3, 
+          backgroundColor: "#ffffff", 
+          skipFonts: true,
+          fontEmbedCSS: '',
+          filter: (node) => !node.classList?.contains('export-ignore'),
+          style: { boxShadow: "none", margin: "0", padding: "0" } 
+        });
+      }
     } catch (e) {
       console.error("Capture error:", e);
       return null;
     }
   };
 
-  // Handles generating and downloading the PDF locally
   const handleDownloadPDF = async () => {
     try {
-      const dataUrl = await captureTicketImage();
+      const dataUrl = await captureTicketImage(false); // False = Max Quality
       if (!dataUrl) throw new Error(t('errCapture'));
 
-      // Dynamic import for jsPDF to optimize performance
       const { default: jsPDF } = await import('jspdf');
 
       const img = new Image();
       img.src = dataUrl;
       await new Promise((resolve) => { img.onload = resolve; });
 
-      // Maintain aspect ratio matching the phantom ticket dimensions
       const pdfW = 360;
       const pdfH = (img.height * pdfW) / img.width;
 
@@ -112,7 +121,6 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     }
   };
 
-  // Handles adding the ticket to Google Wallet
   const handleAddToWallet = async () => {
     setAddingToWallet(true);
     try {
@@ -137,7 +145,6 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     }
   };
 
-  // Handles capturing the ticket, generating a PDF, and delegating the email to the backend API
   const handleSendTicketEmail = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || !emailRegex.test(recipientEmail)) { 
@@ -147,7 +154,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
     
     setSendingEmail(true);
     try {
-      const dataUrl = await captureTicketImage();
+      // True = Compress to bypass Vercel limits
+      const dataUrl = await captureTicketImage(true); 
       
       const { default: jsPDF } = await import('jspdf');
       
@@ -159,7 +167,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       const pdfH = (img.height * pdfW) / img.width;
       
       const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
+      // Tell jsPDF to compress the image internally as well
+      pdf.addImage(dataUrl, "JPEG", 0, 0, pdfW, pdfH, undefined, 'FAST');
       const pdfBase64 = pdf.output('datauristring');
 
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
@@ -169,7 +178,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       const res = await fetch("/api/send-ticket", { 
         method: "POST", 
         headers, 
-        body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
+        body: JSON.stringify({ email: recipientEmail.toLowerCase(), ticket, pdfAttachment: pdfBase64 }) 
       });
 
       if (!res.ok) {
@@ -177,8 +186,7 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
         throw new Error(errorData.error || "Failed to send email");
       }
 
-      // Update the local UI state without writing to Firestore from the client
-      // This bypasses the security rules restriction safely
+      // Safe client-side UI update (prevents Firestore permission errors)
       if (onUpdateDesktopTicket) {
         onUpdateDesktopTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
       }
@@ -281,7 +289,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
           <div className="border-t border-gray-50 pt-2 shrink-0 mt-1">
              <div className="relative flex items-center w-full">
               <Mail className="absolute left-3 md:left-4 text-gray-400" size={18} />
-              <input type="email" maxLength={50} placeholder={t('placeholderEmail')} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-xs uppercase tracking-widest font-montserrat" />
+              {/* CSS FIX: Removed uppercase and tracking-widest so emails type normally */}
+              <input type="email" maxLength={50} placeholder={t('placeholderEmail')} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-sm font-montserrat" />
               <button onClick={handleSendTicketEmail} disabled={sendingEmail} className="cursor-pointer absolute right-1.5 md:right-2 bg-salsa-pink text-white px-4 py-2 rounded-lg font-black text-xs md:text-[11px] uppercase hover:bg-pink-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm font-montserrat">
                 {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> {t('btnSend')}</>}
               </button>
@@ -298,7 +307,6 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
   const t = useTranslations('TicketModal');
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
 
-  // Translates internal database pass names into localized UI strings for phantom tickets
   const translatePassDisplay = (type) => {
       const typeLower = (type || '').toLowerCase();
       if (typeLower.includes('full')) return t('passFull');
@@ -332,8 +340,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
   useEffect(() => {
     const el = document.getElementById(`mobile-slide-${activeTicket.id}`);
     if (el) el.scrollIntoView({ behavior: 'instant', inline: 'center' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTicket.id]);
 
   return (
     <div className="fixed inset-0 z-[100] flex font-montserrat items-center justify-center">
@@ -341,7 +348,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
       
       <style dangerouslySetInnerHTML={{__html: `.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}} />
 
-      {/* Phantom Tickets: Rendered at the root level outside scroll containers to prevent html-to-image clipping errors on mobile devices */}
+      {/* Phantom Tickets: Rendered out of view to preserve high-fidelity rendering for html-to-image */}
       <div className="fixed top-0 left-0 pointer-events-none" style={{ opacity: 0.001, zIndex: -10 }}>
         {ticketsList.map((ticketObj) => (
           <div id={`phantom-ticket-${ticketObj.id}`} key={`phantom-${ticketObj.id}`} className="w-[360px] h-[820px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
