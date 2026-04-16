@@ -26,6 +26,16 @@ const getPassTextColor = (type) => {
   return 'text-slate-900';
 };
 
+const getPassStyle = (type) => `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
+
+// Formats ISO date strings into readable UI text (For the Phantom Tickets)
+const formatDate = (isoString) => {
+  if (!isoString) return { date: "Valid", time: "Pass" };
+  const d = new Date(isoString);
+  if (isNaN(d)) return { date: "Valid", time: "Pass" };
+  return { date: d.toLocaleDateString('en-GB'), time: d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) };
+};
+
 // 1. THE MAIN CONTENT COMPONENT
 function SuccessContent() {
   const t = useTranslations('Success');
@@ -49,23 +59,18 @@ function SuccessContent() {
     return type;
   };
 
-  // THE FIX: Smart Fetching to Bypass Collection Rule Restrictions
   useEffect(() => {
     let isMounted = true;
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!isMounted) return;
       
-      // Small delay to let the Stripe webhook activate tickets in the background
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const currentID = user ? user.uid : sessionStorage.getItem("guestSessionID");
       setIsGuest(!user);
 
       if (user) {
-        // ==========================================
-        // LOGGED-IN USERS: Can safely query the collection
-        // ==========================================
         try {
           const q = query(collection(db, "tickets"), where("userId", "==", currentID));
           const snap = await getDocs(q);
@@ -84,19 +89,15 @@ function SuccessContent() {
           setLoading(false);
         }
       } else if (currentID) {
-        // ==========================================
-        // GUEST USERS: Use individual getDoc to bypass 'list' rules
-        // ==========================================
         try {
           let guestTicketIds = JSON.parse(sessionStorage.getItem("guestTicketIds") || "[]");
           const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
           
-          // If returning from Stripe, grab the IDs, save them, and clean up the cart
           if (localCart.length > 0) {
             guestTicketIds = localCart.map(item => item.id);
             sessionStorage.setItem("guestTicketIds", JSON.stringify(guestTicketIds));
             localStorage.removeItem("cart");
-            window.dispatchEvent(new Event("cartUpdated")); // Instantly clears Navbar cart
+            window.dispatchEvent(new Event("cartUpdated")); 
           }
 
           const fetchedTickets = [];
@@ -135,27 +136,39 @@ function SuccessContent() {
       const dispatchEmails = async () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        const { toPng } = await import('html-to-image');
+        // Use toJpeg instead of toPng to compress the file and bypass the Vercel limit
+        const { toJpeg } = await import('html-to-image');
         const { default: jsPDF } = await import('jspdf');
 
         for (const ticket of tickets) {
           const targetEmail = ticket.guestEmail;
           if (!targetEmail) continue;
 
-          const element = document.getElementById(`ticket-${ticket.id}`);
+          // TARGET THE PHANTOM TICKET (Vertical) instead of the UI ticket (Horizontal)
+          const element = document.getElementById(`phantom-ticket-${ticket.id}`);
           if (element) {
             try {
-              const { width, height } = element.getBoundingClientRect();
-              const dataUrl = await toPng(element, { 
-                quality: 0.8, 
+              // High Quality Settings (Stays under 4.5MB Vercel limit)
+              const dataUrl = await toJpeg(element, { 
+                quality: 0.85, 
                 pixelRatio: 2, 
                 backgroundColor: "#ffffff", 
                 skipFonts: true, 
-                style: { boxShadow: "none" } 
+                fontEmbedCSS: '',
+                filter: (node) => !node.classList?.contains('export-ignore'),
+                style: { boxShadow: "none", margin: "0", padding: "0" } 
               });
               
-              const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
-              pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
+              const img = new Image();
+              img.src = dataUrl;
+              await new Promise((resolve) => { img.onload = resolve; });
+
+              // Enforce portrait format
+              const pdfW = 360;
+              const pdfH = (img.height * pdfW) / img.width;
+
+              const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
+              pdf.addImage(dataUrl, "JPEG", 0, 0, pdfW, pdfH, undefined, 'FAST');
               const pdfBase64 = pdf.output('datauristring');
 
               await fetch("/api/send-ticket", {
@@ -178,7 +191,9 @@ function SuccessContent() {
 
   const handleDownloadPDF = async (ticket) => {
     setDownloadingId(ticket.id);
-    const element = document.getElementById(`ticket-${ticket.id}`);
+    
+    // Target the phantom ticket for the local download too!
+    const element = document.getElementById(`phantom-ticket-${ticket.id}`);
     if (!element) {
       setDownloadingId(null);
       return;
@@ -188,17 +203,27 @@ function SuccessContent() {
       const { toPng } = await import('html-to-image');
       const { default: jsPDF } = await import('jspdf');
 
-      const { width, height } = element.getBoundingClientRect();
+      // Uncompressed max-quality PNG for direct local downloads
       const dataUrl = await toPng(element, { 
         quality: 1, 
         pixelRatio: 3, 
         backgroundColor: "#ffffff", 
         skipFonts: true, 
-        style: { boxShadow: "none" } 
+        fontEmbedCSS: '',
+        filter: (node) => !node.classList?.contains('export-ignore'),
+        style: { boxShadow: "none", margin: "0", padding: "0" } 
       });
-      const pdf = new jsPDF({ orientation: "l", unit: "px", format: [width, height] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
-      pdf.save(`SalsaFest_Ticket_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      const pdfW = 360;
+      const pdfH = (img.height * pdfW) / img.width;
+
+      const pdf = new jsPDF({ orientation: "p", unit: "px", format: [pdfW, pdfH] });
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
+      pdf.save(`SalsaFest_Pass_${ticket.userName.replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       alert(t('errDownload'));
     } finally {
@@ -207,9 +232,57 @@ function SuccessContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center w-full px-6 py-20 mt-16 md:mt-20">
+    <div className="flex-1 flex flex-col items-center justify-center w-full px-6 py-20 mt-16 md:mt-20 relative">
+      
+      {/* --------------------------------------------------------------------- */}
+      {/* PHANTOM TICKETS: Hidden from UI but used for high-quality PDF generation */}
+      {/* --------------------------------------------------------------------- */}
+      <div className="fixed top-0 left-0 pointer-events-none" style={{ opacity: 0.001, zIndex: -10 }}>
+        {tickets.map((ticketObj) => (
+          <div id={`phantom-ticket-${ticketObj.id}`} key={`phantom-${ticketObj.id}`} className="w-[360px] h-[820px] bg-white flex flex-col overflow-hidden" style={{ fontFamily: 'Arial, sans-serif' }}>
+              <div className="p-8 flex items-center justify-center bg-gray-50 border-b-2 border-dashed border-gray-200 shrink-0 min-h-[340px]">
+                  <div className="w-[260px] h-[260px] bg-white p-4 rounded-[1.5rem] border border-gray-100 flex items-center justify-center shadow-sm">
+                      <QRCodeSVG value={ticketObj.ticketID} size={256} style={{ width: "100%", height: "100%" }} level="H" />
+                  </div>
+              </div>
+              <div className="p-8 flex flex-col flex-1 bg-white">
+                  <div className="mb-4">
+                      <span className={`inline-flex items-center justify-center px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest ${getPassStyle(ticketObj.passType)}`}>
+                          {translatePassDisplay(ticketObj.passType)}
+                      </span>
+                  </div>
+                  <h2 className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2 break-words">{ticketObj.userName}</h2>
+                  <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">{t('lblId')}: {ticketObj.ticketID}</p>
+                  
+                  <div className="grid grid-cols-2 gap-3 mt-auto">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblEvent')}</span>
+                          <span className="block text-sm font-black text-slate-900 uppercase">SSF {ticketObj.festivalYear}</span>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblPrice')}</span>
+                          <span className="block text-sm font-black text-slate-900 uppercase">€{ticketObj.price}</span>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 col-span-2 flex justify-between items-center">
+                          <div>
+                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblDate')}</span>
+                              <span className="block text-sm font-bold text-slate-900">{formatDate(ticketObj.purchaseDate).date}</span>
+                          </div>
+                          <div className="text-right">
+                              <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('lblTime')}</span>
+                              <span className="block text-sm font-bold text-slate-900">{formatDate(ticketObj.purchaseDate).time}</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+        ))}
+      </div>
+
+      {/* --------------------------------------------------------------------- */}
+      {/* UI RENDER CONTENT                                                     */}
+      {/* --------------------------------------------------------------------- */}
       <div className="w-full max-w-4xl animate-in zoom-in duration-500 flex flex-col items-center">
-          
           {loading ? (
              <div className="flex flex-col items-center bg-white p-16 rounded-[4rem] shadow-2xl border-2 border-emerald-100 w-full max-w-lg">
                 <Loader2 className="animate-spin text-salsa-pink mb-6" size={60} />
@@ -237,8 +310,8 @@ function SuccessContent() {
                     <div className="grid grid-cols-1 gap-8 w-full mb-16">
                       {tickets.map(ticket => (
                         <div key={ticket.id} className="flex flex-col items-center w-full">
+                          {/* The UI Horizontal Ticket Block */}
                           <div 
-                            id={`ticket-${ticket.id}`} 
                             className="w-full max-w-[850px] bg-white rounded-[2.5rem] flex flex-col md:flex-row shadow-xl relative overflow-hidden border border-gray-100" 
                             style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
                           >

@@ -73,8 +73,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       if (forEmail) {
         // VERCEL FIX: Heavily compress to JPEG for email payloads to bypass the 4.5MB limit
         return await toJpeg(element, { 
-          quality: 0.7, 
-          pixelRatio: 1.5, 
+          quality: 0.85, 
+          pixelRatio: 2, 
           backgroundColor: "#ffffff", 
           skipFonts: true,
           fontEmbedCSS: '',
