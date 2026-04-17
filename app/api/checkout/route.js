@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getPriceAtDate } from "@/lib/pricing"; 
-import { adminDb, adminAuth } from "@/lib/firebase-admin"; // <-- ADDED adminAuth
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req) {
   try {
@@ -11,25 +11,24 @@ export async function POST(req) {
     if (!system.salesEnabled) return NextResponse.json({ error: "Ticket sales paused." }, { status: 403 });
 
     const stripeSecret = system.stripeMode === 'live' ? process.env.STRIPE_LIVE_SECRET_KEY : process.env.STRIPE_TEST_SECRET_KEY;
-    if (!stripeSecret) return NextResponse.json({ error: `Stripe config error.` }, { status: 500 });
+    if (!stripeSecret) return NextResponse.json({ error: "Stripe config error." }, { status: 500 });
     const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' });
 
     let body;
     try { body = await req.json(); } catch (e) { return NextResponse.json({ error: "Parse error" }, { status: 400 }); }
 
-    const { items, guestSessionId } = body;
+    const { items } = body;
     if (!items || !Array.isArray(items) || items.length === 0) return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
 
-    // 🔒 1. IDENTIFY THE REQUESTER
+    /* Identify Requester using standard Firebase Auth token */
     const authHeader = req.headers.get('authorization');
     let requesterId = null;
+    let decodedToken = null;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split('Bearer ')[1];
-      const decodedToken = await adminAuth.verifyIdToken(token);
+      decodedToken = await adminAuth.verifyIdToken(token);
       requesterId = decodedToken.uid;
-    } else if (guestSessionId) {
-      requesterId = guestSessionId;
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -39,19 +38,25 @@ export async function POST(req) {
     const ticketSnapshots = await adminDb.getAll(...ticketRefs);
 
     const lineItems = [];
+    let customerEmail = decodedToken.email || null;
 
     for (const docSnap of ticketSnapshots) {
-      if (!docSnap.exists) return NextResponse.json({ error: `Ticket not found.` }, { status: 404 });
+      if (!docSnap.exists) return NextResponse.json({ error: "Ticket not found." }, { status: 404 });
       
       const realTicket = docSnap.data();
 
-      // 🔒 2. OWNERSHIP VERIFICATION (The IDOR Fix)
+      /* Enforce Ownership Authorization */
       if (realTicket.userId !== requesterId) {
-        return NextResponse.json({ error: `Forbidden: You do not own this ticket.` }, { status: 403 });
+        return NextResponse.json({ error: "Forbidden: You do not own this ticket." }, { status: 403 });
+      }
+
+      /* Extract Guest Email for Stripe Autofill */
+      if (!customerEmail && realTicket.guestEmail) {
+        customerEmail = realTicket.guestEmail;
       }
       
       const serverPrice = getPriceAtDate(realTicket.passType); 
-      if (serverPrice === undefined || isNaN(serverPrice)) throw new Error(`Invalid pass type`);
+      if (serverPrice === undefined || isNaN(serverPrice)) throw new Error("Invalid pass type");
 
       lineItems.push({
         price_data: {
@@ -71,14 +76,23 @@ export async function POST(req) {
 
     const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
+    /* Stripe Session Configuration */
+    const stripePayload = {
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
+      /* Reverted back to the original cart/success routing */
       success_url: `${origin}/cart/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
       metadata: { checkoutSessionId: checkoutSessionRef.id }
-    });
+    };
+
+    /* Conditionally inject the customer email to prefill the Stripe form */
+    if (customerEmail) {
+      stripePayload.customer_email = customerEmail;
+    }
+
+    const session = await stripe.checkout.sessions.create(stripePayload);
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

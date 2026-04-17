@@ -8,8 +8,7 @@ import { useRouter, Link } from "@/routing";
 import Navbar from "@/components/Navbar";
 import Button from "@/components/Button";
 import Footer from "@/components/Footer";
-import { usePopup } from "@/components/PopupProvider";
-import { CheckCircle, Loader2, Download, ArrowRight } from "lucide-react";
+import { CheckCircle, Loader2, Download, ArrowRight, AlertTriangle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslations } from 'next-intl';
 
@@ -52,8 +51,6 @@ const getTicketNameSize = (name) => {
 function SuccessContent() {
   const t = useTranslations('Success');
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const { showPopup } = usePopup();
   
   /* Component State */
   const [loading, setLoading] = useState(true);
@@ -62,7 +59,6 @@ function SuccessContent() {
   const [downloadingId, setDownloadingId] = useState(null);
   const [emailsSent, setEmailsSent] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState(t('prepEmail'));
-  const [warningShown, setWarningShown] = useState(false);
 
   const isFreePass = searchParams.get("session_id") === "free_pass_bypass";
 
@@ -109,25 +105,6 @@ function SuccessContent() {
     };
   }, []);
 
-  /* Delayed Guest Warning Popup */
-  useEffect(() => {
-    if (isGuest && tickets.length > 0 && !warningShown) {
-      const timer = setTimeout(() => {
-        showPopup({
-          type: "warning",
-          title: t('warnTitle'),
-          message: `${t('warnText1')} ${t('warnText2')} ${t('warnText3')}`,
-          confirmText: t('btnCreateAccount'),
-          cancelText: "Dismiss",
-          onConfirm: () => router.push('/login')
-        });
-        setWarningShown(true);
-      }, 3000); 
-
-      return () => clearTimeout(timer);
-    }
-  }, [isGuest, tickets, warningShown, t, showPopup, router]);
-
   /* Automated Guest Email Dispatch (Targets Phantom Ticket) */
   useEffect(() => {
     if (isGuest && tickets.length > 0 && !emailsSent) {
@@ -141,7 +118,7 @@ function SuccessContent() {
           const targetEmail = ticket.guestEmail;
           if (!targetEmail) continue;
 
-          /* FIX: Targeting the vertical phantom ticket for the email attachment */
+          /* Targeting the vertical phantom ticket for the email attachment */
           const element = document.getElementById(`phantom-ticket-${ticket.id}`);
           if (element) {
             try {
@@ -194,7 +171,7 @@ function SuccessContent() {
     if (ticket.status !== 'active') return;
 
     setDownloadingId(ticket.id);
-    /* FIX: Targeting the vertical phantom ticket for manual download */
+    /* Targeting the vertical phantom ticket for manual download */
     const element = document.getElementById(`phantom-ticket-${ticket.id}`);
     
     if (!element) {
@@ -251,7 +228,7 @@ function SuccessContent() {
                       </span>
                   </div>
                   <h2 className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2 break-words">{ticketObj.userName}</h2>
-                  <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">{t('lblId')}: {ticketObj.ticketID}</p>
+                  <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-8">{t('lblId')} {ticketObj.ticketID}</p>
                   
                   <div className="grid grid-cols-2 gap-3 mt-auto">
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -305,6 +282,22 @@ function SuccessContent() {
                         {emailStatusMessage}
                       </p>
 
+                      {/* GUEST WARNING BANNER */}
+                      <div className="bg-amber-50 border border-amber-200 p-6 rounded-[2.5rem] w-full max-w-3xl flex flex-col md:flex-row items-center gap-6 shadow-sm text-center md:text-left mb-12">
+                        <div className="bg-white p-4 rounded-full shadow-inner text-amber-500 shrink-0">
+                          <AlertTriangle size={32} />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bebas tracking-wide text-3xl text-amber-900 uppercase mb-1">{t('warnTitle')}</h3>
+                          <p className="text-amber-700 font-medium text-sm leading-relaxed">
+                            {t('warnText1')} <strong>{t('warnText2')}</strong> {t('warnText3')}
+                          </p>
+                        </div>
+                        <Button href="/login" variant="primary" className="shrink-0 bg-amber-500 hover:bg-amber-600 shadow-amber-500/20">
+                          {t('btnCreateAccount')}
+                        </Button>
+                      </div>
+
                       <div className="grid grid-cols-1 gap-8 w-full mb-16">
                         {tickets.map(ticket => (
                           <div key={ticket.id} className="flex flex-col items-center w-full">
@@ -331,7 +324,7 @@ function SuccessContent() {
                                 >
                                   {ticket.userName}
                                 </h2>
-                                <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-3 md:mb-8 relative z-10 shrink-0">{t('lblId')}: {ticket.ticketID}</p>
+                                <p className="font-mono text-gray-500 text-sm font-bold tracking-widest uppercase mb-3 md:mb-8 relative z-10 shrink-0">{t('lblId')} {ticket.ticketID}</p>
                                 
                                 <div className="grid grid-cols-2 gap-2 md:gap-3 mt-auto relative z-10 shrink-0">
                                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
