@@ -61,14 +61,14 @@ export async function POST(req) {
         quantity: 1,
       });
 
-      // Generate a nice readable Ticket ID (e.g., SSF-A8F2B)
-      const friendlyTicketID = `SSF-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      // Reverted exactly as requested: Standard random ID string, no prefix.
+      const friendlyTicketID = Math.random().toString(36).substring(2, 10).toUpperCase();
 
-      // We use the item.id from the cart as the document ID. 
-      // If the user clicks "Checkout", goes back, and clicks "Checkout" again, 
-      // it just overwrites the same pending ticket instead of making duplicates!
-      const ticketRef = adminDb.collection("tickets").doc(item.id);
-      ticketIdsArray.push(item.id);
+      // THE CRITICAL FIX: Ensure we NEVER pass an undefined ID to Firebase or the Webhook array
+      const ticketRef = item.id ? adminDb.collection("tickets").doc(item.id) : adminDb.collection("tickets").doc();
+      const actualTicketId = ticketRef.id;
+      
+      ticketIdsArray.push(actualTicketId);
 
       batch.set(ticketRef, {
         userId: requesterId,
@@ -102,6 +102,7 @@ export async function POST(req) {
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
+      ...(requesterEmail ? { customer_email: requesterEmail } : {}),
       success_url: `${origin}/cart/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
       metadata: { checkoutSessionId: checkoutSessionRef.id }
