@@ -6,13 +6,13 @@ import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { tickets, isGuest, guestSessionId } = body;
+    const { tickets, isGuest } = body;
 
     if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
       return NextResponse.json({ error: "No tickets provided" }, { status: 400 });
     }
 
-    // 1. Authentication & Identification
+    /* Authentication and Role Verification */
     const authHeader = req.headers.get('authorization');
     let decodedToken = null;
     let userId = null;
@@ -27,15 +27,13 @@ export async function POST(req) {
       
       const userDoc = await adminDb.collection("users").doc(userId).get();
       if (userDoc.exists) userRole = userDoc.data().role || 'user';
-    } else if (isGuest && guestSessionId) {
-      userId = guestSessionId;
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const currentFestivalYear = getActiveFestivalYear();
 
-    // 2. SERVER-SIDE LIMIT ENFORCEMENT (Fixes Vuln #3)
+    /* Server-Side Purchase Limit Enforcement */
     if (userRole !== 'ambassador' && userRole !== 'superadmin') {
       const existingTicketsSnap = await adminDb.collection("tickets")
         .where("userId", "==", userId)
@@ -47,14 +45,12 @@ export async function POST(req) {
       }
     }
 
-    // 3. SECURE CREATION & PRICING
+    /* Ticket Generation and Database Insertion */
     const batch = adminDb.batch();
 
     for (const t of tickets) {
-      // 🔒 SECURITY FIX: The Server dictates the price, ignoring the client!
       const securePrice = getPriceAtDate(t.passType);
       
-      // Ensure Unique ID
       let isUnique = false;
       let finalTicketID = "";
       while (!isUnique) {
@@ -63,6 +59,10 @@ export async function POST(req) {
         if (idSnap.empty) isUnique = true;
       }
 
+      /* Free passes bypass the payment gateway and are activated immediately */
+      const initialStatus = securePrice === 0 ? "active" : "pending";
+      const timestamp = new Date().toISOString();
+
       const ticketRef = adminDb.collection("tickets").doc();
       batch.set(ticketRef, {
         userId: userId,
@@ -70,10 +70,11 @@ export async function POST(req) {
         guestEmail: isGuest ? (t.guestEmail || "").trim().toLowerCase() : userEmail,
         isGuest: !!isGuest,
         passType: t.passType,
-        price: securePrice, // Sever calculated price
-        status: "pending",
+        price: securePrice,
+        status: initialStatus,
         festivalYear: currentFestivalYear,
-        purchaseDate: new Date().toISOString(),
+        purchaseDate: timestamp,
+        paymentConfirmedAt: initialStatus === "active" ? timestamp : null,
         emailSentCount: 0,
         ticketID: finalTicketID
       });

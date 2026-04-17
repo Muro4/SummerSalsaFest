@@ -1,48 +1,46 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
-// THE FIX: Use our custom language-aware router
+import { signInAnonymously } from "firebase/auth";
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
 import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
 import { getPriceAtDate } from "@/lib/pricing";
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
 
+  /* Component State */
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(null);
   const [realName, setRealName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [isGuest, setIsGuest] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
-  
-  // --- SYSTEM SETTINGS STATE ---
   const [salesEnabled, setSalesEnabled] = useState(true);
 
   const router = useRouter();
   const { showPopup } = usePopup();
 
-  // THE FIX: Moved PASSES inside the component to use the translation hook
+  /* Ticket configuration and pricing definitions */
   const PASSES = [
     { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: getPriceAtDate('Party Pass'), desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
     { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: getPriceAtDate('Full Pass'), desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
     { id: 'day', name: t('passes.dayName'), rawName: 'Day Pass', price: getPriceAtDate('Day Pass'), desc: t('passes.dayDesc'), color: 'bg-teal-300', text: 'text-teal-950' },
   ];
 
-  // --- NAME VALIDATION ---
+  /* Input validation criteria */
   const isValidNameChars = /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(realName);
   const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
   const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
 
-  // --- FETCH USER ---
+  /* User profile data synchronization */
   useEffect(() => {
     const fetchUser = async () => {
       if (auth.currentUser) {
@@ -53,7 +51,7 @@ export default function TicketPage() {
     fetchUser();
   }, [auth.currentUser]);
 
-  // --- LISTEN FOR GLOBAL KILL SWITCH ---
+  /* System sales configuration listener */
   useEffect(() => {
     const unsub = onSnapshot(
       doc(db, "settings", "system"), 
@@ -64,19 +62,19 @@ export default function TicketPage() {
       },
       (err) => {
         console.error("Kill switch sync error:", err.message);
-        setSalesEnabled(true); // Fail open so sales continue if rules are misconfigured
+        setSalesEnabled(true);
       }
     );
     return () => unsub();
   }, []);
 
+  /* Authentication and role-based limit verification */
   const handleProceedToDetails = async () => {
-    if (!auth.currentUser && !isGuest) {
+    if (!auth.currentUser) {
       setShowModal(true);
       return;
     }
 
-    // --- CHECK SIGNED-IN USER LIMIT ---
     if (auth.currentUser && userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
       setLoading(true);
       const q = query(
@@ -88,59 +86,41 @@ export default function TicketPage() {
 
       if (snap.size >= 5) {
         setLoading(false);
+        const isAnon = auth.currentUser.isAnonymous;
         showPopup({
           type: "info",
           title: t('limitTitle'),
-          message: t('limitMsgUser'),
-          confirmText: t('applyBtn'),
+          message: isAnon ? t('limitMsgGuest') : t('limitMsgUser'),
+          confirmText: isAnon ? t('createAccountBtn') : t('applyBtn'),
           cancelText: t('cancelBtn'),
-          onConfirm: () => router.push("/apply")
+          onConfirm: () => router.push(isAnon ? "/login" : "/apply")
         });
         return;
       }
       setLoading(false);
     }
 
-    // --- CHECK GUEST USER LIMIT ---
-    if (!auth.currentUser && isGuest) {
-      const guestSession = sessionStorage.getItem("guestSessionID");
-      if (guestSession) {
-        setLoading(true);
-        const q = query(
-          collection(db, "tickets"),
-          where("userId", "==", guestSession),
-          where("festivalYear", "==", 2026)
-        );
-        const snap = await getDocs(q);
-
-        if (snap.size >= 5) {
-          setLoading(false);
-          showPopup({
-            type: "info",
-            title: t('limitTitle'),
-            message: t('limitMsgGuest'),
-            confirmText: t('createAccountBtn'),
-            cancelText: t('cancelBtn'),
-            onConfirm: () => router.push("/login")
-          });
-          return;
-        }
-        setLoading(false);
-      }
-    }
-
     setStep(2);
   };
 
+  /* Initializes an anonymous Firebase session for guest users */
+  const handleGuestContinue = async () => {
+    try {
+      setLoading(true);
+      await signInAnonymously(auth);
+      setShowModal(false);
+      setStep(2);
+    } catch (error) {
+      showPopup({ type: "error", title: "Authentication Error", message: "Could not initialize guest session.", confirmText: "Close" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* Handles payload generation and backend submission */
   const handleAddToCart = async () => {
     setLoading(true);
     try {
-      let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
-      if (!currentID && isGuest) {
-        currentID = "guest_" + Math.random().toString(36).substring(2, 12);
-        sessionStorage.setItem("guestSessionID", currentID);
-      }
-
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -149,8 +129,7 @@ export default function TicketPage() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          isGuest,
-          guestSessionId: currentID,
+          isGuest: auth.currentUser?.isAnonymous || false,
           tickets: [{
             userName: realName,
             passType: selected.rawName,
@@ -159,7 +138,6 @@ export default function TicketPage() {
         })
       });
 
-      // THE FIX: Check if the server returned HTML (a crash) instead of JSON
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Server experienced an unexpected crash. Please check server logs.");
@@ -172,18 +150,22 @@ export default function TicketPage() {
     } catch (e) {
       showPopup({ type: "error", title: "Error", message: e.message, confirmText: "Close" });
     } finally {
-      setLoading(false); // Ensures the spinner ALWAYS turns off
+      setLoading(false); 
     }
   };
 
   return (
     <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
       <Navbar />
-      <AuthModal isOpen={showModal} onClose={() => setShowModal(false)} onGuestContinue={() => { setIsGuest(true); setShowModal(false); setStep(2); }} />
+      <AuthModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        onGuestContinue={handleGuestContinue} 
+      />
 
       <div className="flex-grow flex flex-col justify-center items-center w-full pt-28 pb-12 px-6">
-
-        {/* ENHANCED PROGRESS BAR */}
+        
+        {/* Progress Indication */}
         <div className="w-full max-w-xl mb-12">
           <div className="grid grid-cols-3 mb-4 text-[11px] font-black uppercase tracking-widest text-center">
             <span className={`text-left transition-colors duration-500 ${step >= 1 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step1')}</span>
@@ -200,6 +182,7 @@ export default function TicketPage() {
           </div>
         </div>
 
+        {/* Step 1: Ticket Selection */}
         {step === 1 ? (
           <div className="flex flex-col items-center w-full animate-in fade-in duration-500">
             <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-normal">{t('title')}</h1>
@@ -243,6 +226,7 @@ export default function TicketPage() {
             </button>
           </div>
         ) : (
+          /* Step 2: Attendee Details Collection */
           <div className="flex flex-col items-center justify-center w-full max-w-md animate-in fade-in slide-in-from-right-8 duration-500">
             <button
               onClick={() => setStep(1)}
@@ -263,7 +247,7 @@ export default function TicketPage() {
                   </span>
                 </div>
 
-                {isGuest && (
+                {auth.currentUser?.isAnonymous && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
                     <input
@@ -296,7 +280,7 @@ export default function TicketPage() {
 
                 <button
                   onClick={handleAddToCart}
-                  disabled={!realName || isNameInvalid || (isGuest && !guestEmail) || loading || !salesEnabled}
+                  disabled={!realName || isNameInvalid || (auth.currentUser?.isAnonymous && !guestEmail) || loading || !salesEnabled}
                   className="cursor-pointer w-full h-[52px] bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
                 >
                   {loading ? (

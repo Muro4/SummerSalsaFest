@@ -1,8 +1,8 @@
 "use client";
+
 import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
-// THE FIX: Use standard next/navigation for search params, but custom routing for Link/useRouter
+import { collection, query, where, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { useSearchParams } from "next/navigation"; 
 import { useRouter, Link } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -12,7 +12,7 @@ import { CheckCircle, Loader2, Download, AlertTriangle, ArrowRight } from "lucid
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslations } from 'next-intl';
 
-// --- UTILS ---
+/* Utility Functions */
 const getPassBgColor = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('full')) return 'bg-salsa-pink';
@@ -28,22 +28,21 @@ const getPassTextColor = (type) => {
   return 'text-slate-900';
 };
 
-// 1. THE MAIN CONTENT COMPONENT
 function SuccessContent() {
   const t = useTranslations('Success');
   const searchParams = useSearchParams();
+  
+  /* Component State */
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [isGuest, setIsGuest] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
-  
-  // State to track if the background emails have fired (Guest Only)
   const [emailsSent, setEmailsSent] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState(t('prepEmail'));
 
   const isFreePass = searchParams.get("session_id") === "free_pass_bypass";
 
-  // Helper to translate internal DB pass names for the UI
+  /* UI formatting mapping */
   const translatePassDisplay = (type) => {
     const typeLower = (type || '').toLowerCase();
     if (typeLower.includes('full')) return t('passFull');
@@ -53,60 +52,47 @@ function SuccessContent() {
     return type;
   };
 
-  // ACTIVATE TICKETS ON LOAD
+  /* Strict real-time sync listener ensuring auth state is initialized and tickets are active */
   useEffect(() => {
-    const activateTickets = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const currentUser = auth.currentUser;
-      const currentID = currentUser ? currentUser.uid : sessionStorage.getItem("guestSessionID");
-      
-      setIsGuest(!currentUser);
+    let unsubscribeSnapshot = null;
 
-      if (currentID) {
-        try {
-          const q = query(
-            collection(db, "tickets"), 
-            where("userId", "==", currentID), 
-            where("status", "==", "pending")
-          );
-          const snap = await getDocs(q);
-          
-          const activated = [];
-          
-          for (const document of snap.docs) {
-            const ticketData = { ...document.data(), id: document.id };
-            await updateDoc(doc(db, "tickets", document.id), { 
-                status: "active",
-                paymentConfirmedAt: new Date().toISOString()
-            });
-            activated.push({ ...ticketData, status: "active", purchaseDate: new Date().toISOString() });
-          }
-          
-          setTickets(activated);
-          setLoading(false);
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
+      if (!currentUser) return;
 
-        } catch (error) {
-          console.error("Error activating tickets:", error);
-          alert(t('errSync'));
+      setIsGuest(currentUser.isAnonymous);
+
+      // Only query for strictly 'active' tickets to prevent UI leaks of pending purchases
+      const q = query(
+        collection(db, "tickets"), 
+        where("userId", "==", currentUser.uid),
+        where("status", "==", "active"),
+        where("festivalYear", "==", 2026)
+      );
+
+      unsubscribeSnapshot = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          const fetchedTickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
+          fetchedTickets.sort((a, b) => new Date(b.paymentConfirmedAt) - new Date(a.paymentConfirmedAt));
+          
+          setTickets(fetchedTickets);
           setLoading(false);
         }
-      } else {
-        setLoading(false);
-      }
-    };
-    
-    activateTickets();
-  }, [searchParams, t]);
+      });
+    });
 
-  // AUTO-SEND EMAILS IN THE BACKGROUND (ONLY FOR GUESTS)
+    return () => {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubscribeAuth();
+    };
+  }, []);
+
+  /* Automated Guest Email Dispatch */
   useEffect(() => {
     if (isGuest && tickets.length > 0 && !emailsSent) {
       const dispatchEmails = async () => {
-        // Wait 1.5 seconds to ensure the QR codes and fonts are fully painted
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF libraries only when guests need them!
         const { toPng } = await import('html-to-image');
         const { default: jsPDF } = await import('jspdf');
 
@@ -153,7 +139,10 @@ function SuccessContent() {
     }
   }, [tickets, isGuest, emailsSent, t]);
 
+  /* Client-side PDF Generation */
   const handleDownloadPDF = async (ticket) => {
+    if (ticket.status !== 'active') return;
+
     setDownloadingId(ticket.id);
     const element = document.getElementById(`ticket-${ticket.id}`);
     if (!element) {
@@ -162,7 +151,6 @@ function SuccessContent() {
     }
 
     try {
-      // PERFORMANCE OPTIMIZATION: Dynamically import massive PDF libraries only when clicked!
       const { toPng } = await import('html-to-image');
       const { default: jsPDF } = await import('jspdf');
 
@@ -207,7 +195,6 @@ function SuccessContent() {
                 
                 {isGuest ? (
                   <>
-                    {/* GUEST VIEW: Shows Email Status, Tickets, and Warnings */}
                     <p className={`font-bold text-sm text-center mb-12 flex items-center justify-center gap-2 ${emailsSent ? 'text-emerald-600' : 'text-slate-500 animate-pulse'}`}>
                       {!emailsSent && <Loader2 size={16} className="animate-spin" />}
                       {emailStatusMessage}
@@ -253,7 +240,7 @@ function SuccessContent() {
 
                           <button 
                             onClick={() => handleDownloadPDF(ticket)}
-                            disabled={downloadingId === ticket.id}
+                            disabled={downloadingId === ticket.id || ticket.status !== 'active'}
                             className="mt-6 bg-slate-900 text-white font-black px-8 py-4 rounded-2xl shadow-lg hover:bg-salsa-pink hover:-translate-y-1 transition-all uppercase tracking-widest text-[11px] flex items-center gap-3 disabled:opacity-50 cursor-pointer"
                           >
                             {downloadingId === ticket.id ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
@@ -284,7 +271,6 @@ function SuccessContent() {
                   </>
                 ) : (
                   <>
-                    {/* SIGNED IN VIEW: Simple Confirmation & Redirect Links */}
                     <p className="font-bold text-slate-500 text-sm text-center mb-12">
                       {t('savedMsg')}
                     </p>
@@ -306,7 +292,6 @@ function SuccessContent() {
   );
 }
 
-// 2. THE REQUIRED DEFAULT EXPORT (Wrapped in Suspense for useSearchParams)
 export default function SuccessPage() {
   return (
     <main className="min-h-screen bg-salsa-white font-montserrat">
