@@ -1,45 +1,45 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { adminDb } from "@/lib/firebase-admin"; // Using Admin SDK to bypass Firestore rules
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function POST(req) {
-  // ✅ FIX: Initializing Stripe INSIDE the POST function.
-  // We also add a fallback string so the Next.js build never crashes even if env vars are missing.
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy_key_for_build", {
-    apiVersion: "2023-10-16",
-  });
-
-  // 1. Next.js App Router requires reading the raw body as text for Stripe signature verification
   const payload = await req.text();
   const sig = req.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  let event;
 
   try {
-    // Only throw an error if this is a real request missing variables, not a build evaluation
-    if (!sig || !webhookSecret) {
-      console.error("Missing Stripe signature or webhook secret.");
+    // ==========================================
+    // DYNAMIC CONFIG (COMMENTED OUT FOR NOW)
+    // ==========================================
+    // const sysDoc = await adminDb.collection("settings").doc("system").get();
+    // const system = sysDoc.exists ? sysDoc.data() : { stripeMode: 'test' };
+    // const isLive = system.stripeMode === 'live';
+    // const stripeSecret = isLive ? process.env.STRIPE_LIVE_SECRET_KEY : process.env.STRIPE_TEST_SECRET_KEY;
+    // const webhookSecret = isLive ? process.env.STRIPE_LIVE_WEBHOOK_SECRET : process.env.STRIPE_TEST_WEBHOOK_SECRET;
+
+    // ==========================================
+    // STRICT TEST MODE (ACTIVE)
+    // ==========================================
+    const stripeSecret = process.env.STRIPE_TEST_SECRET_KEY;
+    const webhookSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET;
+
+    if (!sig || !webhookSecret || !stripeSecret) {
+      console.error("Missing Stripe config (Signature, Webhook Secret, or Stripe Secret).");
       return NextResponse.json({ error: "Missing config" }, { status: 400 });
     }
-    
-    // 2. Verify the event actually came from Stripe
-    event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
-  } catch (err) {
-    console.error("❌ Webhook Error: Signature verification failed.", err.message);
-    return NextResponse.json({ error: err.message }, { status: 400 });
-  }
 
-  // 3. Handle successful checkout sessions
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
+    // Initialize Stripe with the test environment key
+    const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
     
-    // Grab the Firestore document reference ID from Stripe metadata
-    const checkoutSessionId = session.metadata?.checkoutSessionId;
+    // Verify the event actually came from Stripe
+    const event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
 
-    if (checkoutSessionId) {
-      try {
-        // Fetch the temporary session document from Firestore
+    // Handle successful checkout sessions
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      
+      const checkoutSessionId = session.metadata?.checkoutSessionId;
+
+      if (checkoutSessionId) {
         const checkoutDocRef = adminDb.collection("checkout_sessions").doc(checkoutSessionId);
         const checkoutDoc = await checkoutDocRef.get();
 
@@ -48,12 +48,15 @@ export async function POST(req) {
           return NextResponse.json({ error: "Session document missing" }, { status: 404 });
         }
 
-        const ticketIds = checkoutDoc.data().ticketIds;
+        const checkoutData = checkoutDoc.data();
+        const ticketIds = checkoutData.ticketIds || [];
+        const userId = checkoutData.userId; 
         const timestamp = new Date().toISOString();
 
-        // 4. Use a Firestore Batch to activate all tickets simultaneously
+        // Use a Firestore Batch for all DB operations
         const batch = adminDb.batch();
 
+        // A) Activate all tickets
         ticketIds.forEach((id) => {
           const ticketRef = adminDb.collection("tickets").doc(id);
           batch.update(ticketRef, {
@@ -62,25 +65,32 @@ export async function POST(req) {
           });
         });
 
-        // 5. Mark the reference document as completed so we have a paper trail
+        // B) Mark the session tracking doc as completed
         batch.update(checkoutDocRef, {
           status: "completed",
           completedAt: timestamp
         });
 
+        // C) Clear the logged-in user's cart so they don't accidentally buy again
+        if (userId && !userId.startsWith("guest_")) {
+          const cartSnapshot = await adminDb.collection("users").doc(userId).collection("cart").get();
+          cartSnapshot.forEach((cartDoc) => {
+            batch.delete(cartDoc.ref);
+          });
+        }
+
         await batch.commit();
         console.log(`✅ Successfully activated ${ticketIds.length} tickets for session: ${checkoutSessionId}`);
-        
-      } catch (error) {
-        console.error("❌ Failed to activate tickets in Firestore:", error);
-        // Returning a 500 tells Stripe to retry this webhook later if our DB fails
-        return NextResponse.json({ error: "Database update failed" }, { status: 500 });
+      } else {
+        console.warn("⚠️ Checkout completed, but no checkoutSessionId was found in metadata.");
       }
-    } else {
-      console.warn("⚠️ Checkout completed, but no checkoutSessionId was found in metadata.");
     }
-  }
 
-  // 5. Acknowledge receipt of the event
-  return NextResponse.json({ received: true });
+    // Acknowledge receipt of the event
+    return NextResponse.json({ received: true });
+
+  } catch (err) {
+    console.error("❌ Webhook Error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
 }

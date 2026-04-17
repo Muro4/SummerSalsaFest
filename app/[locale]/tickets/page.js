@@ -134,8 +134,11 @@ export default function TicketPage() {
   const handleAddToCart = async () => {
     setLoading(true);
     try {
+      // 1. Generate ONE absolute ID for this item
+      const itemID = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+      
       const cartItem = {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+        id: itemID,
         passType: selected.rawName,
         price: selected.price,
         userName: realName,
@@ -146,9 +149,9 @@ export default function TicketPage() {
 
       if (auth.currentUser) {
         // ==========================================
-        // LOGGED IN USERS: Save to Firestore Cart
+        // LOGGED IN USERS: Force Firebase to use our itemID
         // ==========================================
-        const cartRef = doc(collection(db, "users", auth.currentUser.uid, "cart"));
+        const cartRef = doc(db, "users", auth.currentUser.uid, "cart", itemID);
         await setDoc(cartRef, cartItem);
       } else {
         // ==========================================
@@ -158,11 +161,9 @@ export default function TicketPage() {
         existingCart.push(cartItem);
         localStorage.setItem("cart", JSON.stringify(existingCart));
         
-        // Dispatch event to update the Navbar cart badge instantly
         window.dispatchEvent(new Event("cartUpdated"));
       }
 
-      // Navigate to the cart page seamlessly
       router.push("/cart");
       
     } catch (e) {

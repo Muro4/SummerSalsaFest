@@ -195,7 +195,13 @@ function LoginContent() {
     setError("");
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      await syncUserToFirestore(result.user);
+      
+      // NON-BLOCKING SYNC: Don't stop login if DB rules block creation
+      try {
+        await syncUserToFirestore(result.user);
+      } catch (dbErr) {
+        console.warn("Auth successful, but DB sync failed:", dbErr);
+      }
       
       const transferred = await transferGuestTickets(result.user.uid);
       if (transferred) {
@@ -254,7 +260,7 @@ function LoginContent() {
     setNameError("");
     setPasswordError("");
     
-    // Final pre-flight validation
+    // Final pre-flight validation (Triggers UI Errors if they bypassed button lock)
     if (name.trim().length < 2) {
       setNameError(t('errNameLen'));
       return;
@@ -270,14 +276,21 @@ function LoginContent() {
 
     setLoading(true);
     try {
-      // FIX: Ensure email is trimmed before sending to Firebase to prevent 400 Errors
       const safeEmail = email.trim(); 
       const safeName = name.trim();
 
+      // 1. Create User in Firebase Auth
       const res = await createUserWithEmailAndPassword(auth, safeEmail, password);
-      await updateProfile(res.user, { displayName: safeName });
-      await syncUserToFirestore(res.user, safeName);
       
+      // 2. NON-BLOCKING SYNC: Prevent "Phantom Login" error trap
+      try {
+        await updateProfile(res.user, { displayName: safeName });
+        await syncUserToFirestore(res.user, safeName);
+      } catch (dbErr) {
+        console.warn("Auth successful, but profile/db sync failed:", dbErr);
+      }
+      
+      // 3. Complete Flow
       const transferred = await transferGuestTickets(res.user.uid);
       if (transferred) {
         router.push("/account");
@@ -286,7 +299,13 @@ function LoginContent() {
       }
     } catch (err) {
       console.error("Signup Auth Error:", err.code, err.message);
-      setError(err.code === "auth/email-already-in-use" ? t('errEmailInUse') : t('errCreateFail'));
+      if (err.code === "auth/email-already-in-use") {
+        setError(t('errEmailInUse'));
+      } else if (err.code === "auth/operation-not-allowed") {
+        setError("Email/Password accounts are currently disabled in the server console.");
+      } else {
+        setError(t('errCreateFail'));
+      }
     } finally {
       setLoading(false);
     }
@@ -561,7 +580,8 @@ function LoginContent() {
 
           {error && !isLogin && <p className="text-red-500 text-[11px] font-black tracking-widest uppercase text-center bg-red-50 p-3 rounded-xl border border-red-100 mt-4">{error}</p>}
           
-          <Button type="submit" variant="primary" className="w-full mt-2 !py-4" disabled={loading || !isPasswordValid || !!emailError || !!nameError} isLoading={loading}>
+          {/* FIX: Removed hard disabled constraints so autofill won't break the button */}
+          <Button type="submit" variant="primary" className="w-full mt-2 !py-4" disabled={loading} isLoading={loading}>
             {loading ? t('btnCreating') : t('btnSignUp')}
           </Button>
 

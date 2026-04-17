@@ -48,8 +48,7 @@ export default function Cart() {
   const router = useRouter();
   const { showPopup } = usePopup();
 
-  // Helper to translate internal DB pass names for the UI
-   const translatePassDisplay = (type) => {
+  const translatePassDisplay = (type) => {
     const typeLower = (type || '').toLowerCase();
     if (typeLower.includes('full')) return t('passFull');
     if (typeLower.includes('party')) return t('passParty');
@@ -61,9 +60,24 @@ export default function Cart() {
   useEffect(() => {
     let unsubCart = null;
 
+    // SELF-HEALING GUEST CART LOADER
     const loadGuestCart = () => {
       try {
-        const localCart = JSON.parse(localStorage.getItem('cart')) || [];
+        let localCart = JSON.parse(localStorage.getItem('cart')) || [];
+        let needsSave = false;
+
+        // Ensure every item has an ID so deletion never fails
+        localCart = localCart.map(item => {
+          if (!item.id) {
+            needsSave = true;
+            return { ...item, id: "loc_" + Math.random().toString(36).substring(2, 11) };
+          }
+          return item;
+        });
+
+        if (needsSave) {
+          localStorage.setItem('cart', JSON.stringify(localCart));
+        }
         setItems(localCart);
       } catch (e) {
         setItems([]);
@@ -73,7 +87,6 @@ export default function Cart() {
 
     const unsubAuth = auth.onAuthStateChanged(user => {
       if (user) {
-        // Fetch from Firebase Cart subcollection for logged-in users
         const cartRef = collection(db, "users", user.uid, "cart");
         unsubCart = onSnapshot(cartRef, (snap) => {
           setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -83,13 +96,11 @@ export default function Cart() {
           setLoading(false);
         });
       } else { 
-        // Fetch from LocalStorage for guests
         if (unsubCart) { unsubCart(); unsubCart = null; }
         loadGuestCart();
       }
     });
 
-    // Listeners for guest cart changes from other tabs
     window.addEventListener('cartUpdated', loadGuestCart);
     window.addEventListener('storage', loadGuestCart);
 
@@ -115,35 +126,49 @@ export default function Cart() {
       confirmText: t('popupClearBtn'),
       cancelText: t('popupCancelBtn'),
       onConfirm: async () => {
-        if (auth.currentUser) {
-          const batch = writeBatch(db);
-          items.forEach(item => { batch.delete(doc(db, "users", auth.currentUser.uid, "cart", item.id)); });
-          await batch.commit();
-        } else {
-          localStorage.removeItem("cart");
-          setItems([]);
-          window.dispatchEvent(new Event("cartUpdated"));
+        try {
+          if (auth.currentUser) {
+            const batch = writeBatch(db);
+            items.forEach(item => { 
+              if (item.id) batch.delete(doc(db, "users", auth.currentUser.uid, "cart", item.id)); 
+            });
+            await batch.commit();
+          } else {
+            localStorage.removeItem("cart");
+            setItems([]);
+            window.dispatchEvent(new Event("cartUpdated"));
+          }
+        } catch (error) {
+          console.error("Clear cart failed:", error);
+          alert("Failed to clear cart. Please refresh the page.");
         }
       }
     });
   };
 
   const confirmRemoveItem = (id, userName) => {
+    if (!id) return; // Safeguard against ghost items
+    
     showPopup({
       type: "info", 
       title: t('popupRemoveTitle'), 
-      message: t('popupRemoveMsg', { name: userName }), 
+      message: t('popupRemoveMsg', { name: userName || "Guest" }), 
       confirmText: t('popupRemoveBtn'), 
       cancelText: t('popupKeepBtn'),
       onConfirm: async () => {
-        if (auth.currentUser) {
-          await deleteDoc(doc(db, "users", auth.currentUser.uid, "cart", id));
-        } else {
-          const localCart = JSON.parse(localStorage.getItem("cart")) || [];
-          const updatedCart = localCart.filter(item => item.id !== id);
-          localStorage.setItem("cart", JSON.stringify(updatedCart));
-          setItems(updatedCart);
-          window.dispatchEvent(new Event("cartUpdated"));
+        try {
+          if (auth.currentUser) {
+            await deleteDoc(doc(db, "users", auth.currentUser.uid, "cart", id));
+          } else {
+            const localCart = JSON.parse(localStorage.getItem("cart")) || [];
+            const updatedCart = localCart.filter(item => item.id !== id);
+            localStorage.setItem("cart", JSON.stringify(updatedCart));
+            setItems(updatedCart);
+            window.dispatchEvent(new Event("cartUpdated"));
+          }
+        } catch (error) {
+          console.error("Remove item failed:", error);
+          alert("Failed to remove item. Please refresh the page.");
         }
       }
     });
@@ -152,33 +177,29 @@ export default function Cart() {
   const handleCheckout = async () => {
     setIsPaying(true);
     
-    // 🔒 SECURITY: Grab the user's auth token or guest ID to prove identity
-    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-    let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
-    
-    // If guest doesn't have an ID yet, make one for the checkout session
-    if (!currentID && !auth.currentUser) {
-      currentID = "guest_" + Math.random().toString(36).substring(2, 12);
-      sessionStorage.setItem("guestSessionID", currentID);
-    }
-    
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    
-    if (total === 0) {
-      try {
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      let currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
+      
+      if (!currentID && !auth.currentUser) {
+        currentID = "guest_" + Math.random().toString(36).substring(2, 12);
+        sessionStorage.setItem("guestSessionID", currentID);
+      }
+      
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      if (total === 0) {
         const ticketIds = items.map(item => item.id);
-        
         const response = await fetch("/api/activate", {
           method: "POST",
-          headers, // Send the secure headers
-          body: JSON.stringify({ ticketIds, guestSessionId: currentID }) // Send the guest ID
+          headers, 
+          body: JSON.stringify({ ticketIds, guestSessionId: currentID }) 
         });
         
         if (!response.ok) throw new Error("Failed to activate free passes securely.");
 
         setIsSuccess(true);
-        // Clear local cart if guest after success
         if (!auth.currentUser) {
           localStorage.removeItem("cart");
           window.dispatchEvent(new Event("cartUpdated"));
@@ -189,25 +210,21 @@ export default function Cart() {
           else { sessionStorage.removeItem("guestSessionID"); router.push("/"); } 
         }, 3000);
         return;
-      } catch (err) {
-        showPopup({ type: "error", title: t('popupActErrTitle'), message: err.message || t('popupActErrMsg'), confirmText: t('popupCloseBtn') });
-        setIsPaying(false);
-        return;
       }
-    }
 
-    // Stripe Checkout Flow
-    try {
+      // Stripe Checkout
       const response = await fetch("/api/checkout", {
         method: "POST",
-        headers, // Send the secure headers
-        body: JSON.stringify({ items, guestSessionId: currentID }), // Send the guest ID
+        headers, 
+        body: JSON.stringify({ items, guestSessionId: currentID }), 
       });
+      
       const data = await response.json();
       if (data.url) window.location.href = data.url;
       else throw new Error(data.error || "Server error");
+      
     } catch (err) {
-      showPopup({ type: "error", title: t('popupChkErrTitle'), message: err.message, confirmText: t('popupCloseBtn') });
+      showPopup({ type: "error", title: t('popupChkErrTitle'), message: err.message || "An error occurred", confirmText: t('popupCloseBtn') });
       setIsPaying(false);
     }
   };
