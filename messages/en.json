@@ -308,7 +308,11 @@
     "passParty": "Party Pass",
     "passFull": "Full Pass",
     "passDay": "Day Pass",
-    "passFree": "Free Pass"
+    "passFree": "Free Pass",
+    "awaitingPayment": "Awaiting Payment Confirmation",
+    "awaitingDesc": "Your ticket will appear here securely once Stripe verifies the transaction.",
+    "lblDate": "Date",
+    "lblTime": "Time"
   },
   "Account": {
     "tabPasses": "Active Passes",

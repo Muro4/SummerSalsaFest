@@ -7,7 +7,7 @@ import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
 import Image from "next/image";
-import { ShoppingCart, User as UserIcon, LogOut, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
+import { ShoppingCart, User as UserIcon, LogOut, LogIn, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
 
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -169,6 +169,7 @@ export default function Navbar() {
     setMobileMenuOpen(false);
     setMobileAccountOpen(false);
     router.push("/login");
+    // Sign out clears the anonymous session while they are on the login page
     setTimeout(async () => { try { await signOut(auth); } catch (err) { console.error("Sign out error:", err); } }, 800);
   };
 
@@ -278,11 +279,17 @@ export default function Navbar() {
                           {(userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'scanner') && <Button href="/admin/scanner" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={QrCode} className={accountLinkClass('/admin/scanner')}>{t('gateScanner')}</Button>}
                           
                           {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setDropdownOpen(false)} variant="ghost" size="md" icon={ShieldAlert} className={accountLinkClass('/admin')}>{t('adminPanel')}</Button>}
+                          <div className="h-px bg-gray-100 w-full my-2" />
                         </>
                       )}
                       
-                      <div className="h-px bg-gray-100 w-full my-2" />
-                      <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">{t('signOut')}</Button>
+                      {/* DYNAMIC BUTTON: Primary Login for Guests, Danger Sign Out for Users */}
+                      {user.isAnonymous ? (
+                        <Button onClick={handleSignOut} variant="primary" size="md" icon={LogIn} className="w-full justify-start">{t('login')}</Button>
+                      ) : (
+                        <Button onClick={handleSignOut} variant="danger" size="md" icon={LogOut} className="w-full justify-start">{t('signOut')}</Button>
+                      )}
+                      
                     </div>
                   </div>
                 )}
@@ -370,7 +377,12 @@ export default function Navbar() {
             </div>
 
             <div className="p-4 border-t border-gray-100 shrink-0 pb-safe">
-              <Button onClick={handleSignOut} variant="danger" size="md" className="w-full justify-center text-xs shadow-sm">{t('signOut')}</Button>
+              {/* DYNAMIC BUTTON: Primary Login for Guests, Danger Sign Out for Users */}
+              {user.isAnonymous ? (
+                <Button onClick={handleSignOut} variant="primary" size="md" className="w-full justify-center text-xs shadow-sm">{t('login')}</Button>
+              ) : (
+                <Button onClick={handleSignOut} variant="danger" size="md" className="w-full justify-center text-xs shadow-sm">{t('signOut')}</Button>
+              )}
             </div>
           </div>
         </div>
