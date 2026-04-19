@@ -291,7 +291,7 @@
     "sentEmail": "Email receipt dispatched!",
     "errSync": "Database sync failed. Please contact support.",
     "errDownload": "Failed to download ticket. Please try again.",
-    "lblId": "ID:",
+    "lblId": "ID",
     "lblEvent": "Event",
     "eventVal": "Salsa Fest {year}",
     "lblPrice": "Price",

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, collection, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot, updateDoc, query, where } from "firebase/firestore";
 import Button from "@/components/Button";
 import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
@@ -25,7 +25,11 @@ export default function Navbar() {
   const [mobileAccountOpen, setMobileAccountOpen] = useState(false); 
 
   const [scrolled, setScrolled] = useState(false);
-  const [cartItems, setCartItems] = useState(0);
+  
+  /* Split state to track both standard merchandise and pending festival tickets */
+  const [merchCount, setMerchCount] = useState(0);
+  const [ticketCount, setTicketCount] = useState(0);
+  const totalCartItems = merchCount + ticketCount;
 
   const dropdownRef = useRef(null);
   
@@ -42,6 +46,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  /* Local cart synchronization fallback for strictly non-authenticated edge cases */
   useEffect(() => {
     const updateLocalCart = () => {
       if (!auth.currentUser) {
@@ -49,7 +54,7 @@ export default function Navbar() {
           const localCart = JSON.parse(localStorage.getItem('cart')) || [];
           let total = 0;
           localCart.forEach(item => total += (item.quantity || 1));
-          setCartItems(total);
+          setMerchCount(total);
         } catch (e) {
           console.warn("Error reading local cart", e);
         }
@@ -66,8 +71,10 @@ export default function Navbar() {
     };
   }, []);
 
+  /* Primary Real-Time Authentication and Dual Cart Synchronization */
   useEffect(() => {
     let unsubCart = null;
+    let unsubTickets = null;
 
     const unsubAuth = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
@@ -78,10 +85,7 @@ export default function Navbar() {
           const data = uDoc.data();
           setUserData(data);
 
-          if (
-            (data.applicationStatus === "approved" || data.applicationStatus === "rejected") &&
-            !data.applicationNotified
-          ) {
+          if ((data.applicationStatus === "approved" || data.applicationStatus === "rejected") && !data.applicationNotified) {
             updateDoc(doc(db, "users", currentUser.uid), { applicationNotified: true }).catch(console.error);
 
             if (data.applicationStatus === "approved") {
@@ -97,29 +101,40 @@ export default function Navbar() {
           }
         }
 
-        if (unsubCart) unsubCart();
+        /* 1. Merchandise Cart Listener */
         const cartRef = collection(db, "users", currentUser.uid, "cart");
         unsubCart = onSnapshot(cartRef, (snap) => {
           let totalItems = 0;
           snap.forEach((itemDoc) => { totalItems += (itemDoc.data().quantity || 1); });
-          setCartItems(totalItems);
-        },
-          (error) => { if (error.code !== 'permission-denied') console.warn("Cart sync issue:", error.message); }
+          setMerchCount(totalItems);
+        }, (error) => { if (error.code !== 'permission-denied') console.warn("Cart sync issue:", error.message); });
+
+        /* 2. Pending Tickets Cart Listener (Fixes the ticket cart reactivity) */
+        const ticketsQuery = query(
+          collection(db, "tickets"),
+          where("userId", "==", currentUser.uid),
+          where("status", "==", "pending")
         );
+        unsubTickets = onSnapshot(ticketsQuery, (snap) => {
+          setTicketCount(snap.size);
+        }, (error) => { if (error.code !== 'permission-denied') console.warn("Ticket sync issue:", error.message); });
 
       } else {
         if (unsubCart) { unsubCart(); unsubCart = null; }
+        if (unsubTickets) { unsubTickets(); unsubTickets = null; }
         setUserData(null);
+        setTicketCount(0);
         try {
           const localCart = JSON.parse(localStorage.getItem('cart')) || [];
-          setCartItems(localCart.reduce((acc, item) => acc + (item.quantity || 1), 0));
-        } catch(e) { setCartItems(0); }
+          setMerchCount(localCart.reduce((acc, item) => acc + (item.quantity || 1), 0));
+        } catch(e) { setMerchCount(0); }
       }
     });
 
     return () => {
       unsubAuth();
       if (unsubCart) unsubCart();
+      if (unsubTickets) unsubTickets();
     };
   }, [router, showPopup]);
 
@@ -212,15 +227,17 @@ export default function Navbar() {
             
             <LanguageSwitcher isTransparent={isTransparent} />
 
-            <div className="relative">
-              <Link href="/cart" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }} className={`w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}>
+            {/* FIXED RESPONSIVE CART INDICATOR */}
+            <div className="relative flex items-center justify-center">
+              <Link href="/cart" onClick={() => { setMobileMenuOpen(false); setMobileAccountOpen(false); setDropdownOpen(false); }} className={`relative w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all duration-300 border border-transparent ${isTransparent ? 'hover:bg-white/20' : 'hover:bg-slate-100 hover:text-salsa-pink'} ${textColorClass}`}>
                 <ShoppingCart size={20} className="md:w-[22px] md:h-[22px]" />
+                
+                {totalCartItems > 0 && (
+                  <span className={`absolute -top-1 -right-1 md:-top-0.5 md:-right-0.5 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full text-[9px] md:text-[11px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
+                    {totalCartItems}
+                  </span>
+                )}
               </Link>
-              {cartItems > 0 && (
-                <span className={`absolute top-0 right-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full text-[9px] md:text-[11px] font-black text-white bg-salsa-pink border-2 shadow-sm ${isTransparent ? 'border-transparent' : 'border-white'}`}>
-                  {cartItems}
-                </span>
-              )}
             </div>
 
             {user ? (
