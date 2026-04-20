@@ -8,16 +8,16 @@ import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { useTranslations, useLocale } from 'next-intl';
+import Emoji from "@/components/Emoji"; // <-- IMPORTED EMOJI COMPONENT
 
 const COMMON_FLAGS = {
   'ES': { name: 'Spain', flag: '🇪🇸' },
   'RO': { name: 'Romania', flag: '🇷🇴' },
   'FR': { name: 'France', flag: '🇫🇷' },
   'BG': { name: 'Bulgaria', flag: '🇧🇬' },
-  'US': { name: 'USA', flag: '🇺🇸' },
-  'GB': { name: 'UK', flag: '🇬🇧' },
   'IT': { name: 'Italy', flag: '🇮🇹' },
-  'CU': { name: 'Cuba', flag: '🇨🇺' }
+  'CU': { name: 'Cuba', flag: '🇨🇺' },
+  'MX': { name: 'Mexico', flag: '🇲🇽' }
 };
 
 const DICTIONARY = {
@@ -32,7 +32,8 @@ const DICTIONARY = {
   'usa': 'САЩ',
   'uk': 'Великобритания',
   'italy': 'Италия',
-  'cuba': 'Куба'
+  'cuba': 'Куба',
+  'mexico': 'Мексико'
 };
 
 export default function ArtistsTab({ artists, onStageChange }) {
@@ -44,7 +45,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   
-  // 🔍 PINPOINT FIX: Track specific field errors
   const [errors, setErrors] = useState({});
   
   const [editingId, setEditingId] = useState(null);
@@ -86,7 +86,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear the error for this field as the user types
     if (errors[field]) {
       setErrors(prev => {
         const newErrs = { ...prev };
@@ -121,22 +120,46 @@ export default function ArtistsTab({ artists, onStageChange }) {
   };
 
   const handleFile = (file) => {
-    if (file.type === "image/jpeg" || file.type === "image/png") {
+    if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp") {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, file: file, imageUrl: reader.result }); 
-        setErrors(prev => { const n = {...prev}; delete n.imageUrl; return n; });
+        // 🛡️ AUTOMATIC COMPRESSION: Resize the image so it easily fits in Firestore
+        const img = new window.Image();
+        img.src = reader.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800; // Cap width at 800px
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions keeping aspect ratio
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG at 70% quality (Massive file size reduction)
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+
+          setFormData(prev => ({ ...prev, file: file, imageUrl: compressedBase64 }));
+          setErrors(prev => { const n = {...prev}; delete n.imageUrl; return n; });
+        };
       };
       reader.readAsDataURL(file);
     } else {
-      showPopup({ type: "error", title: "Invalid File", message: "Please upload a PNG or JPG file." });
+      showPopup({ type: "error", title: "Invalid File", message: "Please upload a PNG, JPG, or WEBP file." });
     }
   };
 
   const handleSave = (e) => {
     e.preventDefault();
     
-    // 🔍 PINPOINT VALIDATION LOGIC
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = true;
     if (!formData.genreEn.trim()) newErrors.genreEn = true;
@@ -291,13 +314,14 @@ export default function ArtistsTab({ artists, onStageChange }) {
       </div>
     </div>
   );
+  const uniqueArtists = Array.from(new Map(artists.map(a => [a.id, a])).values());
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative z-10 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
         <div>
           <h2 className="font-bebas tracking-wide text-4xl text-slate-900 uppercase leading-none">{t('title')}</h2>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{t('subtitle', { count: artists.length })}</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{t('subtitle', { count: uniqueArtists.length })}</p>
         </div>
         <Button onClick={() => handleOpenModal()} variant="primary" icon={Plus} className="w-full md:w-auto shadow-salsa-pink/20 px-8">
           {t('btnAdd')}
@@ -305,7 +329,7 @@ export default function ArtistsTab({ artists, onStageChange }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mt-8">
-        {artists.map((artist) => (
+        {uniqueArtists.map((artist) => (
           <div key={artist.id} className="relative w-full aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-xl bg-slate-100 group">
             {artist.imageUrl && <Image src={artist.imageUrl} alt={artist.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
@@ -316,14 +340,17 @@ export default function ArtistsTab({ artists, onStageChange }) {
             </div>
 
             <div className="absolute bottom-5 left-5 right-5 bg-white p-5 rounded-2xl flex items-center justify-between shadow-lg">
-              <div className="flex flex-col text-left pr-4 min-w-0">
+              
+              {/* WRAPPED THE TEXT PREVIEW CONTAINER WITH EMOJI */}
+              <Emoji className="flex flex-col text-left pr-4 min-w-0">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-salsa-pink mb-1 block truncate">{artist.genre?.[locale] || artist.genre?.en}</span>
                 <h3 className="font-bebas text-3xl text-slate-900 tracking-wide leading-none mb-1.5 truncate">{artist.name}</h3>
                 <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest truncate">
                   <span className="text-sm shadow-sm leading-none">{artist.flag}</span>
                   <span className="truncate">{artist.country?.[locale] || artist.country?.en}</span>
                 </div>
-              </div>
+              </Emoji>
+
               <div className="shrink-0 pl-4 border-l border-gray-100">
                 <a href={artist.instagramUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center bg-gray-50 hover:bg-salsa-pink text-slate-400 hover:text-white p-3.5 rounded-xl transition-colors">
                   <Instagram size={20} strokeWidth={2.5} />

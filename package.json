@@ -12,7 +12,7 @@
     "@emailjs/browser": "^4.4.1",
     "@stripe/stripe-js": "^8.8.0",
     "firebase": "^11.10.0",
-    "firebase-admin": "^13.7.0",
+    "firebase-admin": "^13.8.0",
     "html-to-image": "^1.11.13",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
@@ -24,6 +24,7 @@
     "qrcode.react": "^4.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-twemoji": "^0.7.2",
     "recharts": "^2.13.0",
     "stripe": "^20.3.1"
   },

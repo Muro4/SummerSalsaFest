@@ -7,6 +7,7 @@ import { Instagram, Loader2 } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import Emoji from "@/components/Emoji"; // <-- IMPORT YOUR EMOJI COMPONENT
 
 export default function ArtistsPage() {
   const t = useTranslations('Artists');
@@ -64,7 +65,9 @@ export default function ArtistsPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
 
                 <div className="absolute bottom-4 left-4 right-4 bg-white p-5 rounded-2xl flex items-center justify-between shadow-lg">
-                  <div className="flex flex-col text-left pr-4 min-w-0">
+                  
+                  {/* WRAP THE TEXT CONTAINER IN <Emoji> */}
+                  <Emoji className="flex flex-col text-left pr-4 min-w-0">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-salsa-pink mb-1 block truncate">
                       {artist.genre?.[locale] || artist.genre?.en}
                     </span>
@@ -75,7 +78,8 @@ export default function ArtistsPage() {
                       <span className="text-sm shadow-sm leading-none">{artist.flag}</span>
                       <span className="truncate">{artist.country?.[locale] || artist.country?.en}</span>
                     </div>
-                  </div>
+                  </Emoji>
+
                   <div className="shrink-0 pl-4 border-l border-gray-100">
                     <a 
                       href={artist.instagramUrl} 
