@@ -8,6 +8,7 @@ import { usePopup } from "@/components/PopupProvider";
 import logoImg from "../assets/logo.png";
 import Image from "next/image";
 import { ShoppingCart, User as UserIcon, LogOut, LogIn, ShieldAlert, Menu, X, QrCode, Shield, Ticket } from "lucide-react";
+import Cookies from 'js-cookie';
 
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -165,13 +166,22 @@ export default function Navbar() {
   };
 
   const handleSignOut = () => {
-    setDropdownOpen(false);
-    setMobileMenuOpen(false);
-    setMobileAccountOpen(false);
-    router.push("/login");
-    // Sign out clears the anonymous session while they are on the login page
-    setTimeout(async () => { try { await signOut(auth); } catch (err) { console.error("Sign out error:", err); } }, 800);
-  };
+  setDropdownOpen(false);
+  setMobileMenuOpen(false);
+  setMobileAccountOpen(false);
+  
+  // CLEAR THE COOKIE SO THEY LOSE ADMIN ACCESS INSTANTLY
+  Cookies.remove('userRole', { path: '/' }); 
+  
+  router.push("/login");
+  setTimeout(async () => { 
+    try { 
+      await signOut(auth); 
+    } catch (err) { 
+      console.error("Sign out error:", err); 
+    } 
+  }, 800);
+};
 
   const navBackgroundClass = isHome
     ? (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-3 md:py-4' : 'bg-transparent py-4 md:py-6')

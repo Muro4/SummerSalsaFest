@@ -10,10 +10,11 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing
+import { useRouter } from "@/routing"; 
 import Button from "@/components/Button";
 import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft, Loader2, Key } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import Cookies from 'js-cookie'; // <-- IMPORT COOKIES
 
 // --- DYNAMIC PASSWORD ACCORDION ---
 function PasswordAccordion({ passReqs, isFocused, passwordLength, t }) {
@@ -113,7 +114,6 @@ function LoginContent() {
   
   // STRICT: All 5 requirements must be met!
   const isPasswordValid = passwordScore === 5;
-  const isPasswordInvalid = password.length > 0 && !isPasswordValid && !isLogin;
 
   // The Magic Trigger: Hides the Google Button when user starts typing password
   const hideSocials = passwordFocused || password.length > 0;
@@ -147,19 +147,23 @@ function LoginContent() {
     }
   }, [isPasswordValid, passwordError]);
 
-  // --- FIRESTORE SYNC ---
+  // --- FIRESTORE SYNC & COOKIE STAMPING ---
   const syncUserToFirestore = async (user, displayName) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
+    
     if (!snap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
         displayName: displayName || user.displayName || "Dancer",
         email: user.email,
-        role: "user",
+        role: "user", // Default new users to basic role
         createdAt: new Date().toISOString(),
       });
+      return "user"; // Return the default role
     }
+    
+    return snap.data().role || "user"; // Return the existing role
   };
 
   const transferGuestTickets = async (newUid) => {
@@ -190,7 +194,12 @@ function LoginContent() {
     setError("");
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      await syncUserToFirestore(result.user);
+      
+      // 1. Sync DB and get their role
+      const role = await syncUserToFirestore(result.user);
+      console.log("FIREBASE SUCCESS. The role is:", role);
+      // 2. STAMP THE COOKIE (Valid for 7 days)
+      Cookies.set('userRole', role, { expires: 7, path: '/' });
       
       const transferred = await transferGuestTickets(result.user.uid);
       if (transferred) {
@@ -223,6 +232,12 @@ function LoginContent() {
       }
 
       const result = await signInWithEmailAndPassword(auth, loginEmail, password);
+      
+      // 1. Sync DB and get their role (catches existing admins logging in)
+      const role = await syncUserToFirestore(result.user);
+      console.log("FIREBASE SUCCESS. The role is:", role);
+      // 2. STAMP THE COOKIE
+      Cookies.set('userRole', role, { expires: 7, path: '/' });
       
       const transferred = await transferGuestTickets(result.user.uid);
       if (transferred) {
@@ -266,7 +281,12 @@ function LoginContent() {
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(res.user, { displayName: name.trim() });
-      await syncUserToFirestore(res.user, name.trim());
+      
+      // 1. Sync DB and get their role (will be 'user' for new accounts)
+      const role = await syncUserToFirestore(res.user, name.trim());
+      console.log("FIREBASE SUCCESS. The role is:", role);
+      // 2. STAMP THE COOKIE
+      Cookies.set('userRole', role, { expires: 7, path: '/' });
       
       const transferred = await transferGuestTickets(res.user.uid);
       if (transferred) {
