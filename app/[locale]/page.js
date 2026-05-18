@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Button from "@/components/Button";
-import Image from "next/image"; // <-- PERFORMANCE FIX
+import Image from "next/image";
 import { Music, Users, Sun, Star } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import LandingLoader from "@/components/LandingLoader";
@@ -11,17 +11,22 @@ import LandingLoader from "@/components/LandingLoader";
 export default function Home() {
   const t = useTranslations('Index');
   const tCommon = useTranslations('Common');
+  
+  // State
   const [showLoader, setShowLoader] = useState(false);
+  const [festivalYear, setFestivalYear] = useState(2026);
+  const [editionNumber, setEditionNumber] = useState(15);
+  
+  // Kinetic Typography State
+  const [hoveredFeature, setHoveredFeature] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-
+  // Refs for auto-scrolling
   const scrollContainerRef = useRef(null);
   const animationRef = useRef(null);
   const restartTimeoutRef = useRef(null);
   const isManuallyScrollingRef = useRef(false);
   const scrollAccumulator = useRef(0);
-
-  const [festivalYear, setFestivalYear] = useState(2026);
-  const [editionNumber, setEditionNumber] = useState(15);
 
   const reviews = [
     { name: "Maria S.", role: "Professional Dancer", text: "The energy in Varna is unmatched. I've been to festivals in Berlin, but the beach workshops here are unique!" },
@@ -44,11 +49,11 @@ export default function Home() {
     const calculatedYear = d.getMonth() > 7 ? d.getFullYear() + 1 : d.getFullYear();
     setFestivalYear(calculatedYear);
     setEditionNumber(calculatedYear - 2011);
+    
     const hasSeenLoader = sessionStorage.getItem("hasSeenSalsaLoader");
     if (!hasSeenLoader) {
       setShowLoader(true);
     }
-
 
     startAutoScroll();
 
@@ -58,6 +63,7 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const handleLoaderComplete = () => {
     setShowLoader(false);
     sessionStorage.setItem("hasSeenSalsaLoader", "true");
@@ -102,22 +108,20 @@ export default function Home() {
       <Navbar />
 
       {/* 1. HERO SECTION */}
-      <section
-        className="relative flex flex-col items-center overflow-hidden justify-center min-h-[100svh] md:min-h-[calc(100vh+120px)]"
-      >
+      <section className="relative flex flex-col items-center overflow-hidden justify-center min-h-[100svh] md:min-h-[calc(100vh+120px)]">
         <div className="absolute inset-0 z-0 bg-slate-900 overflow-hidden">
-          {/* The Image component handles sizing much better than CSS background-image */}
-          <Image
-            src="/images/background.jpg"
-            alt="Summer Salsa Fest Background"
-            fill
-            priority
-            quality={90}
-            className="object-cover object-center pointer-events-none"
-            sizes="100vw"
-          />
+          {/* HTML5 Video Background */}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute top-0 left-0 w-full h-full object-cover object-center pointer-events-none"
+          >
+            <source src="/videos/HeroVideo.mp4" type="video/mp4" />
+          </video>
 
-          {/* Separate Gradient Overlay to maintain your brand look */}
+          {/* Gradient Overlay */}
           <div
             className="absolute inset-0 z-10"
             style={{
@@ -177,34 +181,95 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. SPECIALTY CARDS */}
-      <section id="info" className="py-20 md:py-32 px-6 max-w-7xl mx-auto">
-        <div className="text-center mb-14 md:mb-20">
-          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">{t('features.heading')}</span>
-          <h2 className="font-bebas tracking-wide text-5xl md:text-6xl text-slate-900 mt-2">{t('features.subheading')}</h2>
-          <div className="w-20 h-1.5 bg-salsa-pink mx-auto mt-4 rounded-full"></div>
+      {/* 2. KINETIC TYPOGRAPHY HOVER BURST (Replaces Cards) */}
+      <section 
+        id="info" 
+        className="py-20 md:py-32 px-4 w-full overflow-hidden bg-white relative cursor-crosshair"
+        onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setHoveredFeature(null)}
+      >
+        <div className="text-center mb-10 md:mb-16">
+          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">
+            {t('features.heading')}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
-          {features.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <div key={i} className="relative p-8 md:p-10 bg-gradient-to-br from-white to-slate-50 border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden">
-                <Icon className="absolute -bottom-6 -right-6 w-40 h-40 md:w-48 md:h-48 text-slate-200 opacity-30 pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="mb-6 md:mb-8 w-14 h-14 md:w-16 md:h-16 bg-salsa-pink/10 rounded-2xl flex items-center justify-center">
-                    <Icon className="text-salsa-pink w-7 h-7 md:w-8 md:h-8" />
-                  </div>
-                  <h3 className="font-bold text-xl md:text-2xl mb-3 md:mb-4 text-slate-900">{item.title}</h3>
-                  <p className="text-slate-500 leading-relaxed text-sm">{item.desc}</p>
+        {/* Floating Custom Cursor Card (Premium Dark Style) */}
+        <div 
+          className={`hidden md:flex pointer-events-none fixed z-50 w-80 p-8 rounded-[2rem] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-[0_20px_60px_-15px_rgba(236,72,153,0.4)] flex-col transition-opacity duration-200 overflow-hidden ${
+            hoveredFeature !== null ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            left: mousePos.x,
+            top: mousePos.y,
+            transform: 'translate(24px, 24px)' // Offsets it slightly from the actual cursor
+          }}
+        >
+          {hoveredFeature !== null && (
+            <>
+              {/* Neon Orbs inside card */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-salsa-pink/40 blur-[40px] rounded-full" />
+              <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/20 blur-[40px] rounded-full" />
+              
+              <div className="relative z-10">
+                <div className="w-14 h-14 bg-gradient-to-br from-salsa-pink to-rose-500 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-salsa-pink/30">
+                  {(() => {
+                    const Icon = features[hoveredFeature].icon;
+                    return <Icon className="text-white w-7 h-7" />;
+                  })()}
+                </div>
+                <div>
+                  <h3 className="font-bold text-2xl mb-2 text-white">{features[hoveredFeature].title}</h3>
+                  <p className="text-slate-300 leading-relaxed text-sm">{features[hoveredFeature].desc}</p>
                 </div>
               </div>
-            );
-          })}
+            </>
+          )}
+        </div>
+
+        {/* Massive Stacked Text */}
+        <div className="flex flex-col items-center justify-center w-full max-w-7xl mx-auto relative z-10">
+          {features.map((item, i) => (
+            <div 
+              key={i} 
+              className="w-full text-center py-2 md:py-0 transition-all duration-500"
+              onMouseEnter={() => setHoveredFeature(i)}
+              onClick={() => setHoveredFeature(hoveredFeature === i ? null : i)} 
+            >
+              
+              
+              <h2 
+                className={`font-bebas text-[11vw] sm:text-[9vw] md:text-[7vw] whitespace-nowrap leading-[0.85] transition-colors duration-300 md:cursor-none
+                  ${
+                    hoveredFeature === i 
+                    ? 'text-salsa-pink [-webkit-text-stroke:0px]' 
+                    : 'text-transparent [-webkit-text-stroke:1px_#94a3b8] md:[-webkit-text-stroke:2px_#94a3b8]'
+                  }
+                `}
+              >
+                {item.title}
+              </h2>
+
+              {/* Mobile Description Reveal (Updated to Dark Theme for consistency) */}
+              <div 
+                className={`md:hidden overflow-hidden transition-all duration-500 px-6 ${
+                  hoveredFeature === i ? 'max-h-64 opacity-100 mt-6 pb-8' : 'max-h-0 opacity-0 mt-0 pb-0'
+                }`}
+              >
+                <div className="bg-slate-900 rounded-[2rem] p-6 border border-slate-700 shadow-xl relative overflow-hidden flex flex-col items-center text-center">
+                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-salsa-pink/20 blur-[30px] rounded-full" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-salsa-pink to-rose-500 rounded-xl flex items-center justify-center mb-4 relative z-10 shadow-md">
+                    <item.icon className="text-white w-6 h-6" />
+                  </div>
+                  <p className="text-slate-300 text-sm font-medium relative z-10">{item.desc}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* 3. FESTIVAL GALLERY (PERFORMANCE FIX: NEXT/IMAGE) */}
+      {/* 3. FESTIVAL GALLERY */}
       <section id="gallery" className="py-16 md:py-24 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-3 gap-3 md:gap-4 h-auto md:h-[1000px]">
           <div className="relative md:col-span-2 md:row-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-64 md:h-auto">
