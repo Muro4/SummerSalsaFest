@@ -30,22 +30,20 @@ export default function InfoPage() {
         <div 
           className="absolute inset-0 z-0 opacity-40"
           style={{ 
-            backgroundImage: `url('https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=2000')`,
+            backgroundImage: `url('/images/6.jpg')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            filter: 'grayscale(50%) contrast(120%)'
+            
           }}
         />
         <div className="relative z-10 flex flex-col items-center animate-fade-in">
-          <span className="bg-salsa-mint/20 text-salsa-mint border border-salsa-mint/30 text-[11px] font-black px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-6 inline-block">
-            {t('heroPre')}
-          </span>
+          
           <h1 className="font-modak text-6xl md:text-8xl text-white leading-none uppercase drop-shadow-2xl flex flex-wrap justify-center gap-3">
             {t('heroTitle1')} <span className="text-salsa-pink">{t('heroTitle2')}</span>
           </h1>
         </div>
-        {/* Diagonal Cut Bottom Removed Here */}
+        
       </section>
 
       {/* 3. THE DAILY RHYTHM (Vertical Timeline) */}

@@ -8,6 +8,10 @@ import { Music, Users, Sun, Star } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import LandingLoader from "@/components/LandingLoader";
 
+// Optional: For the ultimate blur-up loading effect, import your images at the top like this:
+// import photo1 from "@/public/gallery/photo-1.jpg";
+// Then use it in the component: <Image src={photo1} placeholder="blur" ... />
+
 export default function Home() {
   const t = useTranslations('Index');
   const tCommon = useTranslations('Common');
@@ -110,7 +114,6 @@ export default function Home() {
       {/* 1. HERO SECTION */}
       <section className="relative flex flex-col items-center overflow-hidden justify-center min-h-[100svh] md:min-h-[calc(100vh+120px)]">
         <div className="absolute inset-0 z-0 bg-slate-900 overflow-hidden">
-          {/* HTML5 Video Background */}
           <video
             autoPlay
             loop
@@ -120,23 +123,17 @@ export default function Home() {
           >
             <source src="/videos/HeroVideo.mp4" type="video/mp4" />
           </video>
-
-          {/* Gradient Overlay */}
           <div
             className="absolute inset-0 z-10"
-            style={{
-              backgroundImage: `linear-gradient(to bottom, rgba(0, 14, 36, 0.8), rgba(0, 11, 36, 0.4))`
-            }}
+            style={{ backgroundImage: `linear-gradient(to bottom, rgba(0, 14, 36, 0.8), rgba(0, 11, 36, 0.4))` }}
           />
         </div>
 
         <div className="relative z-10 w-full flex-grow flex flex-col items-center justify-center px-4 md:px-0 pt-24 md:pt-20 pb-32 md:pb-48">
           <div className="text-salsa-white max-w-6xl flex flex-col items-center w-full">
-
             <span className="animate-fade-in delay-100 bg-salsa-pink/20 text-salsa-pink border border-salsa-pink/30 text-[10px] md:text-[11px] font-black px-5 md:px-6 py-2 rounded-full uppercase tracking-[0.4em] mb-8 text-center">
               {t('hero.edition', { ordinal: editionNumber })}
             </span>
-
             <h1 lang="en" className="animate-fade-in delay-300 font-modak text-[4.5rem] sm:text-7xl md:text-[7rem] leading-[0.9] mb-12 uppercase flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-4 text-center">
               <span className="ambient-wave-word wave-1">SUMMER</span>
               <span className="ambient-wave-word wave-2">SALSA</span>
@@ -159,7 +156,6 @@ export default function Home() {
               <Button href="/tickets" variant="primary" size="lg" className="w-full max-w-[280px] sm:w-72 shadow-xl shadow-salsa-pink/20">
                 {t('hero.buyBtn')}
               </Button>
-
               <Button href="/info" variant="ghost" size="lg" className="w-full max-w-[280px] sm:w-72 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 backdrop-blur-sm">
                 {t('hero.learnBtn')}
               </Button>
@@ -181,20 +177,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. KINETIC TYPOGRAPHY HOVER BURST (Replaces Cards) */}
+      {/* 2. KINETIC TYPOGRAPHY */}
       <section 
         id="info" 
         className="py-20 md:py-32 px-4 w-full overflow-hidden bg-white relative cursor-crosshair"
         onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
         onMouseLeave={() => setHoveredFeature(null)}
       >
-        <div className="text-center mb-10 md:mb-16">
-          <span className="text-salsa-pink font-black text-[10px] md:text-[11px] uppercase tracking-[0.4em]">
-            {t('features.heading')}
-          </span>
-        </div>
 
-        {/* Floating Custom Cursor Card (Premium Dark Style) */}
         <div 
           className={`hidden md:flex pointer-events-none fixed z-50 w-80 p-8 rounded-[2rem] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-[0_20px_60px_-15px_rgba(236,72,153,0.4)] flex-col transition-opacity duration-200 overflow-hidden ${
             hoveredFeature !== null ? 'opacity-100' : 'opacity-0'
@@ -202,15 +192,13 @@ export default function Home() {
           style={{
             left: mousePos.x,
             top: mousePos.y,
-            transform: 'translate(24px, 24px)' // Offsets it slightly from the actual cursor
+            transform: 'translate(24px, 24px)'
           }}
         >
           {hoveredFeature !== null && (
             <>
-              {/* Neon Orbs inside card */}
               <div className="absolute -top-12 -right-12 w-32 h-32 bg-salsa-pink/40 blur-[40px] rounded-full" />
               <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/20 blur-[40px] rounded-full" />
-              
               <div className="relative z-10">
                 <div className="w-14 h-14 bg-gradient-to-br from-salsa-pink to-rose-500 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-salsa-pink/30">
                   {(() => {
@@ -227,7 +215,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Massive Stacked Text */}
         <div className="flex flex-col items-center justify-center w-full max-w-7xl mx-auto relative z-10">
           {features.map((item, i) => (
             <div 
@@ -236,8 +223,6 @@ export default function Home() {
               onMouseEnter={() => setHoveredFeature(i)}
               onClick={() => setHoveredFeature(hoveredFeature === i ? null : i)} 
             >
-              
-              
               <h2 
                 className={`font-bebas text-[11vw] sm:text-[9vw] md:text-[7vw] whitespace-nowrap leading-[0.85] transition-colors duration-300 md:cursor-none
                   ${
@@ -249,8 +234,6 @@ export default function Home() {
               >
                 {item.title}
               </h2>
-
-              {/* Mobile Description Reveal (Updated to Dark Theme for consistency) */}
               <div 
                 className={`md:hidden overflow-hidden transition-all duration-500 px-6 ${
                   hoveredFeature === i ? 'max-h-64 opacity-100 mt-6 pb-8' : 'max-h-0 opacity-0 mt-0 pb-0'
@@ -269,27 +252,78 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. FESTIVAL GALLERY */}
+      {/* 3. FESTIVAL GALLERY (Modern Bento Box Layout) */}
       <section id="gallery" className="py-16 md:py-24 px-4 md:px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-3 gap-3 md:gap-4 h-auto md:h-[1000px]">
-          <div className="relative md:col-span-2 md:row-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-64 md:h-auto">
-            <Image src="https://www.doitinparis.com/files/2025/thumbs-1180x525/en/festivals-musique-ete-2025.jpg" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 1" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-3 gap-4 md:gap-5 h-auto md:h-[800px]">
+          
+          {/* Main highlight - Large Square */}
+          <div className="group relative md:col-span-2 md:row-span-2 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-slate-100 h-80 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/3.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 50vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Festival Main Event" 
+            />
+            {/* Subtle Gradient Overlay on Hover for premium feel */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           </div>
-          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <Image src="https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 2" />
+
+          {/* Top Right Wide - Landscape */}
+          <div className="group relative md:col-span-2 md:row-span-1 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-slate-100 h-48 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/4.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 50vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Festival Crowd" 
+            />
           </div>
-          <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <Image src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 3" />
+
+          {/* Middle Right Small - Square */}
+          <div className="group relative md:col-span-1 md:row-span-1 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-slate-100 h-48 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/5.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 25vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Salsa Workshop" 
+            />
           </div>
-          <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <Image src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 4" />
+
+          {/* Far Right Tall - Portrait */}
+          <div className="group relative md:col-span-1 md:row-span-2 rounded-[2rem] md:rounded-[3rem] overflow-hidden bg-slate-100 h-80 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/9.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 25vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Dancers Portrait" 
+            />
           </div>
-          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <Image src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 5" />
+
+          {/* Bottom Left Wide - Landscape */}
+          <div className="group relative md:col-span-2 md:row-span-1 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-slate-100 h-48 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/7.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 50vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Night Party" 
+            />
           </div>
-          <div className="relative md:col-span-2 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 h-48 md:h-auto">
-            <Image src="https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1000" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover grayscale-[30%] hover:grayscale-0 transition duration-700" alt="Salsa 6" />
+
+          {/* Bottom Middle Small - Square */}
+          <div className="group relative md:col-span-1 md:row-span-1 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-slate-100 h-48 md:h-auto border border-slate-100 shadow-sm">
+            <Image 
+              src="/images/15.jpg" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 25vw" 
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+              alt="Live Music" 
+            />
           </div>
+
         </div>
       </section>
 
@@ -302,12 +336,10 @@ export default function Home() {
 
         <div
           className="relative max-w-[100vw] mx-auto group"
-          onMouseEnter={stopAutoScrollAndScheduleRestart}
-          onTouchStart={stopAutoScrollAndScheduleRestart}
         >
           <div ref={scrollContainerRef} className="flex gap-4 md:gap-8 px-4 md:px-[15vw] overflow-x-auto hide-scrollbar py-6 md:py-10 pb-10 md:pb-14">
             {[...reviews, ...reviews, ...reviews].map((review, i) => (
-              <div key={i} className="shrink-0 w-[280px] sm:w-[350px] md:w-[400px] bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col cursor-pointer">
+              <div key={i} className="shrink-0 w-[280px] sm:w-[350px] md:w-[400px] bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col cursor-pointer transition-transform hover:-translate-y-2 duration-300">
                 <div className="flex gap-1 mb-4 md:mb-6">
                   {[...Array(5)].map((_, s) => <Star key={s} size={14} className="md:w-4 md:h-4 fill-salsa-pink text-salsa-pink" />)}
                 </div>
@@ -326,7 +358,7 @@ export default function Home() {
       </section>
 
       {/* 5. CALL TO ACTION */}
-      <section className="py-24 md:py-32 px-4 md:px-6 text-center bg-salsa-white text-slate-900">
+      <section className="py-24 md:py-32 px-4 md:px-6 text-center bg-salsa-mint/50 text-slate-900">
         <h2 className="font-bebas tracking-wide text-6xl md:text-8xl mb-6 md:mb-8 leading-none">{t('cta.title')}</h2>
         <p className="max-w-xl mx-auto mb-10 md:mb-12 text-lg md:text-xl font-medium opacity-80 leading-relaxed text-slate-700 px-4">
           {t('cta.desc')}
