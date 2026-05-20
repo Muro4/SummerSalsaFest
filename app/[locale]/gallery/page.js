@@ -10,22 +10,22 @@ export default function GalleryPage() {
   const t = useTranslations('Gallery');
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  // THE FIX: Added width and height properties based on the Unsplash URL parameters.
-  // This is required for next/image to prevent layout shifts in a Masonry grid.
-  const baseImages = [
-    { id: 1, src: "https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=800&h=1200&fit=crop", width: 800, height: 1200, alt: "Couple dancing salsa" },
-    { id: 2, src: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000&h=700&fit=crop", width: 1000, height: 700, alt: "Festival crowd cheering" },
-    { id: 3, src: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800&h=800&fit=crop", width: 800, height: 800, alt: "Live band playing" },
-    { id: 4, src: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800&h=1000&fit=crop", width: 800, height: 1000, alt: "Night beach party" },
-    { id: 5, src: "https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1200&h=800&fit=crop", width: 1200, height: 800, alt: "DJ spinning tracks" },
-    { id: 6, src: "https://images.unsplash.com/photo-1516997184976-55a0b7791834?q=80&w=800&h=1100&fit=crop", width: 800, height: 1100, alt: "Dancer posing" },
-    { id: 7, src: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=900&h=700&fit=crop", width: 900, height: 700, alt: "Concert lights" },
-    { id: 8, src: "https://images.unsplash.com/photo-1524117853209-a2fc128ceb66?q=80&w=800&h=1200&fit=crop", width: 800, height: 1200, alt: "Workshop instruction" },
-    { id: 9, src: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=1000&h=600&fit=crop", width: 1000, height: 600, alt: "Outdoor stage" },
-  ];
-
-  // Tripling the images to create a massive masonry wall
-  const galleryImages = [...baseImages, ...baseImages, ...baseImages].map((img, i) => ({...img, uniqueKey: i}));
+  
+  const galleryImages = Array.from({ length: 25 }, (_, i) => {
+    const id = i + 1;
+    // Alternating heights (800, 1000, 1200) to keep the staggered masonry effect.
+    // Adjust these if your actual images have drastically different aspect ratios.
+    const calculatedHeight = 800 + ((i % 3) * 200); 
+    
+    return {
+      id,
+  src: `/images/${id}.jpg`,
+  width: 800,
+  height: calculatedHeight,
+  alt: `Gallery photo ${id}`,
+  uniqueKey: i
+    };
+  });
 
   // --- LIGHTBOX NAVIGATION LOGIC ---
   const closeLightbox = () => setSelectedIndex(null);
@@ -83,9 +83,6 @@ export default function GalleryPage() {
         <h1 className="animate-fade-in delay-300 font-modak text-6xl md:text-8xl text-gray-900 leading-none uppercase drop-shadow-md flex flex-wrap justify-center gap-3">
           {t('heroTitle1')} <span className="text-salsa-pink">{t('heroTitle2')}</span>
         </h1>
-        <p className="animate-fade-in delay-500 max-w-xl mx-auto mt-6 text-gray-600 font-medium">
-          {t('heroDesc')}
-        </p>
       </section>
 
       {/* 2. MASONRY GRID */}

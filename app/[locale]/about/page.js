@@ -25,10 +25,7 @@ export default function AboutPage() {
 
       <div className="flex flex-col md:flex-row flex-grow">
         
-        {/* =========================================
-            LEFT COLUMN: IMMERSIVE BACKGROUND
-            Sticky on desktop, static header on mobile
-        ========================================= */}
+        
         <div className="w-full md:w-5/12 lg:w-1/2 relative">
           <div className="md:sticky md:top-0 h-[50vh] md:h-screen w-full relative overflow-hidden">
             
@@ -38,7 +35,7 @@ export default function AboutPage() {
             {/* High-quality background image */}
             <div 
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url('https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=2000&fit=crop')` }}
+              style={{ backgroundImage: `url('/images/26.jpg')` }}
             ></div>
             
             {/* The Title overlays the image */}

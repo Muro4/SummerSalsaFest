@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { getNow, getActiveFestivalYear } from "@/lib/utils";
@@ -8,7 +7,7 @@ import { getPriceAtDate } from "@/lib/pricing";
 import { 
   Clock, RefreshCw, AlertTriangle, FastForward, ShieldAlert, 
   CreditCard, Power, Loader2, ChevronLeft, ChevronRight, 
-  Activity, CheckCircle2, XCircle, AlertCircle, KeyRound, X
+  Activity, CheckCircle2, XCircle, AlertCircle
 } from "lucide-react";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
@@ -25,11 +24,6 @@ export default function DevTab() {
   const [sysLoading, setSysLoading] = useState(true);
   const [healthStatus, setHealthStatus] = useState(null);
   const [runningTests, setRunningTests] = useState(false);
-
-  // Security Modal State
-  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
-  const [passwordAttempt, setPasswordAttempt] = useState("");
-  const [passError, setPassError] = useState(false);
 
   const festivalYear = getActiveFestivalYear();
 
@@ -73,24 +67,8 @@ export default function DevTab() {
 
   // System Control Handlers
   const toggleSales = () => {
-    if (system.salesEnabled) {
-      setIsPassModalOpen(true);
-      setPasswordAttempt("");
-      setPassError(false);
-    } else {
-      executeToggle(true);
-    }
-  };
-
-  const handleVerifyPassword = (e) => {
-    e.preventDefault();
-    if (passwordAttempt === "Admin123!") {
-      setIsPassModalOpen(false);
-      executeToggle(false);
-    } else {
-      setPassError(true);
-      setTimeout(() => setPassError(false), 2000);
-    }
+    // Преминава директно към потвърждение за сменяне на статуса
+    executeToggle(!system.salesEnabled);
   };
 
   const executeToggle = async (newState) => {
@@ -175,35 +153,6 @@ export default function DevTab() {
 
   if (sysLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>;
 
-  // Security Modal Render
-  const passwordModal = (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setIsPassModalOpen(false)}></div>
-      <div className="relative bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in zoom-in-95">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-6">
-          <KeyRound size={32} />
-        </div>
-        <h3 className="font-bebas text-3xl text-slate-900 uppercase leading-none mb-2">System Access</h3>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 px-4">Enter the system password to deactivate ticket sales</p>
-        
-        <form onSubmit={handleVerifyPassword} className="w-full space-y-4">
-          <input 
-            autoFocus
-            type="password" 
-            placeholder="••••••••••••" 
-            value={passwordAttempt}
-            onChange={(e) => setPasswordAttempt(e.target.value)}
-            className={`w-full h-12 px-4 rounded-xl border-2 text-center text-lg outline-none transition-all ${passError ? 'border-red-500 bg-red-50 animate-shake' : 'border-gray-100 focus:border-slate-900 bg-slate-50'}`}
-          />
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" className="flex-1 bg-gray-50" onClick={() => setIsPassModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="primary" className="flex-1 bg-red-500 hover:bg-red-600">Verify</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-6 relative z-10 font-montserrat pb-20">
       
@@ -272,7 +221,6 @@ export default function DevTab() {
           </div>
           
           <div className="flex flex-col xl:flex-row gap-6">
-            {/* Height locked to 300px to maintain consistent layout flow across screen sizes */}
             <div className="w-full xl:w-[260px] shrink-0 bg-slate-50 rounded-2xl p-4 border border-gray-100 shadow-inner h-[300px]">
                <div className="flex justify-between items-center mb-4">
                   <button onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))} className="p-1.5 hover:bg-white border border-transparent hover:border-gray-200 rounded-lg text-slate-500 transition-all cursor-pointer"><ChevronLeft size={16}/></button>
@@ -363,7 +311,6 @@ export default function DevTab() {
         </div>
       </div>
 
-      {isPassModalOpen && typeof window !== "undefined" && createPortal(passwordModal, document.body)}
     </div>
   );
 }
