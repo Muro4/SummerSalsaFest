@@ -152,92 +152,6 @@ export default function AdminDashboard() {
       } finally { setSaving(false); }
    };
 
-   // ==========================================
-   // 2. NEW: TEMPORARY DATABASE TOOLS
-   // ==========================================
-   const seedDatabase = async () => {
-      if (!confirm("Are you sure you want to seed 150 tickets? This cannot be undone quickly.")) return;
-      try {
-        const batch = writeBatch(db);
-    
-        const fakeUsers = [
-          { uid: "fake_user_1", displayName: "Dimitar Ivanov Georgiev", email: "dimitar@example.com", role: "user" },
-          { uid: "fake_user_2", displayName: "Elena Petrova Marinova", email: "elena@example.com", role: "user" },
-          { uid: "fake_user_3", displayName: "Michael James Anderson", email: "michael@example.com", role: "user" },
-          { uid: "fake_user_4", displayName: "Alexander Borisov Petrov", email: "alex@example.com", role: "user" },
-          { uid: "fake_user_5", displayName: "Sarah Elizabeth Taylor", email: "sarah@example.com", role: "user" }
-        ];
-    
-        fakeUsers.forEach(user => {
-          const userRef = doc(db, "users", user.uid);
-          batch.set(userRef, { ...user, createdAt: new Date().toISOString() });
-        });
-    
-        const years = [2024, 2025, 2026];
-        let ticketCounter = 0;
-    
-        years.forEach(year => {
-          for (let i = 0; i < 50; i++) {
-            const ticketRef = doc(collection(db, "tickets"));
-            const randomUser = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
-            const start = new Date(`${year}-01-01T00:00:00Z`).getTime();
-            const end = new Date(`${year}-12-31T23:59:59Z`).getTime();
-            const randomTimestamp = new Date(start + Math.random() * (end - start)).toISOString();
-    
-            batch.set(ticketRef, {
-              userId: randomUser.uid,
-              userName: randomUser.displayName,
-              userEmail: randomUser.email,
-              status: "paid",
-              type: "full-pass",
-              price: 150,
-              createdAt: randomTimestamp,
-              updatedAt: randomTimestamp
-            });
-            ticketCounter++;
-          }
-        });
-    
-        await batch.commit();
-        alert(`Successfully seeded 5 users and ${ticketCounter} tickets!`);
-      } catch (error) {
-        console.error("Error seeding database:", error);
-        alert("Failed to seed database. Check console.");
-      }
-   };
-
-   const exportDatabase = async () => {
-      const collectionsToExport = ["users", "tickets", "artists"];
-      const databaseBackup = {};
-    
-      try {
-        for (const colName of collectionsToExport) {
-          const querySnapshot = await getDocs(collection(db, colName));
-          databaseBackup[colName] = [];
-          
-          querySnapshot.forEach((doc) => {
-            databaseBackup[colName].push({ id: doc.id, ...doc.data() });
-         });
-        }
-    
-        const jsonString = JSON.stringify(databaseBackup, null, 2);
-        const blob = new Blob([jsonString], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-    
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `festival_db_backup_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    
-      } catch (error) {
-        console.error("Failed to export database:", error);
-        alert("Export failed. Check the console.");
-      }
-   };
-   // ==========================================
 
    const effectiveTickets = useMemo(() => {
       return data.tickets.map(ticket => history[historyIndex]?.[`tickets_${ticket.id}`] ? { ...ticket, ...history[historyIndex][`tickets_${ticket.id}`] } : ticket).filter(ticket => !ticket._deleted);
@@ -280,16 +194,6 @@ export default function AdminDashboard() {
                   <h1 className="font-bebas tracking-wide text-5xl text-slate-900 uppercase leading-none">Admin Panel</h1>
                   <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest mt-1.5">Summer Salsa Fest Management</p>
                </div>
-
-               {/* ========================================== */}
-               {/* 3. NEW: TEMPORARY DEV TOOLS UI BLOCK       */}
-               {/* ========================================== */}
-               <div className="flex flex-col gap-2 p-4 bg-red-50 border-2 border-red-200 rounded-2xl shrink-0 my-2">
-                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest text-center mb-1">Temp Dev Tools</p>
-                  <Button onClick={seedDatabase} variant="danger" size="sm" icon={DatabaseZap} className="w-full text-xs shadow-sm">Seed DB</Button>
-                  <Button onClick={exportDatabase} variant="primary" size="sm" icon={DatabaseBackup} className="w-full text-xs shadow-sm bg-slate-900 hover:bg-slate-800 border-none">Export JSON</Button>
-               </div>
-               {/* ========================================== */}
 
                <div className="flex flex-col gap-2 w-full pb-4 md:pb-0 shrink-0">
                   {adminTabs.map((tab) => {

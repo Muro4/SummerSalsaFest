@@ -8,91 +8,87 @@ import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import Image from "next/image";
 import { useTranslations, useLocale } from 'next-intl';
-import Emoji from "@/components/Emoji"; // <-- IMPORTED EMOJI COMPONENT
+import Emoji from "@/components/Emoji"; 
 
-// 🌍 COMPREHENSIVE LIST OF WORLD FLAGS
-const WORLD_FLAGS = [
-  { name: 'Afghanistan', flag: '🇦🇫' }, { name: 'Albania', flag: '🇦🇱' }, { name: 'Algeria', flag: '🇩🇿' },
-  { name: 'Andorra', flag: '🇦🇩' }, { name: 'Angola', flag: '🇦🇴' }, { name: 'Antigua & Barbuda', flag: '🇦🇬' },
-  { name: 'Argentina', flag: '🇦🇷' }, { name: 'Armenia', flag: '🇦🇲' }, { name: 'Australia', flag: '🇦🇺' },
-  { name: 'Austria', flag: '🇦🇹' }, { name: 'Azerbaijan', flag: '🇦🇿' }, { name: 'Bahamas', flag: '🇧🇸' },
-  { name: 'Bahrain', flag: '🇧🇭' }, { name: 'Bangladesh', flag: '🇧🇩' }, { name: 'Barbados', flag: '🇧🇧' },
-  { name: 'Belarus', flag: '🇧🇾' }, { name: 'Belgium', flag: '🇧🇪' }, { name: 'Belize', flag: '🇧🇿' },
-  { name: 'Benin', flag: '🇧🇯' }, { name: 'Bhutan', flag: '🇧🇹' }, { name: 'Bolivia', flag: '🇧🇴' },
-  { name: 'Bosnia & Herzegovina', flag: '🇧🇦' }, { name: 'Botswana', flag: '🇧🇼' }, { name: 'Brazil', flag: '🇧🇷' },
-  { name: 'Brunei', flag: '🇧🇳' }, { name: 'Bulgaria', flag: '🇧🇬' }, { name: 'Burkina Faso', flag: '🇧🇫' },
-  { name: 'Burundi', flag: '🇧🇮' }, { name: 'Cape Verde', flag: '🇨🇻' }, { name: 'Cambodia', flag: '🇰🇭' },
-  { name: 'Cameroon', flag: '🇨🇲' }, { name: 'Canada', flag: '🇨🇦' }, { name: 'Central African Republic', flag: '🇨🇫' },
-  { name: 'Chad', flag: '🇹🇩' }, { name: 'Chile', flag: '🇨🇱' }, { name: 'China', flag: '🇨🇳' },
-  { name: 'Colombia', flag: '🇨🇴' }, { name: 'Comoros', flag: '🇰🇲' }, { name: 'Congo - Kinshasa', flag: '🇨🇩' },
-  { name: 'Congo - Brazzaville', flag: '🇨🇬' }, { name: 'Costa Rica', flag: '🇨🇷' }, { name: 'Croatia', flag: '🇭🇷' },
-  { name: 'Cuba', flag: '🇨🇺' }, { name: 'Cyprus', flag: '🇨🇾' }, { name: 'Czechia', flag: '🇨🇿' },
-  { name: 'Denmark', flag: '🇩🇰' }, { name: 'Djibouti', flag: '🇩🇯' }, { name: 'Dominica', flag: '🇩🇲' },
-  { name: 'Dominican Republic', flag: '🇩🇴' }, { name: 'Ecuador', flag: '🇪🇨' }, { name: 'Egypt', flag: '🇪🇬' },
-  { name: 'El Salvador', flag: '🇸🇻' }, { name: 'Equatorial Guinea', flag: '🇬🇶' }, { name: 'Eritrea', flag: '🇪🇷' },
-  { name: 'Estonia', flag: '🇪🇪' }, { name: 'Eswatini', flag: '🇸🇿' }, { name: 'Ethiopia', flag: '🇪🇹' },
-  { name: 'Fiji', flag: '🇫🇯' }, { name: 'Finland', flag: '🇫🇮' }, { name: 'France', flag: '🇫🇷' },
-  { name: 'Gabon', flag: '🇬🇦' }, { name: 'Gambia', flag: '🇬🇲' }, { name: 'Georgia', flag: '🇬🇪' },
-  { name: 'Germany', flag: '🇩🇪' }, { name: 'Ghana', flag: '🇬🇭' }, { name: 'Greece', flag: '🇬🇷' },
-  { name: 'Grenada', flag: '🇬🇩' }, { name: 'Guatemala', flag: '🇬🇹' }, { name: 'Guinea', flag: '🇬🇳' },
-  { name: 'Guinea-Bissau', flag: '🇬🇼' }, { name: 'Guyana', flag: '🇬🇾' }, { name: 'Haiti', flag: '🇭🇹' },
-  { name: 'Honduras', flag: '🇭🇳' }, { name: 'Hungary', flag: '🇭🇺' }, { name: 'Iceland', flag: '🇮🇸' },
-  { name: 'India', flag: '🇮🇳' }, { name: 'Indonesia', flag: '🇮🇩' }, { name: 'Iran', flag: '🇮🇷' },
-  { name: 'Iraq', flag: '🇮🇶' }, { name: 'Ireland', flag: '🇮🇪' }, { name: 'Israel', flag: '🇮🇱' },
-  { name: 'Italy', flag: '🇮🇹' }, { name: 'Jamaica', flag: '🇯🇲' }, { name: 'Japan', flag: '🇯🇵' },
-  { name: 'Jordan', flag: '🇯🇴' }, { name: 'Kazakhstan', flag: '🇰🇿' }, { name: 'Kenya', flag: '🇰🇪' },
-  { name: 'Kiribati', flag: '🇰🇮' }, { name: 'North Korea', flag: '🇰🇵' }, { name: 'South Korea', flag: '🇰🇷' },
-  { name: 'Kuwait', flag: '🇰🇼' }, { name: 'Kyrgyzstan', flag: '🇰🇬' }, { name: 'Laos', flag: '🇱🇦' },
-  { name: 'Latvia', flag: '🇱🇻' }, { name: 'Lebanon', flag: '🇱🇧' }, { name: 'Lesotho', flag: '🇱🇸' },
-  { name: 'Liberia', flag: '🇱🇷' }, { name: 'Libya', flag: '🇱🇾' }, { name: 'Liechtenstein', flag: '🇱🇮' },
-  { name: 'Lithuania', flag: '🇱🇹' }, { name: 'Luxembourg', flag: '🇱🇺' }, { name: 'Madagascar', flag: '🇲🇬' },
-  { name: 'Malawi', flag: '🇲🇼' }, { name: 'Malaysia', flag: '🇲🇾' }, { name: 'Maldives', flag: '🇲🇻' },
-  { name: 'Mali', flag: '🇲🇱' }, { name: 'Malta', flag: '🇲🇹' }, { name: 'Marshall Islands', flag: '🇲🇭' },
-  { name: 'Mauritania', flag: '🇲🇷' }, { name: 'Mauritius', flag: '🇲🇺' }, { name: 'Mexico', flag: '🇲🇽' },
-  { name: 'Micronesia', flag: '🇫🇲' }, { name: 'Moldova', flag: '🇲🇩' }, { name: 'Monaco', flag: '🇲🇨' },
-  { name: 'Mongolia', flag: '🇲🇳' }, { name: 'Montenegro', flag: '🇲🇪' }, { name: 'Morocco', flag: '🇲🇦' },
-  { name: 'Mozambique', flag: '🇲🇿' }, { name: 'Myanmar (Burma)', flag: '🇲🇲' }, { name: 'Namibia', flag: '🇳🇦' },
-  { name: 'Nauru', flag: '🇳🇷' }, { name: 'Nepal', flag: '🇳🇵' }, { name: 'Netherlands', flag: '🇳🇱' },
-  { name: 'New Zealand', flag: '🇳🇿' }, { name: 'Nicaragua', flag: '🇳🇮' }, { name: 'Niger', flag: '🇳🇪' },
-  { name: 'Nigeria', flag: '🇳🇬' }, { name: 'North Macedonia', flag: '🇲🇰' }, { name: 'Norway', flag: '🇳🇴' },
-  { name: 'Oman', flag: '🇴🇲' }, { name: 'Pakistan', flag: '🇵🇰' }, { name: 'Palau', flag: '🇵🇼' },
-  { name: 'Palestine', flag: '🇵🇸' }, { name: 'Panama', flag: '🇵🇦' }, { name: 'Papua New Guinea', flag: '🇵🇬' },
-  { name: 'Paraguay', flag: '🇵🇾' }, { name: 'Peru', flag: '🇵🇪' }, { name: 'Philippines', flag: '🇵🇭' },
-  { name: 'Poland', flag: '🇵🇱' }, { name: 'Portugal', flag: '🇵🇹' }, { name: 'Qatar', flag: '🇶🇦' },
-  { name: 'Romania', flag: '🇷🇴' }, { name: 'Russia', flag: '🇷🇺' }, { name: 'Rwanda', flag: '🇷🇼' },
-  { name: 'St. Kitts & Nevis', flag: '🇰🇳' }, { name: 'St. Lucia', flag: '🇱🇨' }, { name: 'St. Vincent & Grenadines', flag: '🇻🇨' },
-  { name: 'Samoa', flag: '🇼🇸' }, { name: 'San Marino', flag: '🇸🇲' }, { name: 'Sao Tome & Principe', flag: '🇸🇹' },
-  { name: 'Saudi Arabia', flag: '🇸🇦' }, { name: 'Senegal', flag: '🇸🇳' }, { name: 'Serbia', flag: '🇷🇸' },
-  { name: 'Seychelles', flag: '🇸🇨' }, { name: 'Sierra Leone', flag: '🇸🇱' }, { name: 'Singapore', flag: '🇸🇬' },
-  { name: 'Slovakia', flag: '🇸🇰' }, { name: 'Slovenia', flag: '🇸🇮' }, { name: 'Solomon Islands', flag: '🇸🇧' },
-  { name: 'Somalia', flag: '🇸🇴' }, { name: 'South Africa', flag: '🇿🇦' }, { name: 'South Sudan', flag: '🇸🇸' },
-  { name: 'Spain', flag: '🇪🇸' }, { name: 'Sri Lanka', flag: '🇱🇰' }, { name: 'Sudan', flag: '🇸🇩' },
-  { name: 'Suriname', flag: '🇸🇷' }, { name: 'Sweden', flag: '🇸🇪' }, { name: 'Switzerland', flag: '🇨🇭' },
-  { name: 'Syria', flag: '🇸🇾' }, { name: 'Taiwan', flag: '🇹🇼' }, { name: 'Tajikistan', flag: '🇹🇯' },
-  { name: 'Tanzania', flag: '🇹🇿' }, { name: 'Thailand', flag: '🇹🇭' }, { name: 'Timor-Leste', flag: '🇹🇱' },
-  { name: 'Togo', flag: '🇹🇬' }, { name: 'Tonga', flag: '🇹🇴' }, { name: 'Trinidad & Tobago', flag: '🇹🇹' },
-  { name: 'Tunisia', flag: '🇹🇳' }, { name: 'Turkey', flag: '🇹🇷' }, { name: 'Turkmenistan', flag: '🇹🇲' },
-  { name: 'Tuvalu', flag: '🇹🇻' }, { name: 'Uganda', flag: '🇺🇬' }, { name: 'Ukraine', flag: '🇺🇦' },
-  { name: 'United Arab Emirates', flag: '🇦🇪' }, { name: 'United Kingdom', flag: '🇬🇧' }, { name: 'United States', flag: '🇺🇸' },
-  { name: 'Uruguay', flag: '🇺🇾' }, { name: 'Uzbekistan', flag: '🇺🇿' }, { name: 'Vanuatu', flag: '🇻🇺' },
-  { name: 'Vatican City', flag: '🇻🇦' }, { name: 'Venezuela', flag: '🇻🇪' }, { name: 'Vietnam', flag: '🇻🇳' },
-  { name: 'Yemen', flag: '🇾🇪' }, { name: 'Zambia', flag: '🇿🇲' }, { name: 'Zimbabwe', flag: '🇿🇼' }
-];
+// Using relative path to guarantee it works without alias issues
+import { WORLD_FLAGS } from "../../lib/flags";
 
+// 📚 MASSIVELY EXPANDED DICTIONARY FOR AUTO-TRANSLATION
 const DICTIONARY = {
+  // Genres
   'bachata': 'Бачата',
   'salsa': 'Салса',
   'kizomba': 'Кизомба',
   'zouk': 'Зук',
+  
+  // Europe
   'spain': 'Испания',
   'romania': 'Румъния',
   'france': 'Франция',
   'bulgaria': 'България',
-  'usa': 'САЩ',
-  'uk': 'Великобритания',
   'italy': 'Италия',
+  'germany': 'Германия',
+  'greece': 'Гърция',
+  'turkey': 'Турция',
+  'serbia': 'Сърбия',
+  'north macedonia': 'Северна Македония',
+  'macedonia': 'Македония',
+  'portugal': 'Португалия',
+  'poland': 'Полша',
+  'netherlands': 'Нидерландия',
+  'belgium': 'Белгия',
+  'switzerland': 'Швейцария',
+  'sweden': 'Швеция',
+  'norway': 'Норвегия',
+  'finland': 'Финландия',
+  'denmark': 'Дания',
+  'austria': 'Австрия',
+  'hungary': 'Унгария',
+  'czechia': 'Чехия',
+  'czech republic': 'Чехия',
+  'slovakia': 'Словакия',
+  'croatia': 'Хърватия',
+  'uk': 'Великобритания',
+  'united kingdom': 'Великобритания',
+  'ireland': 'Ирландия',
+  'russia': 'Русия',
+  'ukraine': 'Украйна',
+  'cyprus': 'Кипър',
+  
+  // Americas
+  'usa': 'САЩ',
+  'united states': 'САЩ',
   'cuba': 'Куба',
-  'mexico': 'Мексико'
+  'mexico': 'Мексико',
+  'colombia': 'Колумбия',
+  'argentina': 'Аржентина',
+  'brazil': 'Бразилия',
+  'peru': 'Перу',
+  'venezuela': 'Венецуела',
+  'chile': 'Чили',
+  'ecuador': 'Еквадор',
+  'puerto rico': 'Пуерто Рико',
+  'dominican republic': 'Доминиканска Република',
+  'panama': 'Панама',
+  'costa rica': 'Коста Рика',
+  'canada': 'Канада',
+  'uruguay': 'Уругвай',
+  'paraguay': 'Парагвай',
+  'bolivia': 'Боливия',
+
+  // Asia / Oceania / Africa (Common ones)
+  'japan': 'Япония',
+  'china': 'Китай',
+  'south korea': 'Южна Корея',
+  'india': 'Индия',
+  'australia': 'Австралия',
+  'new zealand': 'Нова Зеландия',
+  'egypt': 'Египет',
+  'morocco': 'Мароко',
+  'south africa': 'Южна Африка',
+  'israel': 'Израел',
+  'uae': 'ОАЕ',
+  'united arab emirates': 'Обединени Арабски Емирства'
 };
 
 // 🌟 CUSTOM SEARCHABLE DROPDOWN COMPONENT
@@ -119,26 +115,29 @@ function SearchableFlagSelect({ value, onChange, placeholder, onClear }) {
         className="w-full h-[52px] px-4 bg-white border border-gray-200 rounded-xl text-sm font-bold text-slate-900 outline-none flex items-center justify-between cursor-pointer transition-colors hover:border-slate-400"
       >
         {selected ? (
-          <span className="flex items-center gap-2"><span className="text-xl">{selected.flag}</span> <span className="truncate max-w-[80px] md:max-w-[120px]">{selected.name}</span></span>
+          <span className="flex items-center gap-3 min-w-0 pr-2">
+            <span className="text-xl shrink-0">{selected.flag}</span> 
+            <span className="truncate">{selected.name}</span>
+          </span>
         ) : (
-          <span className="text-slate-400 font-medium">{placeholder}</span>
+          <span className="text-slate-400 font-medium truncate">{placeholder}</span>
         )}
         
         {value && onClear ? (
-          <button onClick={(e) => { e.stopPropagation(); onClear(); }} className="text-slate-400 hover:text-red-500 transition-colors p-1"><X size={16}/></button>
+          <button onClick={(e) => { e.stopPropagation(); onClear(); }} className="text-slate-400 hover:text-red-500 transition-colors p-1 shrink-0"><X size={16}/></button>
         ) : (
-          <span className="text-slate-300 text-[10px]">▼</span>
+          <span className="text-slate-300 text-[10px] shrink-0">▼</span>
         )}
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 top-[calc(100%+4px)] left-0 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute z-50 top-[calc(100%+4px)] left-0 w-full bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="p-3 border-b border-gray-100 bg-slate-50 flex items-center gap-2">
             <Search size={16} className="text-slate-400 shrink-0" />
             <input
               type="text"
               autoFocus
-              placeholder="Search country..."
+              placeholder="Search..."
               className="w-full bg-transparent outline-none text-sm font-medium text-slate-700"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -153,10 +152,10 @@ function SearchableFlagSelect({ value, onChange, placeholder, onClear }) {
                 className="px-4 py-3 hover:bg-salsa-pink/10 cursor-pointer flex items-center gap-3 transition-colors border-b border-gray-50 last:border-0"
               >
                 <span className="text-xl leading-none">{c.flag}</span>
-                <span className="font-medium text-slate-700 text-sm">{c.name}</span>
+                <span className="font-medium text-slate-700 text-sm truncate">{c.name}</span>
               </div>
             ))}
-            {filteredFlags.length === 0 && <div className="p-4 text-center text-slate-400 text-sm">No country found</div>}
+            {filteredFlags.length === 0 && <div className="p-4 text-center text-slate-400 text-sm">Not found</div>}
           </div>
         </div>
       )}
@@ -174,10 +173,8 @@ export default function ArtistsTab({ artists, onStageChange }) {
   const [dragActive, setDragActive] = useState(false);
   
   const [errors, setErrors] = useState({});
-  
   const [editingId, setEditingId] = useState(null);
   
-  // 🔄 REPLACED single 'flag' with 'flag1' and 'flag2' in state
   const [formData, setFormData] = useState({
     name: "", genreEn: "", genreBg: "", countryEn: "", countryBg: "",
     flag1: "🇪🇸", flag2: "", instagramUrl: "", imageUrl: "", file: null
@@ -192,7 +189,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
     if (artist) {
       setEditingId(artist.id);
       
-      // Parse existing flags (e.g. "🇪🇸 🇮🇹" splits into ["🇪🇸", "🇮🇹"])
       const flags = artist.flag ? artist.flag.split(' ') : [];
       const f1 = flags[0] || "🇪🇸";
       const f2 = flags[1] || "";
@@ -243,16 +239,41 @@ export default function ArtistsTab({ artists, onStageChange }) {
 
   const handleCountryEnChange = (e) => {
     const val = e.target.value.toUpperCase();
-    const searchVal = val.trim().toLowerCase();
-    const foundFlag = WORLD_FLAGS.find(c => c.name.toLowerCase() === searchVal);
-    const bgVal = DICTIONARY[searchVal] ? DICTIONARY[searchVal].toUpperCase() : formData.countryBg;
+    const searchVal = val.toLowerCase();
     
+    // Split input by "&", "and", "," or "/"
+    const parts = searchVal.split(/\s*(?:&|and|,|\/)\s*/i).map(p => p.trim()).filter(Boolean);
+    
+    let foundFlag1 = formData.flag1;
+    let foundFlag2 = formData.flag2;
+    let bgVal = formData.countryBg;
+
+    if (parts.length > 0) {
+      const match1 = WORLD_FLAGS.find(c => c.name.toLowerCase() === parts[0]);
+      if (match1) foundFlag1 = match1.flag;
+    }
+    
+    if (parts.length > 1) {
+      const match2 = WORLD_FLAGS.find(c => c.name.toLowerCase() === parts[1]);
+      if (match2) foundFlag2 = match2.flag;
+    } else if (parts.length === 1 && !searchVal.includes('&') && !searchVal.includes('and')) {
+      foundFlag2 = ""; 
+    }
+
+    if (parts.length === 1 && DICTIONARY[parts[0]]) {
+      bgVal = DICTIONARY[parts[0]].toUpperCase();
+    } else if (parts.length === 2 && DICTIONARY[parts[0]] && DICTIONARY[parts[1]]) {
+      bgVal = (DICTIONARY[parts[0]] + " & " + DICTIONARY[parts[1]]).toUpperCase();
+    }
+
     setFormData(prev => ({
       ...prev,
       countryEn: val,
       countryBg: bgVal,
-      flag1: foundFlag ? foundFlag.flag : prev.flag1
+      flag1: foundFlag1,
+      flag2: foundFlag2
     }));
+    
     setErrors(prev => { const n = {...prev}; delete n.countryEn; delete n.countryBg; return n; });
   };
 
@@ -278,7 +299,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
 
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-
           const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
 
           setFormData(prev => ({ ...prev, file: file, imageUrl: compressedBase64 }));
@@ -308,7 +328,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
       return;
     }
     
-    // Automatically combine flags cleanly into a single string
     const combinedFlags = [formData.flag1, formData.flag2].filter(Boolean).join(' ');
 
     const payload = {
@@ -382,26 +401,29 @@ export default function ArtistsTab({ artists, onStageChange }) {
             </div>
           </div>
 
-          {/* 🌐 UPDATED GRID: Split into Country Inputs and Two Custom Searchable Flags */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 shrink-0 items-end">
-            <div className="space-y-2 md:col-span-4">
+          {/* ⬇️ MOVED: Countries on their own row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
+            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblCountryEn')}</label>
               <input type="text" maxLength={50} value={formData.countryEn} onChange={handleCountryEnChange} className={inputClass(errors.countryEn)} />
             </div>
-            <div className="space-y-2 md:col-span-4">
+            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblCountryBg')}</label>
               <input type="text" maxLength={50} value={formData.countryBg} onChange={e => handleInputChange('countryBg', e.target.value.toUpperCase())} className={inputClass(errors.countryBg)} />
             </div>
-            
-            <div className="space-y-2 md:col-span-2">
+          </div>
+          
+          {/* ⬇️ MOVED: Flags on their own row, right underneath the countries */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
+            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Flag 1</label>
               <SearchableFlagSelect 
                 value={formData.flag1} 
                 onChange={(val) => handleInputChange('flag1', val)}
-                placeholder="Select..."
+                placeholder="Select flag..."
               />
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Flag 2</label>
               <SearchableFlagSelect 
                 value={formData.flag2} 
