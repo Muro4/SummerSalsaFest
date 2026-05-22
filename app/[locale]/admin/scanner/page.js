@@ -51,7 +51,7 @@ export default function AdminScanner() {
   // Camera Engine State Refs
   const isProcessingRef = useRef(false);
   const scannerInitialized = useRef(false);
-  const scannerInstance = useRef(null); // Tracks the active camera instance
+  const scannerInstance = useRef(null); 
 
   const { showPopup } = usePopup();
 
@@ -60,7 +60,6 @@ export default function AdminScanner() {
     const unsub = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const d = await getDoc(doc(db, "users", user.uid));
-        // Allow superadmin, admin, and scanner roles
         if (["superadmin", "admin", "scanner"].includes(d.data()?.role)) {
           setHasAccess(true);
         }
@@ -70,7 +69,7 @@ export default function AdminScanner() {
     return () => unsub();
   }, []);
 
-  // Initialize camera ONLY ONCE on mount.
+  // Initialize camera ONLY ONCE on mount
   useEffect(() => {
     if (!hasAccess || scannerInitialized.current) return;
     
@@ -104,12 +103,10 @@ export default function AdminScanner() {
 
     initializeScanner();
     
-    // Cleanup function strictly stops the camera if the component is fully unmounted
     return () => {
       if (scannerInstance.current) {
         try {
           const state = scannerInstance.current.getState();
-          // 1 = NOT_STARTED, 2 = SCANNING, 3 = PAUSED
           if (state !== 1) {
             scannerInstance.current.stop().then(() => scannerInstance.current.clear()).catch(console.error);
           }
@@ -141,22 +138,33 @@ export default function AdminScanner() {
 
       if (snap.empty) {
         setErrorMessage("Ticket not found in database.");
-        // Release the lock so they can immediately try scanning again
         setTimeout(() => { isProcessingRef.current = false; }, 1500);
       } else {
-        // SUCCESS: Explicitly pause the camera feed to prevent the browser from 
-        // silently killing the background video stream while the overlay is shown.
         if (scannerInstance.current) {
           try {
-            if (scannerInstance.current.getState() === 2) { // 2 = SCANNING
-              scannerInstance.current.pause(true); // 'true' pauses the video hardware
+            if (scannerInstance.current.getState() === 2) { 
+              scannerInstance.current.pause(true); 
             }
           } catch (e) {
             console.warn("Could not pause camera:", e);
           }
         }
 
-        setScanResult({ id: snap.docs[0].id, ...snap.docs[0].data() });
+        const ticketData = snap.docs[0].data();
+        
+        // --- НОВАТА ЛОГИКА ЗА ПРОВЕРКА НА ГОДИНАТА ---
+        const currentYear = new Date().getFullYear().toString();
+        // Взимаме годината на билета (от festivalYear или я извличаме от purchaseDate)
+        const ticketYear = ticketData.festivalYear || 
+                           (ticketData.purchaseDate ? new Date(ticketData.purchaseDate).getFullYear().toString() : currentYear);
+
+        // Ако годините не съвпадат, принудително маркираме статуса като невалиден
+        if (ticketYear !== currentYear) {
+          ticketData.status = 'expired';
+        }
+        
+        // Записваме и годината за визуализация
+        setScanResult({ id: snap.docs[0].id, ...ticketData, _displayYear: ticketYear });
       }
     } catch (e) {
       console.error("Firestore Error:", e.code, e.message);
@@ -172,16 +180,14 @@ export default function AdminScanner() {
     handleLookup(manualID);
   };
 
-  // Resets the UI and wakes the camera back up
   const resetScanner = () => {
     setScanResult(null);
     setManualID("");
     setErrorMessage(null);
     
-    // WAKE UP: Explicitly resume the camera feed
     if (scannerInstance.current) {
       try {
-        if (scannerInstance.current.getState() === 3) { // 3 = PAUSED
+        if (scannerInstance.current.getState() === 3) { 
           scannerInstance.current.resume();
         }
       } catch (e) {
@@ -189,7 +195,6 @@ export default function AdminScanner() {
       }
     }
 
-    // Short delay before accepting new QR codes to prevent accidental double-scans
     setTimeout(() => {
         isProcessingRef.current = false;
     }, 1000);
@@ -277,6 +282,7 @@ export default function AdminScanner() {
             {/* LAYER 2: SCAN RESULT CARD */}
             {scanResult && (
               <div className={`col-start-1 row-start-1 w-full rounded-[3rem] border-2 animate-in zoom-in duration-300 shadow-2xl relative flex flex-col z-20 min-h-[450px] ${
+                scanResult.status === 'expired' ? "bg-red-50 border-red-200" : 
                 scanResult.status === 'used' ? "bg-orange-50 border-orange-200" : 
                 scanResult.status === 'pending' ? "bg-slate-50 border-gray-200" : 
                 "bg-emerald-50 border-emerald-200"
@@ -294,16 +300,18 @@ export default function AdminScanner() {
                     
                     {/* 1. TICKET STATUS */}
                     <div className={`flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest mb-6 ${
+                      scanResult.status === 'expired' ? 'text-red-600' :
                       scanResult.status === 'used' ? 'text-orange-500' : 
                       scanResult.status === 'pending' ? 'text-slate-400' :
                       'text-emerald-500'
                     }`}>
-                        {scanResult.status === 'used' ? <><XCircle size={20}/> Already Scanned</> : 
-                        scanResult.status === 'pending' ? <><AlertCircle size={20}/> Pending Payment</> : 
-                        <><CheckCircle size={20}/> Valid Pass</>}
+                        {scanResult.status === 'expired' ? <><ShieldAlert size={20}/> НЕВАЛИДНА ГОДИНА ({scanResult._displayYear})!</> : 
+                         scanResult.status === 'used' ? <><XCircle size={20}/> Already Scanned</> : 
+                         scanResult.status === 'pending' ? <><AlertCircle size={20}/> Pending Payment</> : 
+                         <><CheckCircle size={20}/> Valid Pass</>}
                     </div>
                     
-                    {/* 2. ATTENDEE NAME (Now dynamic and wrap-safe!) */}
+                    {/* 2. ATTENDEE NAME */}
                     <h2 className={`font-bebas text-slate-900 uppercase break-words hyphens-auto mb-8 px-2 tracking-wider w-full ${getScannerNameSize(scanResult.userName)}`}>
                       {scanResult.userName}
                     </h2>
