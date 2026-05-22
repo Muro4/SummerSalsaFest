@@ -6,19 +6,32 @@ import { adminDb, adminAuth } from "@/lib/firebase-admin";
 export async function POST(req) {
   try {
     const sysDoc = await adminDb.collection("settings").doc("system").get();
-    const system = sysDoc.exists ? sysDoc.data() : { salesEnabled: true, stripeMode: 'test' };
+    const system = sysDoc.exists ? sysDoc.data() : { salesEnabled: true };
 
-    if (!system.salesEnabled) return NextResponse.json({ error: "Ticket sales paused." }, { status: 403 });
+    if (!system.salesEnabled) {
+      return NextResponse.json({ error: "Ticket sales paused." }, { status: 403 });
+    }
 
-    const stripeSecret = system.stripeMode === 'live' ? process.env.STRIPE_LIVE_SECRET_KEY : process.env.STRIPE_TEST_SECRET_KEY;
-    if (!stripeSecret) return NextResponse.json({ error: "Stripe config error." }, { status: 500 });
+    // Решение на забележката: Използва се само една стандартна променлива за Stripe ключа
+    const stripeSecret = process.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecret) {
+      return NextResponse.json({ error: "Stripe config error." }, { status: 500 });
+    }
+    
     const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' });
 
     let body;
-    try { body = await req.json(); } catch (e) { return NextResponse.json({ error: "Parse error" }, { status: 400 }); }
+    try { 
+      body = await req.json(); 
+    } catch (e) { 
+      return NextResponse.json({ error: "Parse error" }, { status: 400 }); 
+    }
 
     const { items } = body;
-    if (!items || !Array.isArray(items) || items.length === 0) return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    }
 
     /* Identify Requester using standard Firebase Auth token */
     const authHeader = req.headers.get('authorization');

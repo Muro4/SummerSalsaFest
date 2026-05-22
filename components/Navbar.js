@@ -379,7 +379,7 @@ export default function Navbar() {
                   {(userData?.role === 'ambassador' || userData?.role === 'superadmin') && <Button href="/guest-dancer" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Shield} className={accountLinkClass('/guest-dancer', true)}>{t('dashboard')}</Button>}
                   
                   {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/tickets" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={Ticket} className={accountLinkClass('/admin/tickets', true)}>{t('ticketsDb')}</Button>}
-                  {(userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'scanner') && <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className={accountLinkClass('/admin/scanner', true)}>{t('gateScanner')}</Button>}
+                  {(userData?.role === 'admin' || userData?.role === 'superadmin') && <Button href="/admin/scanner" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={QrCode} className={accountLinkClass('/admin/scanner', true)}>{t('gateScanner')}</Button>}
                   
                   {userData?.role === 'superadmin' && <Button href="/admin" onClick={() => setMobileAccountOpen(false)} variant="ghost" size="lg" icon={ShieldAlert} className={accountLinkClass('/admin', true)}>{t('adminPanel')}</Button>}
                 </>

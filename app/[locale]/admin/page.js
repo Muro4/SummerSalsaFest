@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
-// 1. ADDED writeBatch AND getDocs TO THE IMPORT LIST
 import { collection, doc, getDoc, setDoc, onSnapshot, deleteDoc, query, where, writeBatch, getDocs } from "firebase/firestore";
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon, RefreshCw, DatabaseBackup, DatabaseZap } from "lucide-react";
 
@@ -32,6 +31,7 @@ const DevTab = dynamic(() => import("@/components/admin/DevTab"), {
 
 export default function AdminDashboard() {
    const t = useTranslations('AdminDashboard');
+   const locale = useLocale();
    const router = useRouter();
    const { showPopup } = usePopup();
 
@@ -88,19 +88,36 @@ export default function AdminDashboard() {
    useEffect(() => {
       const handleBeforeUnload = (e) => { if (historyIndex > 0) { e.preventDefault(); e.returnValue = ''; } };
       const handleLinkClick = (e) => {
-         if (historyIndex === 0) return;
-         const anchor = e.target.closest('a');
-         if (anchor && anchor.href) {
-            const targetPath = new URL(anchor.href).pathname;
-            if (targetPath && targetPath !== window.location.pathname) {
-               e.preventDefault(); e.stopPropagation();
-               showPopup({
-                  type: "info", title: t('popupUnsavedTitle'), message: t('popupUnsavedMsg'), confirmText: t('btnLeave'), cancelText: t('btnStay'),
-                  onConfirm: () => { setHistory([{}]); setHistoryIndex(0); router.push(targetPath); }
-               });
+      if (historyIndex === 0) return;
+      const anchor = e.target.closest('a');
+      if (anchor && anchor.href) {
+         const targetPath = new URL(anchor.href).pathname;
+         if (targetPath && targetPath !== window.location.pathname) {
+            e.preventDefault(); e.stopPropagation();
+            
+            // НОВ КОД: Изчистваме езика от пътя, защото router.push ще го добави автоматично
+            let cleanPath = targetPath;
+            if (cleanPath.startsWith(`/${locale}/`)) {
+               cleanPath = cleanPath.replace(`/${locale}`, '');
+            } else if (cleanPath === `/${locale}`) {
+               cleanPath = '/';
             }
+
+            showPopup({
+               type: "info", 
+               title: t('popupUnsavedTitle'), 
+               message: t('popupUnsavedMsg'), 
+               confirmText: t('btnLeave'), 
+               cancelText: t('btnStay'),
+               onConfirm: () => { 
+                 setHistory([{}]); 
+                 setHistoryIndex(0); 
+                 router.push(cleanPath); // Подаваме ИЗЧИСТЕНИЯ път
+               }
+            });
          }
-      };
+      }
+   };
       window.addEventListener('beforeunload', handleBeforeUnload);
       document.addEventListener('click', handleLinkClick, { capture: true });
       return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('click', handleLinkClick, { capture: true }); };
