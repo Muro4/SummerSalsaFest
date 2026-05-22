@@ -152,18 +152,20 @@ export default function AdminScanner() {
 
         const ticketData = snap.docs[0].data();
         
-        // --- НОВАТА ЛОГИКА ЗА ПРОВЕРКА НА ГОДИНАТА ---
+        // --- СТРОГА ЛОГИКА ЗА ПРОВЕРКА НА ГОДИНАТА ---
         const currentYear = new Date().getFullYear().toString();
-        // Взимаме годината на билета (от festivalYear или я извличаме от purchaseDate)
-        const ticketYear = ticketData.festivalYear || 
-                           (ticketData.purchaseDate ? new Date(ticketData.purchaseDate).getFullYear().toString() : currentYear);
+        
+        // КРИТИЧЕН ФИКС: Строго взимаме festivalYear или годината на покупка. 
+        // Ако билетът няма нито едното, маркираме годината като "Unknown", за да бъде отхвърлен!
+        const ticketYear = ticketData.festivalYear?.toString() || 
+                           (ticketData.purchaseDate ? new Date(ticketData.purchaseDate).getFullYear().toString() : "Unknown");
 
-        // Ако годините не съвпадат, принудително маркираме статуса като невалиден
+        // Ако годината на билета не съвпада с текущата година, билетът е стар/невалиден
         if (ticketYear !== currentYear) {
           ticketData.status = 'expired';
         }
         
-        // Записваме и годината за визуализация
+        // Записваме резултата за визуализация
         setScanResult({ id: snap.docs[0].id, ...ticketData, _displayYear: ticketYear });
       }
     } catch (e) {

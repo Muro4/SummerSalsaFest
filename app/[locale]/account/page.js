@@ -127,7 +127,9 @@ export default function AccountPage() {
           console.warn("Could not fetch request status:", err.message);
         }
 
-        const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
+        // FEATURE FIX: We removed `where("status", "==", "active")` so we get ALL tickets!
+        const q = query(collection(db, "tickets"), where("userId", "==", user.uid));
+        
         unsubTickets = onSnapshot(q, (snap) => {
           setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
           setLoading(false);
@@ -278,14 +280,15 @@ export default function AccountPage() {
                 {filteredTickets.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 md:gap-8">
                     {filteredTickets.map(ticket => (
-                      <div key={ticket.id} onClick={() => setFullScreenTicket(ticket)} className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_10px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative">
+                      <div key={ticket.id} onClick={() => setFullScreenTicket(ticket)} 
+                           // VISUAL UPDATE: Apply opacity/grayscale if ticket is not active
+                           className={`bg-white rounded-[2rem] md:rounded-[2.5rem] border border-gray-200 flex flex-col sm:flex-row shadow-[0_10px_30px_rgb(0,0,0,0.04)] overflow-hidden hover:border-slate-900 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 group h-full cursor-pointer relative ${ticket.status !== 'active' ? 'opacity-70 grayscale-[0.5]' : ''}`}>
 
                         {/* LEFT SIDE: STRICT 30% WIDTH */}
                         <div className="w-full sm:w-[30%] shrink-0 p-5 md:p-8 flex flex-col items-center justify-center bg-salsa-mint/[0.03] border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-gray-100 group-hover:bg-salsa-mint/[0.07] transition-colors">
                           <div className="bg-white p-2 md:p-3 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 group-hover:scale-105 group-hover:rotate-1 transition-transform duration-500">
                             <QRCodeSVG value={ticket.ticketID} size={85} level="H" className="w-16 h-16 md:w-[85px] md:h-[85px]" />
                           </div>
-                          {/* Added w-full, break-words, and leading-snug so long translations wrap cleanly */}
                           <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 md:mt-4 text-center group-hover:text-slate-900 transition-colors w-full break-words leading-snug">
                             {t('tapExpand')}
                           </span>
@@ -294,11 +297,25 @@ export default function AccountPage() {
                         {/* RIGHT SIDE: STRICT 70% WIDTH */}
                         <div className="w-full sm:w-[70%] p-5 md:p-8 flex flex-col justify-center relative bg-white min-w-0">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-salsa-mint/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-salsa-pink/5 transition-colors"></div>
-                          <div className="mb-2 md:mb-3 relative z-10">
+                          
+                          {/* BADGE WRAPPER WITH STATUS */}
+                          <div className="mb-2 md:mb-3 relative z-10 flex flex-wrap gap-2 items-center">
                             <span className={`text-[10px] md:text-[11px] font-sans font-black px-4 md:px-5 py-1.5 md:py-2 rounded-full uppercase tracking-widest shadow-sm inline-block ${getPassStyle(ticket.passType)}`}>
                               {translatePassDisplay(ticket.passType)}
                             </span>
+                            
+                            {/* NEW: STATUS LABEL */}
+                            <span className={`text-[9px] md:text-[10px] font-sans font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm border ${
+                                ticket.status === 'active' 
+                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                  : ticket.status === 'pending'
+                                  ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                  : 'bg-gray-100 text-gray-500 border-gray-200'
+                            }`}>
+                              {ticket.status === 'active' ? 'Active' : (ticket.status === 'pending' ? 'Pending' : 'Used / Scanned')}
+                            </span>
                           </div>
+                          
                           <h3 className="text-xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-[1.1] mb-1 relative z-10 truncate transition-colors">{ticket.userName}</h3>
                           <p className="font-mono text-gray-500 text-xs md:text-sm font-bold tracking-widest uppercase mb-4 md:mb-6 relative z-10">{t('lblId')} {ticket.ticketID}</p>
                           <div className="flex flex-row flex-wrap items-center gap-4 pt-4 border-t border-gray-100 mt-auto relative z-10">
