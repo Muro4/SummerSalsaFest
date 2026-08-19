@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { db, auth } from "@/lib/firebase"; // <-- IMPORT AUTH FOR SECURITY TOKEN
+import { createPortal } from "react-dom"; // <-- IMPORT CREATEPORTAL
+import { db, auth } from "@/lib/firebase"; 
 import { doc, updateDoc } from "firebase/firestore";
 import { usePopup } from "@/components/PopupProvider"; 
 import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone, ChevronLeft, ChevronRight, Download } from "lucide-react";
@@ -45,10 +46,15 @@ const getTicketNameSize = (name) => {
 
 // --- REUSABLE TICKET VIEW ---
 function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobile, t }) {
-  const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState(ticket.guestEmail || "");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [addingToWallet, setAddingToWallet] = useState(false);
   const { showPopup } = usePopup();
+
+  // Sync email input when navigating between tickets
+  useEffect(() => {
+    setRecipientEmail(ticket.guestEmail || "");
+  }, [ticket.id, ticket.guestEmail]);
 
   // Helper to translate internal DB pass names for the UI
   const translatePassDisplay = (type) => {
@@ -168,13 +174,22 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
         body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
       });
       
-      updateDoc(doc(db, "tickets", ticket.id), { emailSentCount: (ticket.emailSentCount || 0) + 1 }).catch(console.error);
+      // PERMANENT DATABASE UPDATE: Save the new email address and increment send count
+      updateDoc(doc(db, "tickets", ticket.id), { 
+        emailSentCount: (ticket.emailSentCount || 0) + 1,
+        guestEmail: recipientEmail 
+      }).catch(console.error);
+
       if (onUpdateDesktopTicket) {
-        onUpdateDesktopTicket(prev => ({ ...prev, emailSentCount: (prev.emailSentCount || 0) + 1 }));
+        onUpdateDesktopTicket(prev => ({ 
+          ...prev, 
+          emailSentCount: (prev.emailSentCount || 0) + 1,
+          guestEmail: recipientEmail 
+        }));
       }
       
       showPopup({ type: "success", title: t('successSentTitle'), message: t('successSentMsg', { email: recipientEmail }), confirmText: t('btnDone') });
-      setRecipientEmail(""); 
+      // Removed setRecipientEmail("") so the updated email stays visible in the input
     } catch (err) {
       showPopup({ type: "error", title: t('errPdfTitle'), message: t('errPdfMsg'), confirmText: t('btnClose') });
     } finally {
@@ -267,7 +282,8 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
             <span className="hidden md:block text-[11px] font-black text-slate-300 font-montserrat">{t('countOfTotal', { current: index + 1, total: totalTickets })}</span>
           </div>
           
-          <div className="border-t border-gray-50 pt-2 shrink-0 mt-1">
+          <div className="border-t border-gray-50 pt-3 shrink-0 mt-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Delivery Email (Editable)</label>
             <div className="relative flex items-center w-full">
               <Mail className="absolute left-3 md:left-4 text-gray-400" size={18} />
               <input type="email" maxLength={50} placeholder={t('placeholderEmail')} value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-slate-900 font-bold rounded-xl px-4 py-3 pl-10 md:pl-12 pr-24 outline-none focus:bg-white focus:border-slate-900 transition-all text-xs uppercase tracking-widest font-montserrat" />
@@ -285,7 +301,13 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
 // --- MAIN WRAPPER ---
 export default function TicketModal({ ticket: activeTicket, ticketsList, setTicket, onClose }) {
   const t = useTranslations('TicketModal');
+  const [mounted, setMounted] = useState(false); // <-- ADDED STATE FOR PORTAL
   const currentIndex = ticketsList.findIndex(t => t.id === activeTicket.id);
+
+  // Set mounted to true on component mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Helper to translate internal DB pass names for the UI (Used in phantom tickets)
   const translatePassDisplay = (type) => {
@@ -317,12 +339,17 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
   }, [currentIndex, ticketsList, setTicket, onClose]);
 
   useEffect(() => {
-    const el = document.getElementById(`mobile-slide-${activeTicket.id}`);
-    if (el) el.scrollIntoView({ behavior: 'instant', inline: 'center' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (mounted) {
+      const el = document.getElementById(`mobile-slide-${activeTicket.id}`);
+      if (el) el.scrollIntoView({ behavior: 'instant', inline: 'center' });
+    }
+  }, [activeTicket.id, mounted]);
 
-  return (
+  // Don't render anything on the server to prevent hydration mismatch with portals
+  if (!mounted) return null;
+
+  // <-- WRAPPED THE ENTIRE RETURN IN CREATEPORTAL
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex font-montserrat items-center justify-center">
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300 cursor-pointer" onClick={onClose} />
       
@@ -423,6 +450,7 @@ export default function TicketModal({ ticket: activeTicket, ticketsList, setTick
           </div>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body // <-- ATTACHES TO BODY
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Search, Filter, Ticket, Users, Trash2, Calendar, CheckCircle2, AlertTriangle, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, Ticket, Users, Trash2, Calendar, CheckCircle2, AlertTriangle, XCircle, Mail } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
 import { EVENT_YEARS } from "@/lib/constants";
 import { useTranslations } from 'next-intl';
 import { getPriceAtDate } from "@/lib/pricing";
+import TicketModal from "@/components/TicketModal";
 
 // Shared styling helpers for pass types
 const getPassBgColor = (type) => {
@@ -64,18 +65,16 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
    const [statusFilter, setStatusFilter] = useState("all");
    const [passFilter, setPassFilter] = useState("all");
    
-   // Pagination state setup. Defaults to page 1.
-   const [currentPage, setCurrentPage] = useState(1);
-   const itemsPerPage = 20;
-   
    const [expandedNameId, setExpandedNameId] = useState(null);
+   const [fullScreenTicket, setFullScreenTicket] = useState(null);
    const { showPopup } = usePopup();
 
    const safeTickets = Array.isArray(tickets) ? tickets : [];
 
-   // Performance optimization: Memoize filtering and sorting logic
-   const filteredTickets = useMemo(() => {
-     const results = safeTickets.filter(ticket => {
+   // --- SPREADSHEET GROUPING & SORTING LOGIC ---
+   const { grouped, flatList } = useMemo(() => {
+     // 1. Filter Tickets
+     const filtered = safeTickets.filter(ticket => {
         const matchesYear = ticket.festivalYear?.toString() === selectedYear;
         const purchaser = users.find(u => u.id === ticket.userId);
         const ambTag = purchaser?.ambassadorDisplayName || "";
@@ -91,45 +90,54 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
         return matchesYear && matchesSearch && matchesStatus && matchesPass;
      });
 
-     // Sort results from newest to oldest based on purchase date
-     results.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
-     
-     // Reset to page 1 if a filter changes and the current page is now empty
-     if (currentPage > Math.ceil(results.length / itemsPerPage) && results.length > 0) {
-       setCurrentPage(1);
-     }
-     return results;
-   }, [safeTickets, selectedYear, users, historyStagedData, searchTerm, statusFilter, passFilter, currentPage, itemsPerPage]);
+     // 2. Group by Ambassador
+     const groupsObj = {};
+     filtered.forEach(ticket => {
+        const purchaser = users.find(u => u.id === ticket.userId);
+        const ambTag = purchaser?.ambassadorDisplayName || "Direct";
+        
+        if (!groupsObj[ambTag]) {
+           groupsObj[ambTag] = {
+              name: ambTag,
+              tickets: [],
+              stats: { total: 0, revenue: 0, full: 0, party: 0, day: 0, free: 0 }
+           };
+        }
+        groupsObj[ambTag].tickets.push(ticket);
+        
+        // Update Summary Stats
+        groupsObj[ambTag].stats.total += 1;
+        groupsObj[ambTag].stats.revenue += (ticket.price || 0);
+        
+        const pt = (ticket.passType || '').toLowerCase();
+        if (pt.includes('full')) groupsObj[ambTag].stats.full += 1;
+        else if (pt.includes('party')) groupsObj[ambTag].stats.party += 1;
+        else if (pt.includes('day')) groupsObj[ambTag].stats.day += 1;
+        else if (pt.includes('free')) groupsObj[ambTag].stats.free += 1;
+     });
 
-   // Pagination calculations
-   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage) || 1;
-   const startIndex = (currentPage - 1) * itemsPerPage;
-   const paginatedTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
+     // 3. Sort Groups (Alphabetical, but put "Direct" at the bottom)
+     const sortedGroups = Object.values(groupsObj).sort((a, b) => {
+        if (a.name === "Direct" && b.name !== "Direct") return 1;
+        if (b.name === "Direct" && a.name !== "Direct") return -1;
+        return a.name.localeCompare(b.name);
+     });
 
-   // Helper to generate the numbered tabs for pagination (e.g., 1 2 3 ... 8 9 10)
-   const getPageNumbers = () => {
-      const pages = [];
-      if (totalPages <= 5) {
-         for (let i = 1; i <= totalPages; i++) pages.push(i);
-      } else {
-         if (currentPage <= 3) {
-            pages.push(1, 2, 3, 4, '...', totalPages);
-         } else if (currentPage >= totalPages - 2) {
-            pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-         } else {
-            pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-         }
-      }
-      return pages;
-   };
+     // 4. Sort Tickets within groups (Chronological: oldest to newest so newest is at the bottom)
+     sortedGroups.forEach(g => {
+        g.tickets.sort((a, b) => new Date(a.purchaseDate) - new Date(b.purchaseDate));
+     });
 
-   // Reset pagination when searching
+     // 5. Flatten the list for the modal arrows to work seamlessly
+     const flat = sortedGroups.flatMap(g => g.tickets);
+
+     return { grouped: sortedGroups, flatList: flat };
+   }, [safeTickets, selectedYear, users, historyStagedData, searchTerm, statusFilter, passFilter]);
+
    const handleSearch = (e) => {
      setSearchTerm(e.target.value);
-     setCurrentPage(1);
    };
 
-   // Confirms deletion before staging the change
    const confirmDelete = (ticket) => {
       showPopup({
          type: "info", title: t('delTitle'), message: t('delMsg', { name: ticket.userName }), confirmText: t('btnDelYes'), cancelText: t('btnCancel'),
@@ -140,6 +148,16 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
    return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
          
+         {/* THE MODAL OVERLAY */}
+         {fullScreenTicket && (
+            <TicketModal
+               ticket={fullScreenTicket}
+               ticketsList={flatList} 
+               setTicket={setFullScreenTicket}
+               onClose={() => setFullScreenTicket(null)}
+            />
+         )}
+
          {/* Search and Filters Section */}
          <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">
             <div className="relative flex-grow group w-full lg:min-w-[400px]">
@@ -151,7 +169,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                <div className="relative w-full sm:w-auto z-40">
                   <CustomDropdown 
                      icon={Ticket} value={passFilter} 
-                     onChange={(val) => { setPassFilter(val); setCurrentPage(1); }} 
+                     onChange={setPassFilter} 
                      options={[
                         { label: t('filterAll'), value: 'all', isPill: true, colorClass: 'bg-slate-100 text-slate-600' }, 
                         { label: t('passFull'), value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, 
@@ -165,7 +183,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                <div className="relative w-full sm:w-auto z-30">
                   <CustomDropdown 
                      icon={Filter} value={statusFilter} 
-                     onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }} 
+                     onChange={setStatusFilter} 
                      options={[
                         { label: t('statusAll'), value: 'all' }, 
                         { label: t('statusActive'), value: 'active', textColor: 'text-emerald-500' }, 
@@ -176,14 +194,15 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                </div>
 
                <div className="relative w-full sm:w-auto z-20">
-                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={(val) => { setSelectedYear(val); setCurrentPage(1); }} options={EVENT_YEARS} variant="filter"/>
+                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
                </div>
             </div>
          </div>
 
-         {/* Desktop Table View */}
+         {/* ============================== */}
+         {/* DESKTOP SPREADSHEET TABLE VIEW */}
+         {/* ============================== */}
          <div className="hidden lg:flex flex-col bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-10">
-            {/* Added pb-40 here to provide enough space for the dropdown when there is only 1 row */}
             <div className="w-full pb-40 overflow-x-auto">
                <table className="w-full text-left border-separate border-spacing-0 font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-400 tracking-widest relative z-10">
@@ -197,33 +216,140 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                         <th className="p-6 pr-10 text-right font-bold w-32 border-b border-gray-100">{t('thAction')}</th>
                      </tr>
                   </thead>
-                  <tbody className="uppercase text-xs">
-                     {paginatedTickets.map((ticket) => {
-                        const purchaser = users.find(u => u.id === ticket.userId);
-                        const ambTag = purchaser?.ambassadorDisplayName;
-                        const displayStatus = historyStagedData?.[`tickets_${ticket.id}`]?.status || ticket.status;
+                  
+                  {grouped.map((group) => (
+                     <tbody key={group.name} className="uppercase text-xs group/tbody">
+                        
+                        {/* THE GROUP HEADER ROW */}
+                        <tr className="bg-salsa-pink/5 border-b border-gray-100">
+                           <td colSpan="7" className="p-4 pl-10 border-y border-salsa-pink/20">
+                              <div className="flex justify-between items-center pr-4">
+                                 <div className="flex items-center gap-3">
+                                    <span className="font-bebas text-2xl text-salsa-pink tracking-wide translate-y-0.5">
+                                       {group.name === 'Direct' ? t('lblDirect') : group.name}
+                                    </span>
+                                 </div>
+                                 <div className="flex gap-4 font-black text-[10px] text-slate-500 tracking-widest uppercase">
+                                    <span className="bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
+                                       {group.stats.total} TIX
+                                    </span>
+                                    <span className="bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100 text-slate-700">
+                                       €{group.stats.revenue} REV
+                                    </span>
+                                 </div>
+                              </div>
+                           </td>
+                        </tr>
 
-                        return (
-                           <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group">
-                              <td className="p-6 pl-10 align-middle text-left font-bold text-xs text-slate-400 tracking-widest uppercase border-b border-gray-50">
-                                 {new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}
-                              </td>
-                              
-                              <td className="p-6 align-middle border-b border-gray-50">
-                                 {ambTag ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('lblDirect')}</span>}
-                              </td>
-                              
-                              <td className="p-6 align-middle truncate max-w-[300px] xl:max-w-[400px] border-b border-gray-50">
-                                 <span title={ticket.userName} className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">{ticket.userName}</span>
-                              </td>
-                              
-                              <td className="p-6 align-middle border-b border-gray-50">
+                        {/* THE TICKETS INSIDE THE GROUP */}
+                        {group.tickets.map((ticket) => {
+                           const purchaser = users.find(u => u.id === ticket.userId);
+                           const ambTag = purchaser?.ambassadorDisplayName;
+                           const displayStatus = historyStagedData?.[`tickets_${ticket.id}`]?.status || ticket.status;
+
+                           return (
+                              <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group/row">
+                                 <td className="p-6 pl-10 align-middle text-left font-bold text-xs text-slate-400 tracking-widest uppercase border-b border-gray-50">
+                                    {new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}
+                                 </td>
+                                 
+                                 <td className="p-6 align-middle border-b border-gray-50">
+                                    {ambTag ? <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-widest"><Users size={12} className="text-slate-400" /> {ambTag}</span> : <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('lblDirect')}</span>}
+                                 </td>
+                                 
+                                 <td className="p-6 align-middle truncate max-w-[300px] xl:max-w-[400px] border-b border-gray-50">
+                                    <span title={ticket.userName} className="block text-base font-bold font-montserrat text-slate-700 tracking-wide truncate">{ticket.userName}</span>
+                                 </td>
+                                 
+                                 <td className="p-6 align-middle border-b border-gray-50">
+                                    <CustomDropdown
+                                       value={ticket.passType} variant="pill"
+                                       onChange={(val) => {
+                                          const updateData = { passType: val };
+                                          if (displayStatus === 'pending') updateData.price = getPriceAtDate(val);
+                                          onStageChange('tickets', ticket.id, updateData);
+                                       }}
+                                       options={[
+                                          { label: t('passFull'), value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, 
+                                          { label: t('passParty'), value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, 
+                                          { label: t('passDay'), value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }, 
+                                          ...(displayStatus === 'pending' || ticket.passType === 'Free Pass' ? [{ label: t('passFree'), value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }] : [])
+                                       ]}
+                                    />
+                                 </td>
+                                 
+                                 <td className="p-6 align-middle border-b border-gray-50">
+                                    <div className="flex justify-center">
+                                       <StatusToggle currentStatus={displayStatus} onChange={(newStat) => onStageChange('tickets', ticket.id, { status: newStat })} t={t} />
+                                    </div>
+                                 </td>
+                                 
+                                 <td className="p-6 align-middle text-center font-bold text-base text-slate-700 border-b border-gray-50">€{ticket.price}</td>
+                                 
+                                 <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
+                                    <div className="flex justify-end gap-2 h-full items-center">
+                                       <button onClick={() => setFullScreenTicket(ticket)} title="View / Support" className="text-gray-400 opacity-40 group-hover/row:opacity-100 hover:!text-salsa-pink hover:bg-pink-50 p-2 rounded-xl transition-all cursor-pointer"><Mail size={18} /></button>
+                                       <button onClick={() => confirmDelete(ticket)} title={t('btnDeletePass')} className="text-gray-400 opacity-40 group-hover/row:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all cursor-pointer"><Trash2 size={18} /></button>
+                                    </div>
+                                 </td>
+                              </tr>
+                           )
+                        })}
+                     </tbody>
+                  ))}
+
+                  {grouped.length === 0 && (
+                     <tbody>
+                        <tr><td colSpan="7" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>
+                     </tbody>
+                  )}
+               </table>
+            </div>
+         </div>
+
+         {/* ============================== */}
+         {/* MOBILE GROUPED CARD VIEW */}
+         {/* ============================== */}
+         <div className="lg:hidden flex flex-col gap-10 relative z-10 pb-20">
+            {grouped.map((group) => (
+               <div key={group.name} className="flex flex-col gap-4">
+                  
+                  {/* MOBILE GROUP HEADER */}
+                  <div className="bg-salsa-pink/10 border border-salsa-pink/20 rounded-3xl p-5 flex flex-col gap-3 shadow-sm">
+                     <span className="font-bebas text-3xl text-salsa-pink leading-none tracking-wide">
+                        {group.name === 'Direct' ? t('lblDirect') : group.name}
+                     </span>
+                     <div className="flex gap-2 font-black text-[10px] text-slate-600 tracking-widest uppercase">
+                        <span className="bg-white px-3 py-1.5 rounded-full shadow-sm">TIX: {group.stats.total}</span>
+                        <span className="bg-white px-3 py-1.5 rounded-full shadow-sm text-slate-700">REV: €{group.stats.revenue}</span>
+                     </div>
+                  </div>
+
+                  {/* MOBILE TICKETS */}
+                  {group.tickets.map((ticket, index) => {
+                     const purchaser = users.find(u => u.id === ticket.userId);
+                     const ambTag = purchaser?.ambassadorDisplayName;
+                     const displayStatus = historyStagedData?.[`tickets_${ticket.id}`]?.status || ticket.status;
+                     const isExpanded = expandedNameId === ticket.id;
+
+                     return (
+                        <div key={ticket.id} style={{ zIndex: group.tickets.length - index }} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative overflow-visible transition-all">
+                           <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1 min-w-0 pr-2 cursor-pointer" onClick={() => setExpandedNameId(isExpanded ? null : ticket.id)}>
+                                 <span title={ticket.userName} className={`block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest transition-all duration-200 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                                    {ticket.userName}
+                                 </span>
+                                 <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono truncate">
+                                    {t('lblId')}: {ticket.ticketID}
+                                 </span>
+                              </div>
+                              <div className="shrink-0 relative z-20 scale-[0.80] sm:scale-100 origin-top-right -mt-1 sm:mt-0">
                                  <CustomDropdown
                                     value={ticket.passType} variant="pill"
                                     onChange={(val) => {
                                        const updateData = { passType: val };
                                        if (displayStatus === 'pending') {
-                                          updateData.price = getPriceAtDate(val);
+                                          if (val === 'Free Pass') updateData.price = 0; else if (val === 'Full Pass') updateData.price = 150; else if (val === 'Party Pass') updateData.price = 80; else if (val === 'Day Pass') updateData.price = 60;
                                        }
                                        onStageChange('tickets', ticket.id, updateData);
                                     }}
@@ -234,180 +360,44 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                                        ...(displayStatus === 'pending' || ticket.passType === 'Free Pass' ? [{ label: t('passFree'), value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }] : [])
                                     ]}
                                  />
-                              </td>
-                              <td className="p-6 align-middle border-b border-gray-50">
-                                 <div className="flex justify-center">
-                                    <StatusToggle currentStatus={displayStatus} onChange={(newStat) => onStageChange('tickets', ticket.id, { status: newStat })} t={t} />
+                              </div>
+                           </div>
+                           
+                           <div className="flex items-center w-full mt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">{t('thGuest')}</span>
+                              <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
+                              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
+                                 <Users size={12} className="text-slate-400" />
+                                 {ambTag ? ambTag : <span className="text-slate-300">{t('lblDirect')}</span>}
+                              </span>
+                           </div>
+
+                           <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-1 w-full relative z-10">
+                              <div className="flex items-center gap-2">
+                                 <button onClick={() => setFullScreenTicket(ticket)} className="text-slate-400 hover:text-salsa-pink bg-gray-50 hover:bg-pink-50 p-2.5 rounded-xl transition-all cursor-pointer">
+                                    <Mail size={16} />
+                                 </button>
+                                 <button onClick={() => confirmDelete(ticket)} className="text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 p-2.5 rounded-xl transition-all cursor-pointer">
+                                    <Trash2 size={16} />
+                                 </button>
+                                 <div className="flex flex-col ml-1">
+                                    {displayStatus === 'pending' && <span className="font-black text-slate-700 text-sm">€{ticket.price}</span>}
+                                    <span className="text-[10px] font-bold text-slate-400 tracking-widest">{new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}</span>
                                  </div>
-                              </td>
-                              <td className="p-6 align-middle text-center font-bold text-base text-slate-700 border-b border-gray-50">€{ticket.price}</td>
-                              <td className="p-6 pr-10 align-middle text-right border-b border-gray-50">
-                                 <div className="flex justify-end gap-2 h-full items-center">
-                                    <button onClick={() => confirmDelete(ticket)} title={t('btnDeletePass')} className="text-gray-400 opacity-40 group-hover:opacity-100 hover:!text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all cursor-pointer"><Trash2 size={18} /></button>
-                                 </div>
-                              </td>
-                           </tr>
-                        )
-                     })}
-                     {paginatedTickets.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-gray-50">{t('emptyMsg')}</td></tr>}
-                  </tbody>
-               </table>
-            </div>
-
-            {/* Pagination controls for desktop */}
-            {filteredTickets.length > itemsPerPage && (
-              <div className="flex items-center justify-between p-4 md:px-8 border-t border-gray-100 bg-slate-50/50">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                   Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredTickets.length)} of {filteredTickets.length}
-                </span>
-                
-                <div className="flex items-center gap-1">
-                   <button 
-                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-                     disabled={currentPage === 1}
-                     className="p-2 rounded-xl text-slate-600 hover:bg-white border border-transparent hover:border-gray-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-                   >
-                     <ChevronLeft size={16} />
-                   </button>
-                   
-                   {getPageNumbers().map((num, i) => (
-                      num === '...' ? (
-                         <span key={i} className="px-2 text-slate-400 font-bold">...</span>
-                      ) : (
-                         <button 
-                           key={i} 
-                           onClick={() => setCurrentPage(num)} 
-                           className={`w-9 h-9 rounded-xl text-[11px] font-black tracking-widest transition-all cursor-pointer ${
-                              currentPage === num 
-                              ? 'bg-slate-900 text-white shadow-md' 
-                              : 'bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-gray-200'
-                           }`}
-                         >
-                           {num}
-                         </button>
-                      )
-                   ))}
-
-                   <button 
-                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-                     disabled={currentPage === totalPages}
-                     className="p-2 rounded-xl text-slate-600 hover:bg-white border border-transparent hover:border-gray-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-                   >
-                     <ChevronRight size={16} />
-                   </button>
-                </div>
-              </div>
-            )}
-         </div>
-
-         {/* Mobile Card View */}
-         <div className="lg:hidden flex flex-col gap-4 relative z-10 pb-20">
-            {paginatedTickets.map((ticket, index) => {
-               const purchaser = users.find(u => u.id === ticket.userId);
-               const ambTag = purchaser?.ambassadorDisplayName;
-               const displayStatus = historyStagedData?.[`tickets_${ticket.id}`]?.status || ticket.status;
-               const isExpanded = expandedNameId === ticket.id;
-
-               return (
-                  <div key={ticket.id} style={{ zIndex: paginatedTickets.length - index }} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-3 relative overflow-visible transition-all">
-                     <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0 pr-2 cursor-pointer" onClick={() => setExpandedNameId(isExpanded ? null : ticket.id)}>
-                           <span title={ticket.userName} className={`block text-lg font-black font-montserrat text-slate-900 uppercase leading-tight tracking-widest transition-all duration-200 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
-                              {ticket.userName}
-                           </span>
-                           <span className="block text-sm font-bold text-slate-500 mt-1.5 uppercase tracking-widest font-mono truncate">
-                              {t('lblId')}: {ticket.ticketID}
-                           </span>
-                        </div>
-                        <div className="shrink-0 relative z-20 scale-[0.80] sm:scale-100 origin-top-right -mt-1 sm:mt-0">
-                           <CustomDropdown
-                              value={ticket.passType} variant="pill"
-                              onChange={(val) => {
-                                 const updateData = { passType: val };
-                                 if (displayStatus === 'pending') {
-                                    if (val === 'Free Pass') updateData.price = 0; else if (val === 'Full Pass') updateData.price = 150; else if (val === 'Party Pass') updateData.price = 80; else if (val === 'Day Pass') updateData.price = 60;
-                                 }
-                                 onStageChange('tickets', ticket.id, updateData);
-                              }}
-                              options={[
-                                 { label: t('passFull'), value: 'Full Pass', isPill: true, colorClass: getPassStyle('Full Pass') }, 
-                                 { label: t('passParty'), value: 'Party Pass', isPill: true, colorClass: getPassStyle('Party Pass') }, 
-                                 { label: t('passDay'), value: 'Day Pass', isPill: true, colorClass: getPassStyle('Day Pass') }, 
-                                 ...(displayStatus === 'pending' || ticket.passType === 'Free Pass' ? [{ label: t('passFree'), value: 'Free Pass', isPill: true, colorClass: getPassStyle('Free Pass') }] : [])
-                              ]}
-                           />
-                        </div>
-                     </div>
-                     <div className="flex items-center w-full mt-1">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 shrink-0">{t('thGuest')}</span>
-                        <div className="flex-grow border-b-2 border-dotted border-gray-200 mx-3 relative top-[1px]"></div>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 shrink-0">
-                           <Users size={12} className="text-slate-400" />
-                           {ambTag ? ambTag : <span className="text-slate-300">{t('lblDirect')}</span>}
-                        </span>
-                     </div>
-                     <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-1 w-full relative z-10">
-                        <div className="flex items-center gap-3">
-                           <button onClick={() => confirmDelete(ticket)} className="text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 p-2.5 rounded-xl transition-all cursor-pointer">
-                              <Trash2 size={16} />
-                           </button>
-                           <div className="flex flex-col">
-                              {displayStatus === 'pending' && <span className="font-black text-slate-700 text-sm">€{ticket.price}</span>}
-                              <span className="text-[10px] font-bold text-slate-400 tracking-widest">{new Date(ticket.purchaseDate).toLocaleDateString('en-GB')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                 <StatusToggle currentStatus={displayStatus} onChange={(newStat) => onStageChange('tickets', ticket.id, { status: newStat })} t={t} />
+                              </div>
                            </div>
                         </div>
-                        <div className="flex items-center">
-                           <StatusToggle currentStatus={displayStatus} onChange={(newStat) => onStageChange('tickets', ticket.id, { status: newStat })} t={t} />
-                        </div>
-                     </div>
-                  </div>
-               );
-            })}
-            
-            {filteredTickets.length === 0 && (
+                     );
+                  })}
+               </div>
+            ))}
+
+            {grouped.length === 0 && (
                <div className="bg-white rounded-3xl p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest border border-gray-100">
                   {t('emptyMsg')}
-               </div>
-            )}
-
-            {/* Pagination controls for mobile */}
-            {filteredTickets.length > itemsPerPage && (
-               <div className="flex flex-col items-center gap-3 mt-4">
-                  <div className="flex items-center gap-1">
-                     <button 
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
-                        disabled={currentPage === 1}
-                        className="p-3 rounded-xl border border-transparent bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                     >
-                        <ChevronLeft size={18} />
-                     </button>
-                     
-                     {getPageNumbers().map((num, i) => (
-                        num === '...' ? (
-                           <span key={i} className="px-1 text-slate-400 font-bold">...</span>
-                        ) : (
-                           <button 
-                              key={i} 
-                              onClick={() => setCurrentPage(num)} 
-                              className={`w-10 h-10 rounded-xl text-[11px] font-black tracking-widest transition-all ${
-                                 currentPage === num 
-                                 ? 'bg-slate-900 text-white shadow-md' 
-                                 : 'bg-white text-slate-600 shadow-sm'
-                              }`}
-                           >
-                              {num}
-                           </button>
-                        )
-                     ))}
-
-                     <button 
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
-                        disabled={currentPage === totalPages}
-                        className="p-3 rounded-xl border border-transparent bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                     >
-                        <ChevronRight size={18} />
-                     </button>
-                  </div>
                </div>
             )}
          </div>
