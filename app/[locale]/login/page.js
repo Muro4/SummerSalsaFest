@@ -209,6 +209,7 @@ function LoginContent() {
       }
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return; 
+      console.error(err);
       setError(t('errGoogleFail'));
     }
   };
