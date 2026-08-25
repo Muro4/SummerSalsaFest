@@ -6,7 +6,7 @@ import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { tickets, isGuest } = body;
+    const { tickets, isGuest, isAmbassadorRegistration } = body;
 
     if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
       return NextResponse.json({ error: "No tickets provided" }, { status: 400 });
@@ -32,6 +32,9 @@ export async function POST(req) {
     }
 
     const currentFestivalYear = getActiveFestivalYear();
+    
+    // Security check: Only actual ambassadors/admins can use the instant activation flag
+    const isAuthorizedAmbassador = isAmbassadorRegistration && (userRole === 'ambassador' || userRole === 'superadmin');
 
     /* Server-Side Purchase Limit Enforcement */
     if (userRole !== 'ambassador' && userRole !== 'superadmin') {
@@ -49,8 +52,20 @@ export async function POST(req) {
     const batch = adminDb.batch();
 
     for (const t of tickets) {
-      const securePrice = getPriceAtDate(t.passType);
       
+      // 1. Secure Pricing & Commission Enforcements
+      let securePrice = 0;
+      if (t.passType === 'Performers Pass') {
+        securePrice = 85;
+      } else if (t.passType === 'Free Full Pass') {
+        securePrice = 0;
+      } else {
+        securePrice = getPriceAtDate(t.passType);
+      }
+
+      const secureCommission = (isAuthorizedAmbassador && t.passType === 'Full Pass') ? 10 : 0;
+
+      // 2. Generate Unique Ticket ID
       let isUnique = false;
       let finalTicketID = "";
       while (!isUnique) {
@@ -59,8 +74,8 @@ export async function POST(req) {
         if (idSnap.empty) isUnique = true;
       }
 
-      /* Free passes bypass the payment gateway and are activated immediately */
-      const initialStatus = securePrice === 0 ? "active" : "pending";
+      // 3. Status Logic: Free passes OR authorized ambassador drafts bypass the payment gateway
+      const initialStatus = (securePrice === 0 || isAuthorizedAmbassador) ? "active" : "pending";
       const timestamp = new Date().toISOString();
 
       const ticketRef = adminDb.collection("tickets").doc();
@@ -71,6 +86,8 @@ export async function POST(req) {
         isGuest: !!isGuest,
         passType: t.passType,
         price: securePrice,
+        commission: secureCommission, // NEW FIELD
+        accommodation: t.accommodation || "None", // NEW FIELD
         status: initialStatus,
         festivalYear: currentFestivalYear,
         purchaseDate: timestamp,

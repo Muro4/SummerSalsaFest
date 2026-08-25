@@ -1,23 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc } from "firebase/firestore";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing
+import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+// IMPORTANT FIX: Using Next.js native router since next-intl wrapper can sometimes cause issues in complex states
+import { useRouter } from "next/navigation"; 
 import Navbar from "@/components/Navbar";
 import { usePopup } from "@/components/PopupProvider";
 import TicketModal from "@/components/TicketModal";
 import TabNavigation from "@/components/TabNavigation";
 import { Loader2, Info, UserPlus, History } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { generateTicketID, getActiveFestivalYear } from "@/lib/utils";
-import { getPriceAtDate as getPrice } from "@/lib/pricing";
-
-
 
 // Modular Tabs
 import DraftTab from "@/components/ambassador/DraftTab";
 import HistoryTab from "@/components/ambassador/HistoryTab";
-
 
 export default function AmbassadorDashboard() {
    const t = useTranslations('AmbassadorDashboard');
@@ -53,8 +49,8 @@ export default function AmbassadorDashboard() {
             if (uDoc.exists() && (uDoc.data().role === 'ambassador' || uDoc.data().role === 'superadmin')) {
                setUserData(uDoc.data());
 
-               // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state
-               setGroupRows([{ id: Date.now(), name: "", type: "Full Pass" }]);
+               // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state with new fields
+               setGroupRows([{ id: Date.now(), name: "", type: "Full Pass", accommodation: "None" }]);
 
                const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
                unsubTickets = onSnapshot(q, (snap) => {
@@ -84,51 +80,53 @@ export default function AmbassadorDashboard() {
       setGroupRows(newRows);
    };
 
-   const submitGroupToCart = async () => {
-      // (Keep your existing validation checks here...)
-      if (groupRows.filter(r => !r.name.trim()).length > 0) {
-         showPopup({ type: "error", title: t('errMissingTitle'), message: t('errMissingMsg'), confirmText: t('errFixIt') });
-         return;
-      }
-      const nameRegex = /^[\p{L}\s\-']+$/u;
-      for (let i = 0; i < groupRows.length; i++) {
-         const row = groupRows[i];
-         if (row.name.trim().length < 2 || !nameRegex.test(row.name.trim())) {
-            showPopup({ type: "error", title: t('errNameTitle'), message: t('errNameMsg', { rowNum: i + 1 }), confirmText: t('errFixIt') });
-            return;
-         }
-      }
-      
+   // RENAMED & REPURPOSED: Directly activates tickets without using the cart
+   const activateDrafts = async () => {
       setLoading(true);
       try {
-         // Prepare the payload
-         const ticketsPayload = groupRows.map(person => ({
-           userName: person.name,
-           passType: person.type
-         }));
+         // Prepare the payload including the new accommodation data
+         const ticketsPayload = groupRows.map(person => {
+            // Recalculate commission to ensure security before sending to API
+            const commission = person.type === 'Full Pass' ? 10 : 0;
+            return {
+               userName: person.name,
+               passType: person.type,
+               accommodation: person.accommodation || "None",
+               commission: commission
+            };
+         });
 
          // Grab Auth token
          const token = await auth.currentUser.getIdToken();
 
          // Send to secure API
          const res = await fetch('/api/tickets/create', {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-             'Authorization': `Bearer ${token}`
-           },
-           body: JSON.stringify({
-             isGuest: false,
-             tickets: ticketsPayload
-           })
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              isGuest: false,
+              isAmbassadorRegistration: true, // This flag tells the API to instantly activate them
+              tickets: ticketsPayload
+            })
          });
 
          const data = await res.json();
-         if (!res.ok) throw new Error(data.error || "Failed to create group tickets");
+         if (!res.ok) throw new Error(data.error || "Failed to generate tickets");
 
-         // Reset the local state back to one empty row after successful add to cart
-         saveRoster([{ id: Date.now(), name: "", type: "Full Pass" }]);
-         showPopup({ type: "success", title: t('errCartTitle'), message: t('errCartMsg'), confirmText: t('btnGoCart'), onConfirm: () => router.push("/cart") });
+         // Reset the local state back to one empty row after successful activation
+         saveRoster([{ id: Date.now(), name: "", type: "Full Pass", accommodation: "None" }]);
+         
+         // Show success and switch to history tab instead of cart
+         showPopup({ 
+            type: "success", 
+            title: "Registration Complete", 
+            message: `${groupRows.length} tickets have been successfully generated and activated!`, 
+            confirmText: "View History", 
+            onConfirm: () => setActiveTab("history") 
+         });
       } catch (e) {
          showPopup({ type: "error", title: t('errGenTitle'), message: e.message, confirmText: t('btnClose') });
       } finally {
@@ -199,7 +197,7 @@ export default function AmbassadorDashboard() {
             </div>
 
             {/* TAB RENDERING */}
-            {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={submitGroupToCart} />}
+            {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={activateDrafts} />}
             {activeTab === "history" && <HistoryTab paidTickets={paidTickets} setFullScreenTicket={setFullScreenTicket} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
 
          </div>
