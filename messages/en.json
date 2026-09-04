@@ -857,6 +857,30 @@
   "commission": "Commission",
   "amountOwed": "Amount Owed",
   "btnRegister": "Register"
+},
+"HistoryTab": {
+  "searchPlaceholder": "Search records...",
+  "filterAll": "All Passes",
+  "passFull": "Full Pass",
+  "passPerformers": "Performers Pass",
+  "passFree": "Free Full Pass",
+  "title": "Registration History",
+  "subtitle": "View all tickets you have registered.",
+  "registered": "Registered",
+  "sumSales": "Gross Sales",
+  "commission": "Commission",
+  "amountOwed": "Amount Owed",
+  "thName": "Dancer Name",
+  "thPassType": "Pass Type",
+  "thAccomm": "Accommodation",
+  "thFinal": "Final Price",
+  "thStatus": "Status",
+  "accNone": "None",
+  "statusActive": "Active",
+  "statusPending": "Pending",
+  "viewTicket": "View Ticket",
+  "noPaidFound": "No records found",
+  "noPaidMobile": "No records found"
 }
   
 

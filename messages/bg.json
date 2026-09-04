@@ -882,6 +882,30 @@
   "commission": "Комисионна",
   "amountOwed": "Дължимо",
   "btnRegister": "Регистрирай"
+},
+"HistoryTab": {
+  "searchPlaceholder": "Търсене в записите...",
+  "filterAll": "Всички пасове",
+  "passFull": "Full Pass",
+  "passPerformers": "Performers Pass",
+  "passFree": "Free Full Pass",
+  "title": "История на регистрациите",
+  "subtitle": "Преглед на всички регистрирани от вас билети.",
+  "registered": "Регистрирани",
+  "sumSales": "Брутни продажби",
+  "commission": "Комисионна",
+  "amountOwed": "Дължимо",
+  "thName": "Име на танцьор",
+  "thPassType": "Вид пас",
+  "thAccomm": "Нощувка",
+  "thFinal": "Крайна цена",
+  "thStatus": "Статус",
+  "accNone": "Без нощувка",
+  "statusActive": "Активен",
+  "statusPending": "Чакащ",
+  "viewTicket": "Преглед на билет",
+  "noPaidFound": "Няма намерени записи",
+  "noPaidMobile": "Няма намерени записи"
 }
   
 }
