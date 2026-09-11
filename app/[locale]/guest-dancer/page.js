@@ -10,10 +10,11 @@ import TicketModal from "@/components/TicketModal";
 import TabNavigation from "@/components/TabNavigation";
 import { Loader2, Info, UserPlus, History } from "lucide-react";
 import { useTranslations } from 'next-intl';
-
-// Modular Tabs
 import DraftTab from "@/components/ambassador/DraftTab";
 import HistoryTab from "@/components/ambassador/HistoryTab";
+
+import { Hotel } from "lucide-react"; // NEW
+
 
 export default function AmbassadorDashboard() {
    const t = useTranslations('AmbassadorDashboard');
@@ -35,7 +36,8 @@ export default function AmbassadorDashboard() {
    // --- TAB DEFINITION ---
    const dashboardTabs = [
       { id: "draft", label: t('tabDraft'), icon: UserPlus },
-      { id: "history", label: t('tabHistory'), icon: History }
+      { id: "history", label: t('tabHistory'), icon: History },
+      
    ];
 
    useEffect(() => {
@@ -199,7 +201,7 @@ export default function AmbassadorDashboard() {
             {/* TAB RENDERING */}
             {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={activateDrafts} />}
             {activeTab === "history" && <HistoryTab paidTickets={paidTickets} setFullScreenTicket={setFullScreenTicket} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
-
+            
          </div>
       </main>
    );
