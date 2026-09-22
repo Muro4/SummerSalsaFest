@@ -580,7 +580,8 @@
     "btnRedo": "Повтаряне",
     "btnSave": "Запази",
     "btnSaving": "Запазване...",
-    "tabArtists": "Артисти"
+    "tabArtists": "Артисти",
+    "tabRooms": "Стаи"
   },
   "AnalyticsTab": {
     "tabDay": "Ден",

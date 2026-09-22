@@ -29,16 +29,19 @@ export async function POST(req) {
         if (occupants.length >= roomData.capacity) {
           throw new Error("This room just filled up!");
         }
-        if (occupants.includes(draftId)) {
+        // Check array of objects instead of array of strings
+        if (occupants.some(occ => occ.id === draftId)) {
           throw new Error("Already assigned to this room.");
         }
         
-        occupants.push(draftId);
+        // Push object with default 3 days
+        occupants.push({ id: draftId, days: 3 });
         // Lock for 10 minutes (600,000 ms)
         lockExpirations[draftId] = Date.now() + 600000; 
 
       } else if (action === "unlock") {
-        occupants = occupants.filter(id => id !== draftId);
+        // Filter out the object matching the draftId
+        occupants = occupants.filter(occ => occ.id !== draftId);
         delete lockExpirations[draftId];
       }
 

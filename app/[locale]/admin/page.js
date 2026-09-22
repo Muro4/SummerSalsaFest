@@ -8,7 +8,7 @@ import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
 import { useTranslations, useLocale } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon, RefreshCw, DatabaseBackup, DatabaseZap } from "lucide-react";
+import { BarChart3, Ticket, UserCog, Mail, Undo2, Redo2, Save, Loader2, Settings2, Image as ImageIcon, RefreshCw, DatabaseBackup, DatabaseZap, Building } from "lucide-react";
 
 const AnalyticsTab = dynamic(() => import("@/components/admin/AnalyticsTab"), {
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
@@ -20,6 +20,9 @@ const TicketsTab = dynamic(() => import("@/components/admin/TicketsTab"), {
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
 const UsersTab = dynamic(() => import("@/components/admin/UsersTab"), {
+   loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
+});
+const RoomsTab = dynamic(() => import("@/components/admin/RoomsTab"), {
    loading: () => <div className="flex justify-center p-20"><Loader2 className="animate-spin text-salsa-pink" size={32} /></div>
 });
 const ArtistsTab = dynamic(() => import("@/components/admin/ArtistsTab"), {
@@ -121,7 +124,7 @@ export default function AdminDashboard() {
       window.addEventListener('beforeunload', handleBeforeUnload);
       document.addEventListener('click', handleLinkClick, { capture: true });
       return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('click', handleLinkClick, { capture: true }); };
-   }, [historyIndex, router, showPopup, t]);
+   }, [historyIndex, router, showPopup, t, locale]);
 
    const handleStageChange = (collection, id, updates) => {
       const newStaged = { ...history[historyIndex], [`${collection}_${id}`]: { ...(history[historyIndex][`${collection}_${id}`] || {}), ...updates, _meta: { collection, id } } };
@@ -192,6 +195,7 @@ export default function AdminDashboard() {
       { id: 'analytics', label: t('tabAnalytics'), icon: BarChart3 },
       { id: 'inbox', label: t('tabInbox'), icon: Mail, badge: totalInboxNotifications },
       { id: 'tickets', label: t('tabTickets'), icon: Ticket },
+      { id: 'rooms', label: t('tabRooms') || 'Rooms', icon: Building },
       { id: 'users', label: t('tabUsers'), icon: UserCog },
       { id: 'artists', label: t('tabArtists') || 'Artists', icon: ImageIcon },
       { id: 'dev', label: 'Dev Panel', icon: Settings2 }
@@ -273,6 +277,7 @@ export default function AdminDashboard() {
                {activeTab === 'analytics' && <AnalyticsTab tickets={effectiveTickets} />}
                {activeTab === 'inbox' && <InboxManager requests={data.requests} />}
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
+               {activeTab === 'rooms' && <RoomsTab tickets={effectiveTickets} />}
                {activeTab === 'users' && <UsersTab users={effectiveUsers} currentUserId={auth.currentUser?.uid} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'artists' && <ArtistsTab artists={effectiveArtists} onStageChange={handleStageChange} />}
                {activeTab === 'dev' && <DevTab />}

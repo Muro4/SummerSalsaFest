@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, Trash2, Plus, Ticket, ShieldCheck, ChevronDown, Clock, X, Bed } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
@@ -54,6 +55,7 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
       { label: 'ВСУ', value: 'ВСУ' }
    ];
 
+   const [mounted, setMounted] = useState(false);
    const [searchQuery, setSearchQuery] = useState("");
    const [passFilter, setPassFilter] = useState("All");
    const [bulkAddCount, setBulkAddCount] = useState(1);
@@ -77,6 +79,10 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
 
    // FIXED: Find the active dancer's name for the modal UI
    const activeDraft = activeModalRow ? groupRows.find(r => r.id === activeModalRow) : null;
+
+   useEffect(() => {
+      setMounted(true);
+   }, []);
 
    useEffect(() => {
       if (!sessionExpiry) return;
@@ -138,7 +144,9 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart }) {
          const q = query(collection(db, "rooms"), where("hotelId", "==", hotelId));
          const snapshot = await getDocs(q);
          const rooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-         setAvailableRooms(rooms.filter(r => r.status !== "full"));
+         
+         // THE FIX: Filter out full rooms AND administratively blocked rooms
+         setAvailableRooms(rooms.filter(r => r.status !== "full" && !r.isBlocked));
       } catch (err) {
          console.error("Failed to fetch rooms:", err);
       } finally {
@@ -372,18 +380,19 @@ ${t('summaryDue') || "AMOUNT DUE TO FESTIVAL"}: €${amountOwed}
    return (
       <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
          
-         {/* FLOATING TIMER BANNER */}
-         {sessionExpiry && (
-            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
+         {/* FLOATING TIMER BANNER (PORTAL) */}
+         {sessionExpiry && mounted && createPortal(
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[99999] bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
                <Clock size={16} className="text-amber-400 animate-pulse" />
                <span className="text-xs font-bold uppercase tracking-widest">Session Expires In:</span>
                <span className="text-lg font-mono font-black text-amber-400 leading-none">{timeLeft}</span>
-            </div>
+            </div>,
+            document.body
          )}
 
-         {/* ROOM SELECTION MODAL - FIXED: z-[9999] and Dynamic Name */}
-         {activeModalRow && (
-            <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+         {/* ROOM SELECTION MODAL (PORTAL) */}
+         {activeModalRow && mounted && createPortal(
+            <div className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 font-montserrat">
                <div className="bg-white rounded-[3rem] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                   <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-slate-50 rounded-t-[3rem] shrink-0">
                      <div>
@@ -412,7 +421,6 @@ ${t('summaryDue') || "AMOUNT DUE TO FESTIVAL"}: €${amountOwed}
                               >
                                  <div className="flex justify-between items-start">
                                     <span className="block text-2xl font-black text-slate-900">Room {room.roomNumber}</span>
-                                    <span className="bg-slate-100 text-slate-500 px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-lg">{room.roomType}</span>
                                  </div>
                                  <div className="flex gap-2">
                                     {Array.from({ length: room.capacity }).map((_, idx) => (
@@ -427,7 +435,8 @@ ${t('summaryDue') || "AMOUNT DUE TO FESTIVAL"}: €${amountOwed}
                      )}
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
          )}
 
          <div className="flex flex-col xl:flex-row gap-4 mb-8 w-full relative z-40 px-0">

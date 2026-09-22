@@ -554,7 +554,8 @@
     "btnRedo": "Redo Stage",
     "btnSave": "Save",
     "btnSaving": "Saving...",
-    "tabArtists": "Artists"
+    "tabArtists": "Artists",
+    "tabRooms": "Rooms"
   },
   "AnalyticsTab": {
     "tabDay": "Day",

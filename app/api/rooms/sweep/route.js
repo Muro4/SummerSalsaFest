@@ -22,7 +22,8 @@ export async function GET(req) {
       for (const [draftId, expiresAt] of Object.entries(newLocks)) {
         if (now > expiresAt) {
           // Lock expired! Remove it.
-          newOccupants = newOccupants.filter(id => id !== draftId);
+          // Filter out the object matching the draftId
+          newOccupants = newOccupants.filter(occ => occ.id !== draftId);
           delete newLocks[draftId];
           needsUpdate = true;
         }
