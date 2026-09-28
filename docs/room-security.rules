@@ -1,0 +1,40 @@
+// Merge into the project's existing /databases/{database}/documents block.
+// This is a fragment, NOT a replacement ruleset for the rest of the application.
+// Remove any overlapping catch-all grants: an allow elsewhere overrides a deny here.
+
+function roomStaff() {
+  return request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+       in ['ambassador', 'superadmin'];
+}
+
+match /rooms/{roomId} {
+  allow read: if roomStaff();
+  allow write: if false;
+}
+
+match /room_drafts/{draftId} {
+  allow read, write: if false;
+}
+match /ticket_codes/{code} {
+  allow read, write: if false;
+}
+match /ticket_purchase_guards/{guardId} {
+  allow read, write: if false;
+}
+
+// AND these predicates into existing ticket update/delete conditions.
+// Ticket creation is performed by the Admin SDK endpoint, not by the client.
+function ticketAllocationUnchanged() {
+  return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+    'roomId', 'accommodation', 'days', 'accommodationPrice', 'draftId',
+    'ambassadorId', 'ambassadorName'
+  ]);
+}
+function ticketHasNoRoom() {
+  return !('roomId' in resource.data) || resource.data.roomId == null;
+}
+// Existing /tickets/{ticketId}:
+// allow create: if false;
+// allow update: if <existing authorization> && ticketAllocationUnchanged();
+// allow delete: if <existing authorization> && ticketHasNoRoom();

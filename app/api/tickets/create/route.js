@@ -1,107 +1,129 @@
-import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+﻿import { NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
 import { getPriceAtDate } from "@/lib/pricing";
 import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
+import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
+import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
+
+const PUBLIC_PASSES = ["Full Pass", "Party Pass", "Day Pass"];
+const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Free Pass"];
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { tickets, isGuest, isAmbassadorRegistration } = body;
+    const actor = await authenticate(req);
+    const { tickets, isGuest, isAmbassadorRegistration } = await requestBody(req);
+    const staff = ["ambassador", "superadmin"].includes(actor.role);
+    if (isAmbassadorRegistration && !staff) throw new ApiError("forbidden", 403);
+    const registration = !!isAmbassadorRegistration && staff;
+    if (!Array.isArray(tickets) || !tickets.length || tickets.length > (staff ? 100 : 5)) throw new ApiError("invalidInput");
+    const year = getActiveFestivalYear();
+    const seenDrafts = new Set();
+    const prepared = tickets.map(ticket => {
+      if (!ticket || typeof ticket.userName !== "string" || ticket.userName.trim().length < 2 || ticket.userName.length > 150 ||
+          !/^[\p{L}\s\-']+$/u.test(ticket.userName) || !(staff ? STAFF_PASSES : PUBLIC_PASSES).includes(ticket.passType) ||
+          !GENDERS.includes(ticket.gender || "unspecified")) throw new ApiError("invalidInput");
+      if ((ticket.roomId || (ticket.accommodation && ticket.accommodation !== "None")) && !registration) throw new ApiError("forbidden", 403);
+      if (ticket.accommodation && ticket.accommodation !== "None" && !ticket.roomId) throw new ApiError("assignmentMismatch", 409);
+      const draftId = registration ? documentId(ticket.draftId) : null;
+      if (draftId && seenDrafts.has(draftId)) throw new ApiError("invalidInput");
+      if (draftId) seenDrafts.add(draftId);
+      const key = draftId ? draftKey(actor.uid, draftId) : null;
+      return {
+        input: ticket, draftId,
+        roomId: ticket.roomId ? documentId(ticket.roomId) : null,
+        draftRef: key ? adminDb.collection("room_drafts").doc(key) : null,
+        ticketRef: key ? adminDb.collection("tickets").doc(`draft_${key}`) : adminDb.collection("tickets").doc(),
+      };
+    });
 
-    if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
-      return NextResponse.json({ error: "No tickets provided" }, { status: 400 });
-    }
+    const result = await adminDb.runTransaction(async tx => {
+      // All reads precede all writes, including ID collision checks and room reads.
+      const drafts = registration ? await tx.getAll(...prepared.map(item => item.draftRef)) : [];
+      const existingTickets = await tx.getAll(...prepared.map(item => item.ticketRef));
+      if (existingTickets.every(s => s.exists)) return existingTickets.map(s => ({ id: s.id, ticketID: s.data().ticketID }));
+      if (existingTickets.some(s => s.exists) || drafts.some(s => s.data()?.state === "finalized")) throw new ApiError("alreadyFinalized", 409);
 
-    /* Authentication and Role Verification */
-    const authHeader = req.headers.get('authorization');
-    let decodedToken = null;
-    let userId = null;
-    let userRole = 'user';
-    let userEmail = "";
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split('Bearer ')[1];
-      decodedToken = await adminAuth.verifyIdToken(token);
-      userId = decodedToken.uid;
-      userEmail = decodedToken.email || "";
-      
-      const userDoc = await adminDb.collection("users").doc(userId).get();
-      if (userDoc.exists) userRole = userDoc.data().role || 'user';
-    } else {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const currentFestivalYear = getActiveFestivalYear();
-    
-    // Security check: Only actual ambassadors/admins can use the instant activation flag
-    const isAuthorizedAmbassador = isAmbassadorRegistration && (userRole === 'ambassador' || userRole === 'superadmin');
-
-    /* Server-Side Purchase Limit Enforcement */
-    if (userRole !== 'ambassador' && userRole !== 'superadmin') {
-      const existingTicketsSnap = await adminDb.collection("tickets")
-        .where("userId", "==", userId)
-        .where("festivalYear", "==", currentFestivalYear)
-        .get();
-        
-      if (existingTicketsSnap.size + tickets.length > 5) {
-        return NextResponse.json({ error: "Limit exceeded: Max 5 passes per user." }, { status: 403 });
-      }
-    }
-
-    /* Ticket Generation and Database Insertion */
-    const batch = adminDb.batch();
-
-    for (const t of tickets) {
-      
-      // 1. Secure Pricing & Commission Enforcements
-      let securePrice = 0;
-      if (t.passType === 'Performers Pass') {
-        securePrice = 85;
-      } else if (t.passType === 'Free Full Pass') {
-        securePrice = 0;
-      } else {
-        securePrice = getPriceAtDate(t.passType);
+      let guard;
+      if (!staff) {
+        guard = adminDb.collection("ticket_purchase_guards").doc(`${actor.uid}_${year}`);
+        await tx.get(guard);
+        const owned = await tx.get(adminDb.collection("tickets").where("userId", "==", actor.uid).where("festivalYear", "==", year));
+        if (owned.size + tickets.length > 5) throw new ApiError("purchaseLimit", 403);
       }
 
-      const secureCommission = (isAuthorizedAmbassador && t.passType === 'Full Pass') ? 10 : 0;
+      const roomIds = [...new Set(prepared.map(item => item.roomId).filter(Boolean))];
+      const roomSnapshots = roomIds.length ? await tx.getAll(...roomIds.map(id => adminDb.collection("rooms").doc(id))) : [];
+      const states = new Map(roomSnapshots.map(snapshot => {
+        const room = requireRoom(snapshot);
+        return [snapshot.id, { ref: snapshot.ref, room }];
+      }));
 
-      // 2. Generate Unique Ticket ID
-      let isUnique = false;
-      let finalTicketID = "";
-      while (!isUnique) {
-        finalTicketID = generateTicketID();
-        const idSnap = await adminDb.collection("tickets").where("ticketID", "==", finalTicketID).limit(1).get();
-        if (idSnap.empty) isUnique = true;
+      const codes = new Set();
+      for (const item of prepared) {
+        // Reserve the display ID as well as checking pre-migration tickets.
+        let code;
+        let unique = false;
+        for (let attempt = 0; attempt < 20 && !unique; attempt++) {
+          code = generateTicketID();
+          if (codes.has(code)) continue;
+          const ref = adminDb.collection("ticket_codes").doc(code);
+          const reservation = await tx.get(ref);
+          const legacy = await tx.get(adminDb.collection("tickets").where("ticketID", "==", code).limit(1));
+          if (!reservation.exists && legacy.empty) { unique = true; item.codeRef = ref; }
+        }
+        if (!unique) throw new ApiError("serverError", 503);
+        item.code = code;
+        codes.add(code);
       }
 
-      // 3. Status Logic: Free passes OR authorized ambassador drafts bypass the payment gateway
-      const initialStatus = (securePrice === 0 || isAuthorizedAmbassador) ? "active" : "pending";
-      const timestamp = new Date().toISOString();
-
-      const ticketRef = adminDb.collection("tickets").doc();
-      batch.set(ticketRef, {
-        userId: userId,
-        userName: t.userName.trim().toUpperCase(),
-        guestEmail: isGuest ? (t.guestEmail || "").trim().toLowerCase() : userEmail,
-        isGuest: !!isGuest,
-        passType: t.passType,
-        price: securePrice,
-        commission: secureCommission, // NEW FIELD
-        accommodation: t.accommodation || "None", // NEW FIELD
-        status: initialStatus,
-        festivalYear: currentFestivalYear,
-        purchaseDate: timestamp,
-        paymentConfirmedAt: initialStatus === "active" ? timestamp : null,
-        emailSentCount: 0,
-        ticketID: finalTicketID
+      const now = Date.now();
+      const timestamp = new Date(now).toISOString();
+      for (const entry of states.values()) entry.state = roomState(entry.room, now);
+      const documents = prepared.map((item, index) => {
+        const input = item.input;
+        const draft = drafts[index]?.data();
+        const entry = item.roomId ? states.get(item.roomId) : null;
+        if (entry) {
+          if (entry.room.isBlocked) throw new ApiError("roomBlocked", 409);
+          const lock = entry.state.locks.find(l => l.ownerId === actor.uid && l.draftId === item.draftId);
+          if (!lock || draft?.state !== "held" || draft.roomId !== item.roomId || draft.expiresAt <= now) throw new ApiError("lockExpired", 409);
+          if (entry.state.occupants.length + entry.state.locks.length > entry.room.capacity) throw new ApiError("roomFull", 409);
+          entry.state.locks = entry.state.locks.filter(l => l !== lock);
+        } else if (draft?.state === "held") {
+          throw new ApiError("assignmentMismatch", 409);
+        }
+        const price = input.passType === "Free Full Pass" ? 0 : getPriceAtDate(input.passType);
+        const status = price === 0 || registration ? "active" : "pending";
+        const ticket = {
+          userId: actor.uid, userName: input.userName.trim().toUpperCase(),
+          guestEmail: isGuest ? String(input.guestEmail || "").trim().toLowerCase() : actor.email,
+          isGuest: !!isGuest, passType: input.passType, price,
+          commission: registration && input.passType === "Full Pass" ? 10 : 0,
+          accommodation: entry?.room.hotelId || "None", roomId: item.roomId,
+          accommodationPrice: entry ? 3 * (entry.room.pricePerPersonPerNight || 0) : 0,
+          days: entry ? 3 : 0, gender: input.gender || "unspecified",
+          ambassadorId: registration ? actor.uid : null, ambassadorName: registration ? actor.name : null,
+          draftId: item.draftId, status, festivalYear: year,
+          purchaseDate: timestamp, paymentConfirmedAt: status === "active" ? timestamp : null,
+          emailSentCount: 0, ticketID: item.code,
+        };
+        if (entry) entry.state.occupants.push({
+          id: item.ticketRef.id, ticketId: item.ticketRef.id, ticketID: item.code,
+          name: ticket.userName, gender: ticket.gender, passType: ticket.passType,
+          ambassadorId: actor.uid, ambassadorName: actor.name, days: 3,
+        });
+        return ticket;
       });
-    }
 
-    await batch.commit();
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Ticket Creation Error:", error);
-    return NextResponse.json({ error: "Failed to create tickets" }, { status: 500 });
-  }
+      for (const { ref, room, state } of states.values()) tx.update(ref, roomUpdate(room, state));
+      prepared.forEach((item, index) => {
+        tx.create(item.ticketRef, documents[index]);
+        tx.create(item.codeRef, { ticketId: item.ticketRef.id });
+        if (item.draftRef) tx.set(item.draftRef, { ownerId: actor.uid, draftId: item.draftId, state: "finalized", roomId: item.roomId, ticketId: item.ticketRef.id, expiresAt: null, updatedAt: now });
+      });
+      if (guard) tx.set(guard, { updatedAt: now });
+      return prepared.map(item => ({ id: item.ticketRef.id, ticketID: item.code }));
+    });
+    return NextResponse.json({ success: true, tickets: result });
+  } catch (error) { return apiError(error); }
 }

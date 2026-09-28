@@ -1,452 +1,169 @@
-"use client";
-import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
-import { usePopup } from "@/components/PopupProvider";
+﻿"use client";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { doc, onSnapshot } from "firebase/firestore";
+import { Building, ChevronDown, Edit2, Lock, Plus, Search, Trash2, Unlock, Users, X } from "lucide-react";
 import Button from "@/components/Button";
-import CustomDropdown from "@/components/CustomDropdown";
-import { 
-  Building, Plus, Trash2, Edit2, Lock, Unlock, 
-  Users, Calendar, Save, Loader2, AlertCircle
-} from "lucide-react";
+import RoomBeds from "@/components/rooms/RoomBeds";
+import { usePopup } from "@/components/PopupProvider";
+import { db } from "@/lib/firebase";
+import { CONFIRMED_TICKET_STATUSES, HOTELS, ROOM_TYPES, roomState, roomType } from "@/lib/rooms";
+import { roomError, roomRequest } from "@/lib/room-client";
+import useRooms from "@/lib/useRooms";
 
-// MATCH EXACTLY WITH DraftTab.js VALUES
-const HOTELS = [
-  { id: "ВСУ", name: "ВСУ" },
-  { id: "Detelina", name: "Detelina" },
-  { id: "Toro Negro", name: "Toro Negro" },
-  { id: "Kabakum", name: "Kabakum" }
-];
+const field = "mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition-colors focus:border-salsa-pink focus:ring-2 focus:ring-salsa-pink/15 disabled:bg-slate-100";
+const blankRoom = () => ({ hotelId: "ВСУ", roomNumber: "", roomType: "double", capacity: 2, pricePerPersonPerNight: 15.5 });
 
-export default function RoomsTab({ tickets = [] }) {
+export default function RoomsTab({ tickets = [], users = [] }) {
+  const t = useTranslations("RoomSystem");
   const { showPopup } = usePopup();
-  const [mounted, setMounted] = useState(false);
-  const [rooms, setRooms] = useState([]);
+  const { rooms, loading, error: roomsError, now, retry } = useRooms();
+  const [search, setSearch] = useState("");
+  const [hotel, setHotel] = useState("all");
+  const [type, setType] = useState("all");
+  const [availability, setAvailability] = useState("all");
+  const [editor, setEditor] = useState(null);
+  const [allocation, setAllocation] = useState(null);
+  const [ticketSearch, setTicketSearch] = useState("");
   const [deposits, setDeposits] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [depositError, setDepositError] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const editorRef = useRef(null);
+  const allocationRef = useRef(null);
 
-  // Modal States
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
-  const [editingRoom, setEditingRoom] = useState(null);
-  const [roomFormData, setRoomFormData] = useState({
-    hotelId: "ВСУ",
-    roomNumber: "",
-    capacity: 2,
-    pricePerPersonPerNight: 15.5
-  });
+  useEffect(() => onSnapshot(doc(db, "settings", "hotel_deposits"), snapshot => setDeposits(snapshot.data() || {}), () => setDepositError(true)), []);
+  useEffect(() => { if (editor) editorRef.current?.focus(); }, [!!editor]);
+  useEffect(() => { if (allocation) allocationRef.current?.focus(); }, [!!allocation]);
 
-  useEffect(() => {
-    setMounted(true);
-    const unsubRooms = onSnapshot(collection(db, "rooms"), (snap) => {
-      setRooms(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const unsubDeposits = onSnapshot(doc(db, "settings", "hotel_deposits"), (docSnap) => {
-      if (docSnap.exists()) {
-        setDeposits(docSnap.data());
-      } else {
-        setDeposits({});
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      unsubRooms();
-      unsubDeposits();
-    };
-  }, []);
-
-  // --- CALCULATIONS ---
-  const getOccupantName = (draftId) => {
-    if (!draftId) return "Unknown Guest";
-    const idStr = String(draftId);
-    const ticket = tickets.find(t => t.id === idStr || t.ticketID === idStr);
-    return ticket ? ticket.userName : `Guest (${idStr.substring(0, 6)})`;
+  const mutate = async (body, after) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true); setError(""); setNotice("");
+    try { await roomRequest("/api/rooms/manage", body); setNotice(t("saved")); after?.(); }
+    catch (err) { setError(roomError(t, err)); }
+    finally { busyRef.current = false; setBusy(false); }
+  };
+  const confirm = (message, action) => showPopup({ type: "info", title: t("confirmAction"), message, confirmText: t("confirm"), cancelText: t("cancel"), onConfirm: action });
+  const states = rooms.map(room => ({ ...room, ...roomState(room, now) }));
+  const totals = states.reduce((total, room) => ({
+    beds: total.beds + room.capacity, occupied: total.occupied + room.occupants.length,
+    held: total.held + room.locks.length, available: total.available + room.available,
+  }), { beds: 0, occupied: 0, held: 0, available: 0 });
+  const rate = totals.beds ? Math.round(totals.occupied / totals.beds * 100) : 0;
+  const filtered = states.filter(room =>
+    (hotel === "all" || room.hotelId === hotel) &&
+    (type === "all" || roomType(room) === type) &&
+    (availability === "all" || (availability === "blocked" ? room.isBlocked : availability === "full" ? room.used >= room.capacity : room.available > 0)) &&
+    [room.roomNumber, room.hotelId, ...room.occupants.flatMap(occ => [occ.name, occ.ticketID])].join(" ").toLowerCase().includes(search.toLowerCase())
+  ).sort((a, b) => a.hotelId.localeCompare(b.hotelId) || String(a.roomNumber).localeCompare(String(b.roomNumber), undefined, { numeric: true }));
+  const editingState = editor?.id ? states.find(room => room.id === editor.id) : null;
+  const ticketFor = occupant => tickets.find(ticket => ticket.id === (occupant.ticketId || occupant.id) || ticket.ticketID === occupant.id);
+  const activeTickets = tickets.filter(ticket => CONFIRMED_TICKET_STATUSES.includes(ticket.status) &&
+    (!ticket.roomId || ticket.id === allocation?.ticketId) &&
+    [ticket.userName, ticket.ticketID].join(" ").toLowerCase().includes(ticketSearch.toLowerCase()));
+  const openAllocation = (room, ticket) => {
+    setTicketSearch("");
+    setAllocation({ roomId: room.id, ticketId: ticket?.id || "", sourceRoomId: ticket?.roomId || room.id, days: ticket?.days || 3 });
   };
 
-  const calculateRoomTotal = (room) => {
-    if (!room.occupants || !Array.isArray(room.occupants) || room.occupants.length === 0) return 0;
-    const totalDays = room.occupants.reduce((sum, occ) => {
-      if (!occ) return sum; // Guard against null records
-      const days = typeof occ === 'string' ? 3 : (occ.days || 3);
-      return sum + days;
-    }, 0);
-    return totalDays * (room.pricePerPersonPerNight || 0);
-  };
+  return <div className="space-y-6 font-montserrat text-slate-900">
+    <header className="flex flex-wrap items-center justify-between gap-4">
+      <div><p className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500"><Building size={16} />{t("accommodation")}</p><h2 className="font-bebas text-4xl sm:text-5xl">{t("managerTitle")}</h2><p className="mt-1 text-sm text-slate-500">{t("managerIntro")}</p></div>
+      <Button icon={Plus} disabled={busy} onClick={() => setEditor(blankRoom())}>{t("addRoom")}</Button>
+    </header>
+    {error && <div role="alert" className="rounded-2xl border border-salsa-pink/30 bg-salsa-pink/10 p-4 text-sm">{error}</div>}
+    {notice && <p role="status" className="rounded-2xl bg-salsa-mint/20 p-4 text-sm">{notice}</p>}
+    <section aria-label={t("overview")} className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      {[[t("totalRooms"), rooms.length], [t("totalBeds"), totals.beds], [t("occupiedBeds"), totals.occupied], [t("heldBeds"), totals.held], [t("availableBeds"), totals.available], [t("occupancyRate"), `${rate}%`]].map(([label, value], index) => <div key={label} className={`rounded-3xl border p-4 ${index === 5 ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"}`}><p className={`text-xs ${index === 5 ? "text-slate-300" : "text-slate-500"}`}>{label}</p><p className="mt-2 font-bebas text-4xl">{loading ? "—" : value}</p></div>)}
+    </section>
+    <p className="text-xs text-slate-500">{t("availabilityHint")}</p>
 
-  const getHotelFinancials = (hotelId) => {
-    const hotelRooms = rooms.filter(r => r.hotelId === hotelId);
-    const totalCost = hotelRooms.reduce((sum, room) => sum + calculateRoomTotal(room), 0);
-    const deposit = deposits[hotelId] || 0;
-    const owed = totalCost - deposit;
-    return { totalCost, deposit, owed, hotelRooms };
-  };
+    {editor && <form aria-label={t(editor.id ? "editRoom" : "addRoom")} className="space-y-4 rounded-3xl border border-salsa-pink/30 bg-white p-6" onSubmit={event => { event.preventDefault(); mutate({ ...editor, roomId: editor.id, action: editor.id ? "update" : "create", capacity: Number(editor.capacity), pricePerPersonPerNight: Number(editor.pricePerPersonPerNight) }, () => setEditor(null)); }}>
+      <div className="flex items-center justify-between"><h3 ref={editorRef} tabIndex={-1} className="font-bebas text-3xl">{t(editor.id ? "editRoom" : "addRoom")}</h3><Button icon={X} size="icon" variant="ghost" title={t("cancel")} disabled={busy} onClick={() => setEditor(null)} /></div>
+      <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="text-xs font-bold">{t("hotel")}<select className={field} disabled={!!editingState?.used} value={editor.hotelId} onChange={event => setEditor({ ...editor, hotelId: event.target.value })}>{HOTELS.map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="text-xs font-bold">{t("roomNumber")}<input className={field} required maxLength={80} value={editor.roomNumber} onChange={event => setEditor({ ...editor, roomNumber: event.target.value })} /></label>
+        <label className="text-xs font-bold">{t("roomType")}<select className={field} value={editor.roomType} onChange={event => setEditor({ ...editor, roomType: event.target.value })}>{ROOM_TYPES.map(value => <option key={value} value={value}>{t(`types.${value}`)}</option>)}</select></label>
+        <label className="text-xs font-bold">{t("capacity")}<input className={field} type="number" required min={Math.max(1, editingState?.used || 0)} max="20" value={editor.capacity} onChange={event => setEditor({ ...editor, capacity: event.target.value })} /></label>
+        <label className="text-xs font-bold">{t("nightPrice")}<input className={field} disabled={!!editingState?.used} type="number" required min="0" step="0.01" value={editor.pricePerPersonPerNight} onChange={event => setEditor({ ...editor, pricePerPersonPerNight: event.target.value })} /></label>
+      </fieldset>
+      {!!editingState?.used && <p className="text-xs text-slate-500">{t("editOccupiedHint")}</p>}
+      <div className="flex gap-2"><Button type="submit" isLoading={busy}>{t("saveRoom")}</Button><Button variant="ghost" disabled={busy} onClick={() => setEditor(null)}>{t("cancel")}</Button></div>
+    </form>}
 
-  // --- ACTIONS ---
-  const handleSaveRoom = async (e) => {
-    e.preventDefault();
-    if (!roomFormData.roomNumber.trim()) return;
+    {allocation && <form className="space-y-4 rounded-3xl border border-salsa-mint bg-white p-6" onSubmit={event => { event.preventDefault(); mutate({ ...allocation, action: "assign", days: Number(allocation.days) }, () => setAllocation(null)); }}>
+      <div className="flex items-center justify-between"><h3 ref={allocationRef} tabIndex={-1} className="font-bebas text-3xl">{t("manageAllocation")}</h3><Button icon={X} size="icon" variant="ghost" title={t("cancel")} disabled={busy} onClick={() => setAllocation(null)} /></div>
+      <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
+        <label className="text-xs font-bold">{t("searchTickets")}<input className={field} value={ticketSearch} onChange={event => setTicketSearch(event.target.value)} /></label>
+        <label className="text-xs font-bold">{t("attendee")}<select className={field} required value={allocation.ticketId} onChange={event => setAllocation({ ...allocation, ticketId: event.target.value, sourceRoomId: tickets.find(ticket => ticket.id === event.target.value)?.roomId || null })}><option value="">{t("selectTicket")}</option>{[...new Map([...activeTickets, ...tickets.filter(ticket => ticket.id === allocation.ticketId)].map(ticket => [ticket.id, ticket])).values()].map(ticket => <option key={ticket.id} value={ticket.id}>{ticket.userName} · {ticket.ticketID}</option>)}</select></label>
+        <label className="text-xs font-bold">{t("destinationRoom")}<select className={field} required value={allocation.roomId} onChange={event => setAllocation({ ...allocation, roomId: event.target.value })}>{states.map(room => <option key={room.id} value={room.id} disabled={(room.available === 0 || room.isBlocked) && room.id !== tickets.find(ticket => ticket.id === allocation.ticketId)?.roomId}>{room.hotelId} · {t("roomName", { number: room.roomNumber })} · {t("availableCount", { available: room.available, capacity: room.capacity })}</option>)}</select></label>
+        <label className="text-xs font-bold">{t("days")}<input className={field} type="number" min="1" max="14" required value={allocation.days} onChange={event => setAllocation({ ...allocation, days: event.target.value })} /></label>
+      </fieldset>
+      <div className="flex gap-2"><Button type="submit" disabled={!allocation.ticketId} isLoading={busy}>{t("saveAllocation")}</Button><Button variant="ghost" disabled={busy} onClick={() => setAllocation(null)}>{t("cancel")}</Button></div>
+    </form>}
 
-    try {
-      if (editingRoom) {
-        // Enforce capacity constraint
-        const currentOccupants = editingRoom.occupants?.length || 0;
-        if (roomFormData.capacity < currentOccupants) {
-          showPopup({ type: "error", title: "Error", message: `Cannot reduce capacity below current occupants (${currentOccupants}).` });
-          return;
-        }
+    <section aria-label={t("filters")} className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label className="text-xs font-bold">{t("searchRooms")}<span className="relative block"><Search size={16} className="absolute left-3 top-4 text-slate-400" /><input className={`${field} pl-10`} value={search} placeholder={t("roomSearchHint")} onChange={event => setSearch(event.target.value)} /></span></label>
+      <label className="text-xs font-bold">{t("hotel")}<select className={field} value={hotel} onChange={event => setHotel(event.target.value)}><option value="all">{t("allHotels")}</option>{HOTELS.map(value => <option key={value}>{value}</option>)}</select></label>
+      <label className="text-xs font-bold">{t("roomType")}<select className={field} value={type} onChange={event => setType(event.target.value)}><option value="all">{t("allTypes")}</option>{ROOM_TYPES.map(value => <option key={value} value={value}>{t(`types.${value}`)}</option>)}</select></label>
+      <label className="text-xs font-bold">{t("availability")}<select className={field} value={availability} onChange={event => setAvailability(event.target.value)}>{["all", "available", "full", "blocked"].map(value => <option key={value} value={value}>{t(value)}</option>)}</select></label>
+    </section>
 
-        await updateDoc(doc(db, "rooms", editingRoom.id), {
-          hotelId: roomFormData.hotelId,
-          roomNumber: roomFormData.roomNumber.trim(),
-          capacity: Number(roomFormData.capacity),
-          pricePerPersonPerNight: Number(roomFormData.pricePerPersonPerNight)
-        });
-      } else {
-        // Add new room
-        const newRoomRef = doc(collection(db, "rooms"));
-        await setDoc(newRoomRef, {
-          hotelId: roomFormData.hotelId,
-          roomNumber: roomFormData.roomNumber.trim(),
-          capacity: Number(roomFormData.capacity),
-          pricePerPersonPerNight: Number(roomFormData.pricePerPersonPerNight),
-          isBlocked: false,
-          occupants: [],
-          lockExpirations: {},
-          status: "available"
-        });
-      }
-      setIsRoomModalOpen(false);
-      setEditingRoom(null);
-    } catch (err) {
-      showPopup({ type: "error", title: "Error", message: err.message });
-    }
-  };
-
-  const handleDeleteRoom = (room) => {
-    if (room.occupants?.length > 0) return; // Prevent deletion if occupied
-
-    showPopup({
-      type: "danger",
-      title: "Delete Room",
-      message: `Are you sure you want to delete Room ${room.roomNumber}?`,
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: async () => {
-        await deleteDoc(doc(db, "rooms", room.id));
-      }
-    });
-  };
-
-  const handleToggleBlock = async (room) => {
-    await updateDoc(doc(db, "rooms", room.id), {
-      isBlocked: !room.isBlocked
-    });
-  };
-
-  const handleEditDeposit = (hotelId, currentDeposit) => {
-    const newDeposit = prompt(`Enter new deposit amount for ${HOTELS.find(h => h.id === hotelId).name}:`, currentDeposit);
-    if (newDeposit !== null && !isNaN(newDeposit)) {
-      setDoc(doc(db, "settings", "hotel_deposits"), {
-        ...deposits,
-        [hotelId]: Number(newDeposit)
-      }, { merge: true });
-    }
-  };
-
-  const handleUpdateOccupantDays = async (roomId, occupantId, newDays) => {
-    if (!occupantId) return; // Safety guard
-    const room = rooms.find(r => r.id === roomId);
-    if (!room) return;
-
-    const updatedOccupants = room.occupants.map(occ => {
-      if (!occ) return null;
-      // Convert legacy strings to objects on the fly
-      if (typeof occ === 'string') {
-        return occ === occupantId ? { id: occ, days: Number(newDays) } : { id: occ, days: 3 };
-      }
-      return occ.id === occupantId ? { ...occ, days: Number(newDays) } : occ;
-    }).filter(Boolean); // Filter out any rogue nulls
-
-    await updateDoc(doc(db, "rooms", roomId), {
-      occupants: updatedOccupants
-    });
-  };
-
-  const openAddModal = () => {
-    setEditingRoom(null);
-    setRoomFormData({ hotelId: "ВСУ", roomNumber: "", capacity: 2, pricePerPersonPerNight: 15.5 });
-    setIsRoomModalOpen(true);
-  };
-
-  const openEditModal = (room) => {
-    setEditingRoom(room);
-    setRoomFormData({
-      hotelId: room.hotelId,
-      roomNumber: room.roomNumber,
-      capacity: room.capacity,
-      pricePerPersonPerNight: room.pricePerPersonPerNight
-    });
-    setIsRoomModalOpen(true);
-  };
-
-  const modalContent = (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 font-montserrat">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsRoomModalOpen(false)}></div>
-      <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 duration-300 border border-gray-100">
-        <h3 className="font-bebas text-4xl text-slate-900 mb-6 uppercase tracking-wide">
-          {editingRoom ? "Edit Room" : "Add New Room"}
-        </h3>
-
-        <form onSubmit={handleSaveRoom} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Hotel</label>
-            <div className="relative">
-              <CustomDropdown
-                value={roomFormData.hotelId}
-                onChange={(val) => setRoomFormData({ ...roomFormData, hotelId: val })}
-                options={HOTELS.map(h => ({ label: h.name, value: h.id }))}
-                variant="filter"
-              />
-            </div>
+    {roomsError ? <div role="alert" className="rounded-3xl bg-white p-6"><p className="mb-3">{t("loadError")}</p><Button onClick={retry}>{t("retry")}</Button></div> : loading ? <p role="status" className="p-12 text-center">{t("loading")}</p> : !filtered.length ? <p className="rounded-3xl border border-dashed border-slate-200 p-12 text-center text-slate-500">{t("noRooms")}</p> : <div className="grid items-start gap-5 lg:grid-cols-2">
+      {filtered.map(room => <article key={room.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="space-y-4 p-5">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{room.hotelId} · {t(`types.${roomType(room)}`)}</p><h3 className="font-bebas text-3xl">{t("roomName", { number: room.roomNumber })}</h3></div><span className={`rounded-2xl px-3 py-2 text-xs font-bold ${room.isBlocked ? "bg-slate-200" : room.available ? "bg-salsa-mint/25" : "bg-salsa-pink/15"}`}>{t(room.isBlocked ? "blocked" : room.available ? "available" : "full")}</span></div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><span className="flex items-center gap-1"><Users size={14} />{t("occupiedCount", { count: room.occupants.length, capacity: room.capacity })}</span><span>{t("heldCount", { count: room.locks.length })}</span><span>{t("availableCount", { available: room.available, capacity: room.capacity })}</span></div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-salsa-mint/25" aria-hidden="true"><span className="bg-slate-900 transition-all" style={{ width: `${Math.min(100, room.occupants.length / room.capacity * 100)}%` }} /><span className="bg-salsa-pink transition-all" style={{ width: `${Math.min(100, room.locks.length / room.capacity * 100)}%` }} /></div>
+          <RoomBeds room={room} now={now} />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" icon={Plus} disabled={busy || !room.available} onClick={() => openAllocation(room)}>{t("addOccupant")}</Button>
+            <Button size="icon" variant="ghost" icon={Edit2} title={t("editRoom")} disabled={busy} onClick={() => setEditor({ ...room, roomType: roomType(room) })} />
+            <Button size="icon" variant="ghost" icon={room.isBlocked ? Unlock : Lock} title={t(room.isBlocked ? "unblockRoom" : "blockRoom")} disabled={busy} onClick={() => mutate({ action: "block", roomId: room.id, isBlocked: !room.isBlocked })} />
+            <Button size="icon" variant="danger" icon={Trash2} title={t(room.used ? "cannotDelete" : "deleteRoom")} disabled={busy || !!room.used} onClick={() => confirm(t("deleteRoomConfirm", { number: room.roomNumber }), () => mutate({ action: "delete", roomId: room.id }))} />
           </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Room Number / Name</label>
-            <input 
-              required
-              type="text" 
-              value={roomFormData.roomNumber}
-              onChange={(e) => setRoomFormData({ ...roomFormData, roomNumber: e.target.value })}
-              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-slate-900 transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Capacity</label>
-              <input 
-                required
-                type="number" 
-                min={editingRoom ? (editingRoom.occupants?.length || 1) : 1}
-                value={roomFormData.capacity}
-                onChange={(e) => setRoomFormData({ ...roomFormData, capacity: e.target.value })}
-                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-slate-900 transition-colors"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Price/Night (€)</label>
-              <input 
-                required
-                type="number" 
-                step="0.01"
-                min="0"
-                value={roomFormData.pricePerPersonPerNight}
-                onChange={(e) => setRoomFormData({ ...roomFormData, pricePerPersonPerNight: e.target.value })}
-                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-slate-900 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4 flex gap-3">
-            <Button type="button" variant="ghost" onClick={() => setIsRoomModalOpen(false)} className="flex-1 bg-gray-50 text-slate-600">Cancel</Button>
-            <Button type="submit" variant="primary" icon={Save} className="flex-1">Save Room</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-salsa-pink" size={48} /></div>;
-
-  return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
-        <div>
-          <h2 className="font-bebas tracking-wide text-4xl text-slate-900 uppercase leading-none">Accommodation Manager</h2>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Manage Hotels, Rooms, and Capacity</p>
         </div>
-        <Button onClick={openAddModal} variant="primary" icon={Plus} className="w-full md:w-auto px-8">
-          Add Room
-        </Button>
-      </div>
+        <details className="group border-t border-slate-100 bg-slate-50">
+          <summary className="flex cursor-pointer list-none items-center justify-between p-5 text-xs font-bold focus-visible:outline-2 focus-visible:outline-salsa-pink">{t("occupantDetails", { count: room.occupants.length })}<ChevronDown size={16} className="transition-transform group-open:rotate-180" /></summary>
+          <div className="space-y-3 px-5 pb-5">
+            {!room.occupants.length && <p className="text-sm text-slate-500">{t("noOccupants")}</p>}
+            {room.occupants.map((occupant, index) => {
+              const ticket = ticketFor(occupant);
+              const ambassador = users.find(user => user.id === (ticket?.ambassadorId || occupant.ambassadorId || ticket?.userId));
+              return <div key={occupant.ticketId || occupant.id || index} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-bold">{ticket?.userName || occupant.name || t("unnamed")}</p>
+                <dl className="grid grid-cols-2 gap-2 text-xs">
+                  <div><dt className="text-slate-500">{t("passType")}</dt><dd>{ticket?.passType || occupant.passType || "—"}</dd></div>
+                  <div><dt className="text-slate-500">{t("ambassador")}</dt><dd className="break-words">{ambassador?.ambassadorDisplayName || ambassador?.displayName || ticket?.ambassadorName || occupant.ambassadorName || occupant.ambassadorId || "—"}</dd></div>
+                  <div className="col-span-2"><dt className="text-slate-500">{t("ticketId")}</dt><dd className="break-all">{ticket?.ticketID || occupant.ticketID || occupant.id}</dd></div>
+                </dl>
+                {ticket ? <>
+                  <form className="flex items-end gap-2" onSubmit={event => { event.preventDefault(); mutate({ action: "days", ticketId: ticket.id, sourceRoomId: room.id, days: Number(new FormData(event.currentTarget).get("days")) }); }}>
+                    <label className="text-xs font-bold">{t("days")}<input name="days" key={occupant.days} type="number" required min="1" max="14" defaultValue={occupant.days || 3} className={`${field} max-w-24`} disabled={busy} /></label>
+                    <Button size="sm" type="submit" variant="outline" disabled={busy}>{t("save")}</Button>
+                  </form>
+                  <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => openAllocation(room, ticket)}>{t("reassign")}</Button><Button size="sm" variant="danger" disabled={busy} onClick={() => confirm(t("evictConfirm", { name: ticket.userName || t("unnamed") }), () => mutate({ action: "evict", ticketId: ticket.id, sourceRoomId: room.id }))}>{t("evict")}</Button></div>
+                </> : <><p className="text-xs text-slate-500">{t("legacyOccupant")}</p><Button size="sm" variant="danger" disabled={busy || !occupant.id} onClick={() => confirm(t("evictConfirm", { name: occupant.name || String(occupant.id) }), () => mutate({ action: "evictOrphan", roomId: room.id, occupantId: occupant.id }))}>{t("evict")}</Button></>}
+              </div>;
+            })}
+          </div>
+        </details>
+      </article>)}
+    </div>}
 
-      {/* Hotel Groups */}
-      <div className="space-y-10">
-        {HOTELS.map(hotel => {
-          const { totalCost, deposit, owed, hotelRooms } = getHotelFinancials(hotel.id);
-          
-          if (hotelRooms.length === 0) return null; // Hide empty hotels to keep UI clean
-
-          return (
-            <div key={hotel.id} className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-xl">
-              
-              {/* Hotel Header */}
-              <div className="bg-slate-900 p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white">
-                    <Building size={28} />
-                  </div>
-                  <div>
-                    <h3 className="font-bebas text-4xl text-white tracking-wide">{hotel.name}</h3>
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{hotelRooms.length} Rooms Configured</p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-wrap gap-4 lg:gap-8 bg-white/5 p-4 rounded-2xl border border-white/10 w-full lg:w-auto">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Cost</p>
-                    <p className="text-xl font-black text-white">€{totalCost.toFixed(2)}</p>
-                  </div>
-                  <div className="w-px bg-white/10 hidden sm:block"></div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                      Deposit <button onClick={() => handleEditDeposit(hotel.id, deposit)} className="text-salsa-pink hover:text-white transition-colors cursor-pointer"><Edit2 size={12} /></button>
-                    </p>
-                    <p className="text-xl font-black text-white">€{deposit.toFixed(2)}</p>
-                  </div>
-                  <div className="w-px bg-white/10 hidden sm:block"></div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Owed to Hotel</p>
-                    <p className={`text-xl font-black ${owed > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>€{owed.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Rooms Table */}
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-separate border-spacing-0 min-w-[800px] font-montserrat">
-                  <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-400 tracking-widest">
-                    <tr>
-                      <th className="p-5 pl-8 border-b border-gray-100">Room</th>
-                      <th className="p-5 text-center border-b border-gray-100">Occupancy</th>
-                      <th className="p-5 border-b border-gray-100">Price/Night</th>
-                      <th className="p-5 border-b border-gray-100">Room Total</th>
-                      <th className="p-5 text-center border-b border-gray-100">Visibility</th>
-                      <th className="p-5 text-right pr-8 border-b border-gray-100">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="uppercase text-xs font-bold text-slate-700">
-                    {hotelRooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber)).map(room => {
-                      const occupantsCount = room.occupants?.length || 0;
-                      const isFull = occupantsCount >= room.capacity;
-
-                      return (
-                        <React.Fragment key={room.id}>
-                          {/* Main Row */}
-                          <tr className="bg-white">
-                            <td className="p-5 pl-8 border-b border-gray-50 flex items-center gap-3">
-                              <span className="text-base text-slate-900 font-black">Room {room.roomNumber}</span>
-                            </td>
-                            
-                            <td className="p-5 text-center border-b border-gray-50">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-black tracking-widest ${isFull ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                <Users size={12} /> {occupantsCount} / {room.capacity}
-                              </span>
-                            </td>
-
-                            <td className="p-5 border-b border-gray-50">€{room.pricePerPersonPerNight}</td>
-                            <td className="p-5 border-b border-gray-50 text-slate-900 font-black">€{calculateRoomTotal(room).toFixed(2)}</td>
-                            
-                            <td className="p-5 text-center border-b border-gray-50">
-                              <button onClick={() => handleToggleBlock(room)} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-colors cursor-pointer ${room.isBlocked ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                {room.isBlocked ? <><Lock size={12}/> Blocked</> : <><Unlock size={12}/> Public</>}
-                              </button>
-                            </td>
-
-                            <td className="p-5 pr-8 border-b border-gray-50 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => openEditModal(room)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
-                                  <Edit2 size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteRoom(room)} 
-                                  disabled={occupantsCount > 0}
-                                  title={occupantsCount > 0 ? "Cannot delete occupied room" : "Delete"}
-                                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Flat Occupants Sub-table (Always Visible) */}
-                          <tr>
-                            <td colSpan="6" className="p-0 border-b-2 border-gray-200 bg-slate-50/50">
-                              <div className="px-6 py-4 lg:px-12 lg:py-6">
-                                {occupantsCount > 0 ? (
-                                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                                    <table className="w-full text-left">
-                                      <thead className="bg-gray-50 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                        <tr>
-                                          <th className="px-6 py-3 border-b border-gray-100">Occupant Name / Ticket ID</th>
-                                          <th className="px-6 py-3 border-b border-gray-100 w-32">Days Staying</th>
-                                          <th className="px-6 py-3 border-b border-gray-100 w-32 text-right">Cost</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {room.occupants.map((occ, idx) => {
-                                          if (!occ) return null;
-                                          // Safely extract data whether it's an old string or a new object
-                                          const occupantId = typeof occ === 'string' ? occ : occ.id;
-                                          const days = typeof occ === 'string' ? 3 : (occ.days || 3);
-                                          
-                                          // Fallback key if completely undefined
-                                          const rowKey = occupantId || `unknown-${idx}`;
-
-                                          return (
-                                            <tr key={rowKey} className="hover:bg-gray-50/50">
-                                              <td className="px-6 py-4 border-b border-gray-50 text-xs font-bold text-slate-700">
-                                                {getOccupantName(occupantId)}
-                                              </td>
-                                              <td className="px-6 py-4 border-b border-gray-50">
-                                                <div className="flex items-center gap-2">
-                                                  <Calendar size={14} className="text-slate-400" />
-                                                  <input 
-                                                    type="number" 
-                                                    min="1" 
-                                                    max="14"
-                                                    defaultValue={days}
-                                                    onBlur={(e) => handleUpdateOccupantDays(room.id, occupantId, e.target.value)}
-                                                    className="w-16 p-1.5 bg-gray-50 border border-gray-200 rounded-lg text-center text-xs font-bold text-slate-900 outline-none focus:border-slate-900"
-                                                  />
-                                                </div>
-                                              </td>
-                                              <td className="px-6 py-4 border-b border-gray-50 text-xs font-black text-slate-900 text-right">
-                                                €{(days * room.pricePerPersonPerNight).toFixed(2)}
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-3 text-slate-400 text-xs font-bold uppercase tracking-widest bg-white p-6 rounded-2xl border border-gray-200 border-dashed">
-                                    <AlertCircle size={16} /> Room is currently empty.
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
+    <details className="rounded-3xl border border-slate-200 bg-white p-5">
+      <summary className="cursor-pointer font-bebas text-3xl">{t("hotelFinancials")}</summary>
+      {depositError && <p role="alert" className="mt-3 text-sm text-salsa-pink">{t("loadError")}</p>}
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {HOTELS.map(hotelId => {
+          const total = states.filter(room => room.hotelId === hotelId).reduce((sum, room) => sum + room.occupants.reduce((days, occupant) => days + (occupant.days || 3), 0) * (room.pricePerPersonPerNight || 0), 0);
+          const deposit = Number(deposits[hotelId] || 0);
+          return <div key={hotelId} className="rounded-2xl bg-slate-50 p-4"><h4 className="text-sm font-bold">{hotelId}</h4><p className="my-2 text-xs text-slate-600">{t("financialSummary", { total: total.toFixed(2), owed: (total - deposit).toFixed(2) })}</p><form className="flex items-end gap-2" onSubmit={event => { event.preventDefault(); mutate({ action: "deposit", hotelId, amount: Number(new FormData(event.currentTarget).get("amount")) }); }}><label className="text-xs font-bold">{t("deposit")}<input key={deposit} name="amount" type="number" required min="0" step="0.01" defaultValue={deposit} disabled={busy || depositError} className={field} /></label><Button type="submit" size="sm" variant="outline" disabled={busy || depositError}>{t("save")}</Button></form></div>;
         })}
       </div>
-
-      {/* Add/Edit Room Modal (Rendered via Portal to bypass Admin layout z-index) */}
-      {isRoomModalOpen && mounted && createPortal(modalContent, document.body)}
-
-    </div>
-  );
+    </details>
+  </div>;
 }

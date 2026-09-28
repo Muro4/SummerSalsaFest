@@ -12,15 +12,18 @@ import { Loader2, Info, UserPlus, History } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import DraftTab from "@/components/ambassador/DraftTab";
 import HistoryTab from "@/components/ambassador/HistoryTab";
+import { roomError } from "@/lib/room-client";
 
 import { Hotel } from "lucide-react"; // NEW
 
 
 export default function AmbassadorDashboard() {
    const t = useTranslations('AmbassadorDashboard');
+   const roomT = useTranslations('RoomSystem');
 
    const [activeTab, setActiveTab] = useState("draft");
    const [loading, setLoading] = useState(true);
+   const [submitting, setSubmitting] = useState(false);
    const [userData, setUserData] = useState(null);
 
    const [groupRows, setGroupRows] = useState([]);
@@ -52,7 +55,7 @@ export default function AmbassadorDashboard() {
                setUserData(uDoc.data());
 
                // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state with new fields
-               setGroupRows([{ id: Date.now(), name: "", type: "Full Pass", accommodation: "None" }]);
+               setGroupRows([{ id: crypto.randomUUID(), name: "", type: "Full Pass", accommodation: "None" }]);
 
                const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
                unsubTickets = onSnapshot(q, (snap) => {
@@ -84,7 +87,8 @@ export default function AmbassadorDashboard() {
 
    // RENAMED & REPURPOSED: Directly activates tickets without using the cart
    const activateDrafts = async () => {
-      setLoading(true);
+      if (submitting) return;
+      setSubmitting(true);
       try {
          // Prepare the payload including the new accommodation data
          const ticketsPayload = groupRows.map(person => {
@@ -94,6 +98,9 @@ export default function AmbassadorDashboard() {
                userName: person.name,
                passType: person.type,
                accommodation: person.accommodation || "None",
+               roomId: person.roomId || null,
+               draftId: String(person.id),
+               gender: person.gender || "unspecified",
                commission: commission
             };
          });
@@ -119,20 +126,20 @@ export default function AmbassadorDashboard() {
          if (!res.ok) throw new Error(data.error || "Failed to generate tickets");
 
          // Reset the local state back to one empty row after successful activation
-         saveRoster([{ id: Date.now(), name: "", type: "Full Pass", accommodation: "None" }]);
+         saveRoster([{ id: crypto.randomUUID(), name: "", type: "Full Pass", accommodation: "None" }]);
          
          // Show success and switch to history tab instead of cart
          showPopup({ 
             type: "success", 
-            title: "Registration Complete", 
-            message: `${groupRows.length} tickets have been successfully generated and activated!`, 
-            confirmText: "View History", 
+            title: roomT('registrationComplete'),
+            message: roomT('registrationSuccess', { count: groupRows.length }),
+            confirmText: t('tabHistory'),
             onConfirm: () => setActiveTab("history") 
          });
       } catch (e) {
-         showPopup({ type: "error", title: t('errGenTitle'), message: e.message, confirmText: t('btnClose') });
+         showPopup({ type: "error", title: t('errGenTitle'), message: roomError(roomT, e), confirmText: t('btnClose') });
       } finally {
-         setLoading(false);
+         setSubmitting(false);
       }
    };
 
@@ -199,7 +206,7 @@ export default function AmbassadorDashboard() {
             </div>
 
             {/* TAB RENDERING */}
-            {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={activateDrafts} />}
+            {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={activateDrafts} submitting={submitting} />}
             {activeTab === "history" && <HistoryTab paidTickets={paidTickets} setFullScreenTicket={setFullScreenTicket} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
             
          </div>

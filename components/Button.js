@@ -15,7 +15,7 @@ export default function Button({
   className = "",
   title,
 }) {
-  const baseStyles = "inline-flex items-center justify-center gap-2 font-montserrat uppercase outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-all duration-300 font-black";
+  const baseStyles = "inline-flex items-center justify-center gap-2 font-montserrat uppercase outline-none focus-visible:ring-2 focus-visible:ring-salsa-pink focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-all duration-300 font-black";
 
   // --- SIZES ---
   const sizes = {

@@ -277,7 +277,7 @@ export default function AdminDashboard() {
                {activeTab === 'analytics' && <AnalyticsTab tickets={effectiveTickets} />}
                {activeTab === 'inbox' && <InboxManager requests={data.requests} />}
                {activeTab === 'tickets' && <TicketsTab tickets={effectiveTickets} users={effectiveUsers} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
-               {activeTab === 'rooms' && <RoomsTab tickets={effectiveTickets} />}
+               {activeTab === 'rooms' && <RoomsTab tickets={data.tickets} users={data.users} />}
                {activeTab === 'users' && <UsersTab users={effectiveUsers} currentUserId={auth.currentUser?.uid} onStageChange={handleStageChange} historyStagedData={history[historyIndex]} />}
                {activeTab === 'artists' && <ArtistsTab artists={effectiveArtists} onStageChange={handleStageChange} />}
                {activeTab === 'dev' && <DevTab />}

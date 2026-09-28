@@ -25,4 +25,4 @@ describe('Pricing Engine', () => {
     // Updated to match your app's safe fallback logic!
     expect(price).toBe(0); 
   });
-});n
+});

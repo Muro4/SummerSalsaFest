@@ -1,50 +1,33 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { apiError, authenticate } from "@/lib/room-server";
+import { roomState, roomUpdate } from "@/lib/rooms";
 
 export async function GET(req) {
   try {
-    // Note: In production, secure this endpoint so only your Cron provider (Vercel Cron / Google Cloud Scheduler) can trigger it.
-    const now = Date.now();
-    const roomsSnapshot = await adminDb.collection("rooms").get();
-
-    const batch = adminDb.batch();
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) await authenticate(req, ["superadmin"]);
     let sweptCount = 0;
-
-    roomsSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (!data.lockExpirations) return;
-
-      let needsUpdate = false;
-      let newOccupants = [...(data.occupants || [])];
-      let newLocks = { ...data.lockExpirations };
-
-      // Check all locks in the room
-      for (const [draftId, expiresAt] of Object.entries(newLocks)) {
-        if (now > expiresAt) {
-          // Lock expired! Remove it.
-          // Filter out the object matching the draftId
-          newOccupants = newOccupants.filter(occ => occ.id !== draftId);
-          delete newLocks[draftId];
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        batch.update(doc.ref, {
-          occupants: newOccupants,
-          lockExpirations: newLocks,
-          status: newOccupants.length === data.capacity ? "full" : "available"
+    let cursor;
+    // Bounded pages and per-room transactions avoid stale batch writes and the write limit.
+    do {
+      let query = adminDb.collection("rooms").orderBy("__name__").limit(100);
+      if (cursor) query = query.startAfter(cursor);
+      const page = await query.get();
+      for (const candidate of page.docs) {
+        const changed = await adminDb.runTransaction(async tx => {
+          const snapshot = await tx.get(candidate.ref);
+          if (!snapshot.exists) return false;
+          const room = snapshot.data();
+          const state = roomState(room, Date.now());
+          if (!(Object.keys(room.lockExpirations || {}).length || state.locks.length !== (room.locks || []).length)) return false;
+          tx.update(snapshot.ref, roomUpdate(room, state));
+          return true;
         });
-        sweptCount++;
+        if (changed) sweptCount++;
       }
-    });
-
-    if (sweptCount > 0) {
-      await batch.commit();
-    }
-
+      cursor = page.size === 100 ? page.docs.at(-1) : null;
+    } while (cursor);
     return NextResponse.json({ success: true, sweptCount });
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  } catch (error) { return apiError(error); }
 }

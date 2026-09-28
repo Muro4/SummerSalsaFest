@@ -66,6 +66,30 @@
       "price": 160,
       "createdAt": "2026-02-20T09:00:00.000Z",
       "updatedAt": "2026-02-20T09:05:00.000Z"
+    },
+    {
+      "id": "ticket_accommodation_001",
+      "ticketID": "ABC123",
+      "userId": "ambassador_001",
+      "userName": "SARAH TAYLOR",
+      "guestEmail": "ambassador@example.com",
+      "isGuest": false,
+      "passType": "Full Pass",
+      "price": 125,
+      "commission": 10,
+      "accommodation": "Detelina",
+      "roomId": "room_detelina_201",
+      "days": 3,
+      "accommodationPrice": 180,
+      "gender": "female",
+      "ambassadorId": "ambassador_001",
+      "ambassadorName": "Festival Ambassador",
+      "draftId": "confirmed-attendee-uuid",
+      "status": "active",
+      "festivalYear": 2026,
+      "purchaseDate": "2026-09-28T09:00:00.000Z",
+      "paymentConfirmedAt": "2026-09-28T09:00:00.000Z",
+      "emailSentCount": 0
     }
   ],
   "artists": [
@@ -122,6 +146,76 @@
       "message": "Hello, do you offer discounts for groups of 10+ people?",
       "status": "unread",
       "createdAt": "2024-06-10T08:45:00.000Z"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room_detelina_201",
+      "schemaVersion": 2,
+      "hotelId": "Detelina",
+      "roomNumber": "201",
+      "roomType": "double",
+      "capacity": 2,
+      "pricePerPersonPerNight": 60,
+      "isBlocked": false,
+      "status": "full",
+      "occupants": [
+        {
+          "id": "ticket_accommodation_001",
+          "ticketId": "ticket_accommodation_001",
+          "ticketID": "ABC123",
+          "name": "SARAH TAYLOR",
+          "gender": "female",
+          "passType": "Full Pass",
+          "ambassadorId": "ambassador_001",
+          "ambassadorName": "Festival Ambassador",
+          "days": 3
+        }
+      ],
+      "locks": [
+        {
+          "ownerId": "ambassador_002",
+          "draftId": "uuid-per-attendee",
+          "name": "ELENA PETROVA",
+          "gender": "female",
+          "days": 3,
+          "expiresAt": 1790597400000
+        }
+      ],
+      "lockExpirations": {}
+    }
+  ],
+  "room_drafts": [
+    {
+      "id": "sha256-of-json-ownerId-and-draftId",
+      "ownerId": "ambassador_002",
+      "draftId": "uuid-per-attendee",
+      "roomId": "room_detelina_201",
+      "state": "held",
+      "expiresAt": 1790597400000,
+      "updatedAt": 1790596800000
+    },
+    {
+      "id": "sha256-of-confirmed-ownerId-and-draftId",
+      "ownerId": "ambassador_001",
+      "draftId": "confirmed-attendee-uuid",
+      "roomId": "room_detelina_201",
+      "state": "finalized",
+      "ticketId": "ticket_accommodation_001",
+      "expiresAt": null,
+      "updatedAt": 1790596800000
+    }
+  ],
+  "ticket_codes": [
+    {
+      "id": "ABC123",
+      "ticketId": "ticket_accommodation_001"
+    }
+  ],
+  "ticket_purchase_guards": [
+    {
+      "id": "user_bg_001_2026",
+      "updatedAt": 1790596800000
     }
   ]
 }
