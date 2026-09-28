@@ -100,7 +100,7 @@ export default function AmbassadorDashboard() {
                accommodation: person.accommodation || "None",
                roomId: person.roomId || null,
                draftId: String(person.id),
-               gender: person.gender || "unspecified",
+               attendeeEmail: (person.email || "").trim(),
                commission: commission
             };
          });

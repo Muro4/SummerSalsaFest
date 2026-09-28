@@ -182,7 +182,8 @@
           "expiresAt": 1790597400000
         }
       ],
-      "lockExpirations": {}
+      "lockExpirations": {},
+      "board": "breakfast"
     }
   ],
   "room_drafts": [
@@ -217,5 +218,16 @@
       "id": "user_bg_001_2026",
       "updatedAt": 1790596800000
     }
-  ]
+  ],
+  "settings": {
+    "hotel_financials": {
+      "Detelina": {
+        "defaultRate": 60,
+        "adjustments": 0
+      }
+    },
+    "hotel_deposits": {
+      "Detelina": 100
+    }
+  }
 }

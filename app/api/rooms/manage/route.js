@@ -2,19 +2,40 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { ApiError, apiError, authenticate, documentId, requireRoom, requestBody } from "@/lib/room-server";
 import { CONFIRMED_TICKET_STATUSES, HOTELS, ROOM_TYPES, roomState, roomUpdate } from "@/lib/rooms";
+import { BOARD_OPTIONS } from "@/lib/constants";
 
 function roomFields(body) {
-  const { hotelId, roomNumber, capacity, pricePerPersonPerNight, roomType } = body;
+  const { hotelId, roomNumber, capacity, pricePerPersonPerNight, roomType, board = "none" } = body;
   if (!HOTELS.includes(hotelId) || typeof roomNumber !== "string" || !roomNumber.trim() || roomNumber.length > 80 ||
       !Number.isInteger(capacity) || capacity < 1 || capacity > 20 ||
-      !Number.isFinite(pricePerPersonPerNight) || pricePerPersonPerNight < 0 || !ROOM_TYPES.includes(roomType)) throw new ApiError("invalidInput");
-  return { hotelId, roomNumber: roomNumber.trim(), capacity, pricePerPersonPerNight, roomType };
+      !Number.isFinite(pricePerPersonPerNight) || pricePerPersonPerNight < 0 || !ROOM_TYPES.includes(roomType) || !BOARD_OPTIONS.includes(board)) throw new ApiError("invalidInput");
+  return { hotelId, roomNumber: roomNumber.trim(), capacity, pricePerPersonPerNight, roomType, board };
 }
 
 export async function POST(req) {
   try {
     await authenticate(req, ["superadmin"]);
     const body = await requestBody(req);
+    if (body.action === "financials") {
+      if (!Array.isArray(body.hotels) || !body.hotels.length || body.hotels.length > HOTELS.length ||
+          new Set(body.hotels.map(hotel => hotel?.hotelId)).size !== body.hotels.length) throw new ApiError("invalidInput");
+      const rates = {};
+      const deposits = {};
+      for (const hotel of body.hotels) {
+        if (!hotel || !HOTELS.includes(hotel.hotelId) || !Number.isFinite(hotel.defaultRate) || hotel.defaultRate < 0 ||
+            !Number.isFinite(hotel.deposit) || hotel.deposit < 0 || !Number.isFinite(hotel.adjustments)) throw new ApiError("invalidInput");
+        rates[hotel.hotelId] = { defaultRate: hotel.defaultRate, adjustments: hotel.adjustments };
+        deposits[hotel.hotelId] = hotel.deposit;
+      }
+      await adminDb.runTransaction(async tx => {
+        const ratesRef = adminDb.collection("settings").doc("hotel_financials");
+        const depositsRef = adminDb.collection("settings").doc("hotel_deposits");
+        const [oldRates, oldDeposits] = await tx.getAll(ratesRef, depositsRef);
+        tx.set(ratesRef, { ...oldRates.data(), ...rates });
+        tx.set(depositsRef, { ...oldDeposits.data(), ...deposits });
+      });
+      return NextResponse.json({ success: true });
+    }
     if (body.action === "deposit") {
       if (!HOTELS.includes(body.hotelId) || !Number.isFinite(body.amount) || body.amount < 0) throw new ApiError("invalidInput");
       await adminDb.collection("settings").doc("hotel_deposits").set({ [body.hotelId]: body.amount }, { merge: true });

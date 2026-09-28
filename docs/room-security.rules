@@ -23,6 +23,14 @@ match /ticket_purchase_guards/{guardId} {
   allow read, write: if false;
 }
 
+match /settings/{settingId} {
+  allow read: if settingId in ['hotel_financials', 'hotel_deposits']
+    && request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+  // These hotel settings are written through the superadmin API.
+  // Merge with existing settings rules, preserving access to unrelated settings.
+}
+
 // AND these predicates into existing ticket update/delete conditions.
 // Ticket creation is performed by the Admin SDK endpoint, not by the client.
 function ticketAllocationUnchanged() {

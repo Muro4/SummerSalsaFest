@@ -4,6 +4,7 @@ import { getPriceAtDate } from "@/lib/pricing";
 import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
 import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
+import { isOptionalEmail } from "@/lib/validation";
 
 const PUBLIC_PASSES = ["Full Pass", "Party Pass", "Day Pass"];
 const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Free Pass"];
@@ -21,7 +22,7 @@ export async function POST(req) {
     const prepared = tickets.map(ticket => {
       if (!ticket || typeof ticket.userName !== "string" || ticket.userName.trim().length < 2 || ticket.userName.length > 150 ||
           !/^[\p{L}\s\-']+$/u.test(ticket.userName) || !(staff ? STAFF_PASSES : PUBLIC_PASSES).includes(ticket.passType) ||
-          !GENDERS.includes(ticket.gender || "unspecified")) throw new ApiError("invalidInput");
+          !GENDERS.includes(ticket.gender || "unspecified") || !isOptionalEmail(ticket.attendeeEmail)) throw new ApiError("invalidInput");
       if ((ticket.roomId || (ticket.accommodation && ticket.accommodation !== "None")) && !registration) throw new ApiError("forbidden", 403);
       if (ticket.accommodation && ticket.accommodation !== "None" && !ticket.roomId) throw new ApiError("assignmentMismatch", 409);
       const draftId = registration ? documentId(ticket.draftId) : null;
@@ -96,7 +97,7 @@ export async function POST(req) {
         const status = price === 0 || registration ? "active" : "pending";
         const ticket = {
           userId: actor.uid, userName: input.userName.trim().toUpperCase(),
-          guestEmail: isGuest ? String(input.guestEmail || "").trim().toLowerCase() : actor.email,
+          guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : isGuest ? String(input.guestEmail || "").trim().toLowerCase() : actor.email,
           isGuest: !!isGuest, passType: input.passType, price,
           commission: registration && input.passType === "Full Pass" ? 10 : 0,
           accommodation: entry?.room.hotelId || "None", roomId: item.roomId,

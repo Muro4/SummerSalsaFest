@@ -92,6 +92,18 @@ describe("room authorization and concurrent allocation", () => {
 });
 
 describe("atomic ticket confirmation and cleanup", () => {
+  it("saves an optional attendee email without changing ownership or confirmation", async () => {
+    await reserve();
+    expect((await finalize([{ ...ticket(), attendeeEmail: "  ANNA@example.com " }])).status).toBe(200);
+    const issued = (await mocked.db.collection("tickets").get()).docs[0].data();
+    expect(issued).toMatchObject({ guestEmail: "anna@example.com", userId: "amb-a", isGuest: false, roomId: "room-a", status: "active" });
+  });
+  it("keeps email optional and rejects invalid addresses before creating tickets", async () => {
+    expect((await finalize([{ ...ticket("bad-email", null), attendeeEmail: "not-an-email" }])).status).toBe(400);
+    expect((await mocked.db.collection("tickets").get()).size).toBe(0);
+    expect((await finalize([ticket("no-email", null)])).status).toBe(200);
+    expect((await mocked.db.collection("tickets").get()).docs[0].data().guestEmail).toBe("");
+  });
   it("converts a hold to a permanent occupant and is safe to retry concurrently", async () => {
     await reserve();
     const results = await Promise.all([finalize(), finalize()]);
@@ -164,6 +176,34 @@ describe("atomic ticket confirmation and cleanup", () => {
 });
 
 describe("admin capacity and allocation", () => {
+  it("stores hotel rates, signed adjustments and deposits atomically without repricing rooms", async () => {
+    await seed("settings", "hotel_deposits", { Kabakum: 50 });
+    const result = await manage(req({ action: "financials", hotels: [{ hotelId: "Detelina", defaultRate: 70, deposit: 100, adjustments: -20 }] }, "admin"));
+    expect(result.status).toBe(200);
+    expect(await read("settings", "hotel_financials")).toEqual({ Detelina: { defaultRate: 70, adjustments: -20 } });
+    expect(await read("settings", "hotel_deposits")).toEqual({ Kabakum: 50, Detelina: 100 });
+    expect((await read("rooms", "room-a")).pricePerPersonPerNight).toBe(60);
+  });
+  it("rejects invalid or unauthorized hotel settings without partial saves", async () => {
+    const hotels = [{ hotelId: "Detelina", defaultRate: 70, deposit: 100, adjustments: 0 }];
+    expect((await manage(req({ action: "financials", hotels }))).status).toBe(403);
+    expect((await manage(req({ action: "financials", hotels: [...hotels, { hotelId: "Kabakum", defaultRate: -1, deposit: 0, adjustments: 0 }] }, "admin"))).status).toBe(400);
+    expect(await read("settings", "hotel_financials")).toBeUndefined();
+    expect(await read("settings", "hotel_deposits")).toBeUndefined();
+  });
+  it("preserves other hotels' settings during concurrent updates", async () => {
+    const responses = await Promise.all(["Detelina", "Kabakum"].map(hotelId => manage(req({ action: "financials", hotels: [{ hotelId, defaultRate: 40, deposit: 20, adjustments: 5 }] }, "admin"))));
+    expect(responses.map(response => response.status)).toEqual([200, 200]);
+    expect(Object.keys(await read("settings", "hotel_financials")).sort()).toEqual(["Detelina", "Kabakum"]);
+  });
+  it("persists room board and negotiated rates and validates board values", async () => {
+    const body = { action: "create", hotelId: "Detelina", roomNumber: "413", capacity: 3, roomType: "triple", board: "breakfast", pricePerPersonPerNight: 61.5 };
+    const response = await manage(req(body, "admin"));
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(await read("rooms", result.roomId)).toMatchObject({ board: "breakfast", pricePerPersonPerNight: 61.5, capacity: 3 });
+    expect((await manage(req({ ...body, board: "unknown" }, "admin"))).status).toBe(400);
+  });
   it("serializes capacity reduction against a second hold", async () => {
     await seed("rooms", "room-a", { ...(await read("rooms", "room-a")), capacity: 2 });
     await reserve();
