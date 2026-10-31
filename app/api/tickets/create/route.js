@@ -5,6 +5,7 @@ import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
 import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
 import { isOptionalEmail } from "@/lib/validation";
+import { emailAddress } from "@/lib/server-validation";
 
 const PUBLIC_PASSES = ["Full Pass", "Party Pass", "Day Pass"];
 const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Free Pass"];
@@ -12,7 +13,8 @@ const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Fr
 export async function POST(req) {
   try {
     const actor = await authenticate(req);
-    const { tickets, isGuest, isAmbassadorRegistration } = await requestBody(req);
+    const { tickets, isAmbassadorRegistration } = await requestBody(req);
+    const isGuest = actor.anonymous;
     const staff = ["ambassador", "superadmin"].includes(actor.role);
     if (isAmbassadorRegistration && !staff) throw new ApiError("forbidden", 403);
     const registration = !!isAmbassadorRegistration && staff;
@@ -39,9 +41,11 @@ export async function POST(req) {
 
     const result = await adminDb.runTransaction(async tx => {
       // All reads precede all writes, including ID collision checks and room reads.
+      const settings = await tx.get(adminDb.collection("settings").doc("system"));
+      if (!registration && settings.data()?.salesEnabled === false) throw new ApiError("salesPaused", 403);
       const drafts = registration ? await tx.getAll(...prepared.map(item => item.draftRef)) : [];
       const existingTickets = await tx.getAll(...prepared.map(item => item.ticketRef));
-      if (existingTickets.every(s => s.exists)) return existingTickets.map(s => ({ id: s.id, ticketID: s.data().ticketID }));
+      if (existingTickets.every(s => s.exists)) return existingTickets.map(s => ({ ...s.data(), id: s.id }));
       if (existingTickets.some(s => s.exists) || drafts.some(s => s.data()?.state === "finalized")) throw new ApiError("alreadyFinalized", 409);
 
       let guard;
@@ -97,7 +101,7 @@ export async function POST(req) {
         const status = price === 0 || registration ? "active" : "pending";
         const ticket = {
           userId: actor.uid, userName: input.userName.trim().toUpperCase(),
-          guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : isGuest ? String(input.guestEmail || "").trim().toLowerCase() : actor.email,
+          guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : isGuest ? emailAddress(input.guestEmail) : actor.email,
           isGuest: !!isGuest, passType: input.passType, price,
           commission: registration && input.passType === "Full Pass" ? 10 : 0,
           accommodation: entry?.room.hotelId || "None", roomId: item.roomId,
@@ -123,7 +127,7 @@ export async function POST(req) {
         if (item.draftRef) tx.set(item.draftRef, { ownerId: actor.uid, draftId: item.draftId, state: "finalized", roomId: item.roomId, ticketId: item.ticketRef.id, expiresAt: null, updatedAt: now });
       });
       if (guard) tx.set(guard, { updatedAt: now });
-      return prepared.map(item => ({ id: item.ticketRef.id, ticketID: item.code }));
+      return prepared.map((item, index) => ({ ...documents[index], id: item.ticketRef.id }));
     });
     return NextResponse.json({ success: true, tickets: result });
   } catch (error) { return apiError(error); }

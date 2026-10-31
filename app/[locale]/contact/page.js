@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { signInAnonymously } from "firebase/auth";
+import { roomRequest } from "@/lib/room-client";
 import { Mail, Phone, MapPin, Send, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
@@ -125,7 +126,8 @@ export default function ContactPage() {
     try {
       const finalSubject = formData.category === "Other" ? customSubject.trim() : formData.category;
 
-      await addDoc(collection(db, "contact_messages"), {
+      if (!auth.currentUser) await signInAnonymously(auth);
+      await roomRequest("/api/contact", {
         name: formData.name.trim(),
         email: formData.email.trim(),
         category: formData.category,

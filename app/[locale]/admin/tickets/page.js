@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, doc, getDoc, onSnapshot, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { generateYearOptions } from "@/lib/constants";
+import { getActiveFestivalYear } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import CustomDropdown from "@/components/CustomDropdown";
 import Button from "@/components/Button";
@@ -86,7 +88,7 @@ export default function AdminTicketsReadOnly() {
   const { showPopup } = usePopup();
 
   // Filters & Search State
-  const [selectedYear, setSelectedYear] = useState("2026");
+  const [selectedYear, setSelectedYear] = useState(() => String(getActiveFestivalYear()));
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [passFilter, setPassFilter] = useState("all");
@@ -259,11 +261,7 @@ export default function AdminTicketsReadOnly() {
               <CustomDropdown
                 value={selectedYear}
                 onChange={setSelectedYear}
-                options={[
-                  { label: 'SSF 2026', value: '2026' },
-                  { label: 'SSF 2025', value: '2025' },
-                  { label: 'SSF 2024', value: '2024' }
-                ]}
+                options={generateYearOptions()}
                 variant="compact"
               />
             </div>

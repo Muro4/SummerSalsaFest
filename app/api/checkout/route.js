@@ -1,114 +1,52 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getPriceAtDate } from "@/lib/pricing"; 
-import { adminDb, adminAuth } from "@/lib/firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { ApiError, apiError, authenticate, documentId, requestBody } from "@/lib/room-server";
+import { getPriceAtDate } from "@/lib/pricing";
+import { getActiveFestivalYear } from "@/lib/utils";
 
 export async function POST(req) {
   try {
-    const sysDoc = await adminDb.collection("settings").doc("system").get();
-    const system = sysDoc.exists ? sysDoc.data() : { salesEnabled: true };
-
-    if (!system.salesEnabled) {
-      return NextResponse.json({ error: "Ticket sales paused." }, { status: 403 });
-    }
-
-    // Решение на забележката: Използва се само една стандартна променлива за Stripe ключа
-    const stripeSecret = process.env.STRIPE_SECRET_KEY;
-    
-    if (!stripeSecret) {
-      return NextResponse.json({ error: "Stripe config error." }, { status: 500 });
-    }
-    
-    const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' });
-
-    let body;
-    try { 
-      body = await req.json(); 
-    } catch (e) { 
-      return NextResponse.json({ error: "Parse error" }, { status: 400 }); 
-    }
-
-    const { items } = body;
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
-    }
-
-    /* Identify Requester using standard Firebase Auth token */
-    const authHeader = req.headers.get('authorization');
-    let requesterId = null;
-    let decodedToken = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split('Bearer ')[1];
-      decodedToken = await adminAuth.verifyIdToken(token);
-      requesterId = decodedToken.uid;
-    } else {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const ticketIdsArray = items.map(item => item.id);
-    const ticketRefs = ticketIdsArray.map(id => adminDb.collection("tickets").doc(id));
-    const ticketSnapshots = await adminDb.getAll(...ticketRefs);
-
-    const lineItems = [];
-    let customerEmail = decodedToken.email || null;
-
-    for (const docSnap of ticketSnapshots) {
-      if (!docSnap.exists) return NextResponse.json({ error: "Ticket not found." }, { status: 404 });
-      
-      const realTicket = docSnap.data();
-
-      /* Enforce Ownership Authorization */
-      if (realTicket.userId !== requesterId) {
-        return NextResponse.json({ error: "Forbidden: You do not own this ticket." }, { status: 403 });
-      }
-
-      /* Extract Guest Email for Stripe Autofill */
-      if (!customerEmail && realTicket.guestEmail) {
-        customerEmail = realTicket.guestEmail;
-      }
-      
-      const serverPrice = getPriceAtDate(realTicket.passType); 
-      if (serverPrice === undefined || isNaN(serverPrice)) throw new Error("Invalid pass type");
-
-      lineItems.push({
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: String(realTicket.passType || "Festival Ticket"),
-            description: `Attendee: ${realTicket.userName || "Guest"} | ID: ${realTicket.ticketID || "N/A"}`,
-          },
-          unit_amount: Math.round(serverPrice * 100), 
-        },
-        quantity: 1,
+    const actor = await authenticate(req);
+    const { items } = await requestBody(req);
+    if (!Array.isArray(items) || !items.length || items.length > 100) throw new ApiError("invalidInput");
+    const ids = items.map(item => documentId(item?.id));
+    if (new Set(ids).size !== ids.length) throw new ApiError("invalidInput");
+    const secret = process.env.STRIPE_SECRET_KEY;
+    const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:3000" : null);
+    if (!secret || !base) throw new ApiError("unavailable", 503);
+    const origin = new URL(base).origin;
+    const sessionRef = adminDb.collection("checkout_sessions").doc();
+    const tickets = await adminDb.runTransaction(async tx => {
+      const settings = await tx.get(adminDb.collection("settings").doc("system"));
+      if (settings.data()?.salesEnabled === false) throw new ApiError("salesPaused", 403);
+      const snapshots = await tx.getAll(...ids.map(id => adminDb.collection("tickets").doc(id)));
+      const records = snapshots.map(snapshot => {
+        if (!snapshot.exists) throw new ApiError("ticketMissing", 404);
+        const ticket = snapshot.data();
+        if (ticket.userId !== actor.uid) throw new ApiError("forbidden", 403);
+        if (ticket.status !== "pending" || ticket.roomId || ticket.festivalYear !== getActiveFestivalYear()) throw new ApiError("invalidStatus", 409);
+        if (!["Full Pass", "Party Pass", "Day Pass", "Performers Pass"].includes(ticket.passType)) throw new ApiError("invalidInput");
+        return { ...ticket, price: getPriceAtDate(ticket.passType) };
       });
-    }
-
-    const checkoutSessionRef = adminDb.collection("checkout_sessions").doc();
-    await checkoutSessionRef.set({ ticketIds: ticketIdsArray, status: "pending", createdAt: new Date().toISOString() });
-
-    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
-    /* Stripe Session Configuration */
-    const stripePayload = {
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      /* Reverted back to the original cart/success routing */
+      const amountTotal = records.reduce((sum, ticket) => sum + Math.round(ticket.price * 100), 0);
+      if (amountTotal <= 0) throw new ApiError("invalidInput");
+      tx.set(sessionRef, { userId: actor.uid, ticketIds: ids, amountTotal, currency: "eur", status: "pending", createdAt: new Date().toISOString() });
+      return records;
+    });
+    const stripe = new Stripe(secret, { apiVersion: "2023-10-16" });
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"], mode: "payment",
+      line_items: tickets.map(ticket => ({
+        price_data: { currency: "eur", product_data: { name: ticket.passType, description: `Attendee: ${ticket.userName} | ID: ${ticket.ticketID}` }, unit_amount: Math.round(ticket.price * 100) },
+        quantity: 1,
+      })),
       success_url: `${origin}/cart/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
-      metadata: { checkoutSessionId: checkoutSessionRef.id }
-    };
-
-    /* Conditionally inject the customer email to prefill the Stripe form */
-    if (customerEmail) {
-      stripePayload.customer_email = customerEmail;
-    }
-
-    const session = await stripe.checkout.sessions.create(stripePayload);
-
+      metadata: { checkoutSessionId: sessionRef.id },
+      ...(actor.email || tickets[0].guestEmail ? { customer_email: actor.email || tickets[0].guestEmail } : {}),
+    });
+    await sessionRef.update({ stripeSessionId: session.id });
     return NextResponse.json({ url: session.url });
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  } catch (error) { return apiError(error); }
 }

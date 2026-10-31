@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { Search, Filter, Ticket, Users, Trash2, Calendar, CheckCircle2, AlertTriangle, XCircle, Mail } from "lucide-react";
 import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
-import { EVENT_YEARS } from "@/lib/constants";
+import { generateYearOptions } from "@/lib/constants";
 import { useTranslations } from 'next-intl';
 import { getPriceAtDate } from "@/lib/pricing";
 import TicketModal from "@/components/TicketModal";
@@ -194,7 +194,7 @@ export default function TicketsTab({ tickets = [], users = [], onStageChange, hi
                </div>
 
                <div className="relative w-full sm:w-auto z-20">
-                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
+                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={generateYearOptions()} variant="filter"/>
                </div>
             </div>
          </div>

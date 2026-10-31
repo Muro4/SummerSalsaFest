@@ -1,19 +1,20 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import { 
-  signInWithEmailAndPassword, 
+  signInWithEmailAndPassword, signInWithCustomToken, signInAnonymously, 
   signInWithPopup, 
   createUserWithEmailAndPassword,
   updateProfile,
   sendPasswordResetEmail
 } from "firebase/auth";
-import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/routing"; 
 import Button from "@/components/Button";
 import { Eye, EyeOff, Lock, Mail, User as UserIcon, CheckCircle2, Circle, ArrowLeft, Loader2, Key } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import { roomRequest } from "@/lib/room-client";
 import Cookies from 'js-cookie'; // <-- IMPORT COOKIES
 
 // --- DYNAMIC PASSWORD ACCORDION ---
@@ -166,25 +167,19 @@ function LoginContent() {
     return snap.data().role || "user"; // Return the existing role
   };
 
-  const transferGuestTickets = async (newUid) => {
-    const guestId = sessionStorage.getItem("guestSessionID");
-    if (!guestId) return false;
-
+  const guestProof = useRef(null);
+  const rememberGuest = async () => {
+    guestProof.current = auth.currentUser?.isAnonymous ? await auth.currentUser.getIdToken() : null;
+  };
+  const transferGuestTickets = async () => {
+    if (!guestProof.current) return false;
     try {
-      const q = query(collection(db, "tickets"), where("userId", "==", guestId));
-      const snap = await getDocs(q);
-      
-      if (snap.empty) return false;
-
-      const updatePromises = snap.docs.map(document => 
-        updateDoc(doc(db, "tickets", document.id), { userId: newUid })
-      );
-      
-      await Promise.all(updatePromises);
+      const result = await roomRequest("/api/tickets/transfer", { guestToken: guestProof.current });
+      guestProof.current = null;
       sessionStorage.removeItem("guestSessionID");
-      return true;
-    } catch (err) {
-      console.error("Failed to transfer guest tickets:", err);
+      return result.count > 0;
+    } catch (error) {
+      console.error("Guest transfer failed", error.message);
       return false;
     }
   };
@@ -193,6 +188,7 @@ function LoginContent() {
   const handleGoogleAuth = async () => {
     setError("");
     try {
+      await rememberGuest();
       const result = await signInWithPopup(auth, googleProvider);
       
       // 1. Sync DB and get their role
@@ -222,18 +218,16 @@ function LoginContent() {
     try {
       let loginEmail = identifier.trim();
 
-      // If they typed a name instead of an email, look it up in Firestore
-      if (!emailRegex.test(loginEmail)) {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("displayName", "==", loginEmail));
-        const snap = await getDocs(q);
-
-        if (snap.empty) throw new Error(`No account found with the name "${loginEmail}".`);
-        loginEmail = snap.docs[0].data().email;
+      await rememberGuest();
+      let result;
+      if (emailRegex.test(loginEmail)) {
+        result = await signInWithEmailAndPassword(auth, loginEmail, password);
+      } else {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        const response = await roomRequest("/api/auth/name-login", { name: loginEmail, password });
+        result = await signInWithCustomToken(auth, response.token);
       }
 
-      const result = await signInWithEmailAndPassword(auth, loginEmail, password);
-      
       // 1. Sync DB and get their role (catches existing admins logging in)
       const role = await syncUserToFirestore(result.user);
       console.log("FIREBASE SUCCESS. The role is:", role);
@@ -280,6 +274,7 @@ function LoginContent() {
 
     setLoading(true);
     try {
+      await rememberGuest();
       const res = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(res.user, { displayName: name.trim() });
       

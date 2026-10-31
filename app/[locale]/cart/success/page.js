@@ -1,8 +1,10 @@
 "use client";
+import { getActiveFestivalYear } from "@/lib/utils";
+
 
 import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useSearchParams } from "next/navigation"; 
 import { useRouter, Link } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -85,7 +87,7 @@ function SuccessContent() {
         collection(db, "tickets"), 
         where("userId", "==", currentUser.uid),
         where("status", "==", "active"),
-        where("festivalYear", "==", 2026)
+        where("festivalYear", "==", getActiveFestivalYear())
       );
 
       unsubscribeSnapshot = onSnapshot(q, (snap) => {
@@ -143,15 +145,14 @@ function SuccessContent() {
               pdf.addImage(dataUrl, "PNG", 0, 0, pdfW, pdfH);
               const pdfBase64 = pdf.output('datauristring');
 
-              await fetch("/api/send-ticket", {
+              const token = await auth.currentUser.getIdToken();
+              const response = await fetch("/api/send-ticket", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ email: targetEmail, ticket: ticket, pdfAttachment: pdfBase64 })
               });
               
-              await updateDoc(doc(db, "tickets", ticket.id), { 
-                emailSentCount: (ticket.emailSentCount || 0) + 1 
-              });
+              if (!response.ok) throw new Error("Email delivery failed");
               
             } catch (err) {
               console.error("Auto-email failed for ticket", ticket.id, err);

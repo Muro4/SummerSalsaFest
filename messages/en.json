@@ -740,6 +740,8 @@
     "defaultCancel": "Cancel"
   },
   "TicketModal": {
+    "errSendTitle": "Email not sent",
+    "errSendMsg": "Unable to send the pass. Please try again.",
     "errCapture": "Capture failed",
     "errExportTitle": "Export Error",
     "errExportMsg": "Download failed. Please try again.",
@@ -869,6 +871,13 @@
     "noAvailableRooms": "No available rooms in this hotel."
   },
 "HistoryTab": {
+    "thEmail": "Email",
+    "editEmail": "Edit email for {name}",
+    "emailEmpty": "Add email",
+    "emailInvalid": "Enter a valid email address.",
+    "emailSaving": "Saving email",
+    "emailSaved": "Email saved",
+    "emailSaveError": "Could not save email. Please try again.",
   "searchPlaceholder": "Search records...",
   "filterAll": "All Passes",
   "passFull": "Full Pass",

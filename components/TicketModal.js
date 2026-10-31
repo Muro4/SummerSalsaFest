@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom"; // <-- IMPORT CREATEPORTAL
-import { db, auth } from "@/lib/firebase"; 
-import { doc, updateDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase"; 
+
 import { usePopup } from "@/components/PopupProvider"; 
 import { Trash2, Search, ArrowLeft, Send, CornerUpLeft, Mail, Loader2, X, CheckSquare, CheckCircle2, XCircle, Phone, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -168,17 +168,13 @@ function TicketView({ ticket, index, totalTickets, onUpdateDesktopTicket, isMobi
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      await fetch("/api/send-ticket", { 
+      const response = await fetch("/api/send-ticket", { 
         method: "POST", 
         headers, 
         body: JSON.stringify({ email: recipientEmail, ticket, pdfAttachment: pdfBase64 }) 
       });
       
-      // PERMANENT DATABASE UPDATE: Save the new email address and increment send count
-      updateDoc(doc(db, "tickets", ticket.id), { 
-        emailSentCount: (ticket.emailSentCount || 0) + 1,
-        guestEmail: recipientEmail 
-      }).catch(console.error);
+      if (!response.ok) throw new Error("Email delivery failed");
 
       if (onUpdateDesktopTicket) {
         onUpdateDesktopTicket(prev => ({ 

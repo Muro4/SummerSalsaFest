@@ -6,6 +6,7 @@ const mocked = vi.hoisted(() => ({ db: null, verify: vi.fn() }));
 vi.mock("@/lib/firebase-admin", () => ({ get adminDb() { return mocked.db; }, adminAuth: { verifyIdToken: mocked.verify } }));
 import { POST as lock } from "@/app/api/rooms/lock/route";
 import { POST as createTickets } from "@/app/api/tickets/create/route";
+import { POST as updateEmail } from "@/app/api/tickets/email/route";
 import { GET as sweep } from "@/app/api/rooms/sweep/route";
 import { POST as manage } from "@/app/api/rooms/manage/route";
 import { draftKey } from "@/lib/room-server";
@@ -27,6 +28,31 @@ beforeEach(async () => {
   });
   await Promise.all(["amb-a", "amb-b", "admin", "attendee"].map(uid => seed("users", uid, { role: uid === "admin" ? "superadmin" : uid === "attendee" ? "user" : "ambassador", displayName: uid })));
   await seed("rooms", "room-a", { hotelId: "Detelina", roomNumber: "101", capacity: 1, pricePerPersonPerNight: 60, occupants: [], locks: [], isBlocked: false });
+});
+
+describe("ticket recipient editing", () => {
+  it("updates only the owner's email and synchronizes a legacy alias", async () => {
+    await seed("tickets", "ticket-a", { userId: "amb-a", guestEmail: "old@example.com", email: "old@example.com", status: "active", roomId: "room-a" });
+    const response = await updateEmail(req({ ticketId: "ticket-a", email: " NEW@example.com " }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, email: "new@example.com" });
+    expect(await read("tickets", "ticket-a")).toEqual({ userId: "amb-a", guestEmail: "new@example.com", email: "new@example.com", status: "active", roomId: "room-a" });
+  });
+  it("rejects other ambassadors, attendees, missing tickets and malformed emails", async () => {
+    await seed("tickets", "ticket-a", { userId: "amb-a", guestEmail: "old@example.com" });
+    expect((await updateEmail(req({ ticketId: "ticket-a", email: "new@example.com" }, "amb-b"))).status).toBe(403);
+    expect((await updateEmail(req({ ticketId: "ticket-a", email: "new@example.com" }, "attendee"))).status).toBe(403);
+    expect((await updateEmail(req({ ticketId: "missing", email: "new@example.com" }))).status).toBe(404);
+    for (const email of [null, 123, "invalid", "a".repeat(255) + "@example.com"]) {
+      expect((await updateEmail(req({ ticketId: "ticket-a", email }))).status).toBe(400);
+    }
+    expect((await read("tickets", "ticket-a")).guestEmail).toBe("old@example.com");
+  });
+  it("allows an administrator to clear a recipient", async () => {
+    await seed("tickets", "ticket-a", { userId: "amb-a", guestEmail: "old@example.com" });
+    expect((await updateEmail(req({ ticketId: "ticket-a", email: " " }, "admin"))).status).toBe(200);
+    expect((await read("tickets", "ticket-a")).guestEmail).toBe("");
+  });
 });
 
 describe("room authorization and concurrent allocation", () => {
@@ -92,6 +118,15 @@ describe("room authorization and concurrent allocation", () => {
 });
 
 describe("atomic ticket confirmation and cleanup", () => {
+  it("returns committed history records and their festival year on first submission and retry", async () => {
+    const payload = [{ ...ticket("history", null), attendeeEmail: "dancer@example.com" }];
+    const first = await (await finalize(payload)).json();
+    const retry = await (await finalize(payload)).json();
+    expect(retry.tickets).toEqual(first.tickets);
+    expect(first.tickets[0]).toMatchObject({ status: "active", guestEmail: "dancer@example.com", userId: "amb-a" });
+    expect(first.tickets[0].festivalYear).toEqual(expect.any(Number));
+    expect(await read("tickets", first.tickets[0].id)).toEqual(expect.objectContaining(first.tickets.map(({ id, ...data }) => data)[0]));
+  });
   it("saves an optional attendee email without changing ownership or confirmation", async () => {
     await reserve();
     expect((await finalize([{ ...ticket(), attendeeEmail: "  ANNA@example.com " }])).status).toBe(200);

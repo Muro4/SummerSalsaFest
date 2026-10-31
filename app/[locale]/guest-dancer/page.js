@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import DraftTab from "@/components/ambassador/DraftTab";
 import HistoryTab from "@/components/ambassador/HistoryTab";
 import { roomError } from "@/lib/room-client";
+import { getActiveFestivalYear } from "@/lib/utils";
 
 import { Hotel } from "lucide-react"; // NEW
 
@@ -28,7 +29,7 @@ export default function AmbassadorDashboard() {
 
    const [groupRows, setGroupRows] = useState([]);
    const [paidTickets, setPaidTickets] = useState([]);
-   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+   const [selectedYear, setSelectedYear] = useState(() => String(getActiveFestivalYear()));
 
    const [showInfoModal, setShowInfoModal] = useState(false);
    const [fullScreenTicket, setFullScreenTicket] = useState(null);
@@ -57,9 +58,10 @@ export default function AmbassadorDashboard() {
                // DECOUPLED FROM ROSTERS TABLE: Initialize an empty row in local state with new fields
                setGroupRows([{ id: crypto.randomUUID(), name: "", type: "Full Pass", accommodation: "None" }]);
 
-               const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "active"));
+               unsubTickets();
+               const q = query(collection(db, "tickets"), where("userId", "==", user.uid));
                unsubTickets = onSnapshot(q, (snap) => {
-                  setPaidTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                  setPaidTickets(snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(ticket => ticket.status === "active"));
                   setLoading(false);
                });
             } else { router.push("/"); }
@@ -124,6 +126,10 @@ export default function AmbassadorDashboard() {
 
          const data = await res.json();
          if (!res.ok) throw new Error(data.error || "Failed to generate tickets");
+
+         setPaidTickets(previous => [...new Map([...previous, ...data.tickets].map(ticket => [ticket.id, ticket])).values()]);
+         setSelectedYear(String(data.tickets[0].festivalYear));
+         setActiveTab("history");
 
          // Reset the local state back to one empty row after successful activation
          saveRoster([{ id: crypto.randomUUID(), name: "", type: "Full Pass", accommodation: "None" }]);
@@ -207,7 +213,7 @@ export default function AmbassadorDashboard() {
 
             {/* TAB RENDERING */}
             {activeTab === "draft" && <DraftTab groupRows={groupRows} saveRoster={saveRoster} submitGroupToCart={activateDrafts} submitting={submitting} />}
-            {activeTab === "history" && <HistoryTab paidTickets={paidTickets} setFullScreenTicket={setFullScreenTicket} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
+            {activeTab === "history" && <HistoryTab onEmailSaved={(id, email) => setPaidTickets(previous => previous.map(ticket => ticket.id === id ? { ...ticket, guestEmail: email } : ticket))} paidTickets={paidTickets} setFullScreenTicket={setFullScreenTicket} selectedYear={selectedYear} setSelectedYear={setSelectedYear} />}
             
          </div>
       </main>

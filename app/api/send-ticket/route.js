@@ -1,109 +1,47 @@
-import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
-import { adminAuth, adminDb } from '@/lib/firebase-admin'; // <-- IMPORT adminDb
+import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+import { adminDb } from "@/lib/firebase-admin";
+import { ApiError, apiError, authenticate, documentId, requestBody } from "@/lib/room-server";
+import { emailAddress, escapeHtml } from "@/lib/server-validation";
 
-export async function GET() {
-  return NextResponse.json({ message: "Success! The send-ticket API is awake and routing correctly." });
-}
-
-export async function POST(request) {
-  console.log("📨 POST request received at /api/send-ticket");
-
+export async function POST(req) {
   try {
-    const body = await request.json();
-    const { email, ticket, pdfAttachment } = body;
+    const actor = await authenticate(req);
+    const body = await requestBody(req);
+    const email = emailAddress(body.email);
+    const id = documentId(body.ticket?.id);
+    const pdf = body.pdfAttachment;
+    if (typeof pdf !== "string" || pdf.length > 8_000_000 || !/^data:application\/pdf(?:;[^,]*)?;base64,[A-Za-z0-9+/=\r\n]+$/.test(pdf)) throw new ApiError("invalidAttachment");
+    const buffer = Buffer.from(pdf.slice(pdf.indexOf("base64,") + 7), "base64");
+    if (buffer.subarray(0, 5).toString() !== "%PDF-") throw new ApiError("invalidAttachment");
+    const ref = adminDb.collection("tickets").doc(id);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) throw new ApiError("ticketMissing", 404);
+    const ticket = snapshot.data();
+    const admin = ["admin", "superadmin"].includes(actor.role);
+    if (ticket.userId !== actor.uid && !admin) throw new ApiError("forbidden", 403);
+    if (!["active", "used"].includes(ticket.status)) throw new ApiError("paymentRequired", 409);
+    if (actor.anonymous && email !== ticket.guestEmail?.toLowerCase()) throw new ApiError("forbidden", 403);
 
-    // 1. Strict Validation
-    if (!email || !ticket || !ticket.id || !pdfAttachment) {
-      console.error("Missing fields:", { email: !!email, ticket: !!ticket, pdf: !!pdfAttachment });
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // 2. Fetch the REAL ticket from the database to prevent spoofing
-    const ticketDoc = await adminDb.collection("tickets").doc(ticket.id).get();
-    
-    if (!ticketDoc.exists) {
-      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
-    }
-
-    const ticketData = ticketDoc.data();
-
-    // 3. 🔒 SECURITY CHECK
-    const authHeader = request.headers.get('authorization');
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      // --- LOGGED IN USER FLOW ---
-      let decodedToken;
-      try {
-        const token = authHeader.split('Bearer ')[1];
-        decodedToken = await adminAuth.verifyIdToken(token);
-      } catch (authError) {
-        return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
-      }
-      
-      const isOwner = ticketData.userId === decodedToken.uid;
-      const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'superadmin';
-
-      if (!isOwner && !isAdmin) {
-         return NextResponse.json({ error: 'Forbidden: You do not own this ticket' }, { status: 403 });
-      }
-    } else {
-      // --- GUEST FLOW ---
-      // Guests do not have an auth header. We only allow this if the ticket is specifically marked as a guest ticket
-      // AND the requested email matches the guest email on file in the database.
-      if (!ticketData.isGuest || ticketData.guestEmail !== email.toLowerCase()) {
-         return NextResponse.json({ error: 'Unauthorized: Missing token or email mismatch' }, { status: 401 });
-      }
-    }
-
-    // 4. Transporter Setup
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS, 
-      },
+    // A transactional lease bounds retries and concurrent sends for a ticket.
+    const guard = adminDb.collection("ticket_email_guards").doc(id);
+    await adminDb.runTransaction(async tx => {
+      const previous = await tx.get(guard);
+      if ((previous.data()?.nextAllowedAt || 0) > Date.now()) throw new ApiError("rateLimited", 429);
+      tx.set(guard, { nextAllowedAt: Date.now() + 30_000 });
     });
-
-    const base64Data = pdfAttachment.split('base64,')[1];
-
-    // 5. Use REAL DATABASE DATA (ticketData) for the email, not the client's payload
-    const mailOptions = {
+    const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+    await transporter.sendMail({
       from: `"Summer Salsa Fest" <${process.env.EMAIL_USER}>`,
-      replyTo: process.env.EMAIL_USER, 
-      to: email,
-      subject: `🎟️ Your Summer Salsa Fest Pass: ${ticketData.passType}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6;">
-          <h2 style="color: #e11d48; text-transform: uppercase; margin-bottom: 5px;">You're going to Summer Salsa Fest!</h2>
-          <p>Hi <strong>${ticketData.userName}</strong>,</p>
-          <p>Your <strong>${ticketData.passType}</strong> has been confirmed. You can find your official pass attached to this email.</p>
-          <p>Make sure to download the PDF and have the QR code ready on your phone when you arrive at the registration desk.</p>
-          <br/>
-          <p style="font-size: 16px; margin-top: 10px;">
-            💃🕺 See you on the dance floor!
-          </p>
-          <p style="color: #888; font-size: 12px;">
-            <strong>- The Summer Salsa Fest Team</strong>
-          </p>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: `SalsaFest_Pass_${ticketData.passType.replace(/\s+/g, '_')}_${ticketData.userName.replace(/\s+/g, '_')}.pdf`,
-          content: base64Data,
-          encoding: 'base64',
-        },
-      ],
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully to:", email);
-    
-    return NextResponse.json({ success: true, message: 'Email sent successfully' }, { status: 200 });
-
-  } catch (error) {
-    console.error('❌ Email sending error:', error);
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
-  }
+      replyTo: process.env.EMAIL_USER, to: email,
+      subject: `Your Summer Salsa Fest Pass: ${ticket.passType}`,
+      html: `<p>Hi <strong>${escapeHtml(ticket.userName)}</strong>,</p><p>Your <strong>${escapeHtml(ticket.passType)}</strong> pass is attached. Keep the QR code ready at registration.</p><p>Summer Salsa Fest</p>`,
+      attachments: [{ filename: `SalsaFest_Pass_${ticket.ticketID}.pdf`, content: buffer, contentType: "application/pdf" }],
+    });
+    await adminDb.runTransaction(async tx => {
+      const current = await tx.get(ref);
+      if (current.exists) tx.update(ref, { emailSentCount: (current.data().emailSentCount || 0) + 1, guestEmail: email, ...(Object.hasOwn(current.data(), "email") ? { email } : {}) });
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) { return apiError(error); }
 }

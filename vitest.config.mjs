@@ -17,6 +17,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     alias: {
+      'server-only': path.resolve(__dirname, './__tests__/helpers/server-only.js'),
       '@': path.resolve(__dirname, './')
     }
   }

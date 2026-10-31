@@ -1,4 +1,3 @@
-"use client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ShieldCheck, Lock, Eye, Cookie } from "lucide-react";

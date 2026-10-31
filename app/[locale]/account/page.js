@@ -9,7 +9,7 @@ import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
 import TicketModal from "@/components/TicketModal";
 import TabNavigation from "@/components/TabNavigation";
-import { EVENT_YEARS } from "@/lib/constants";
+import { generateYearOptions } from "@/lib/constants";
 import {
   Ticket, Settings, Loader2, Search, Calendar, Clock, ShoppingBag,
   User as UserIcon, Mail, LogOut, Key, Edit2, Save, Users,
@@ -270,7 +270,7 @@ export default function AccountPage() {
                         icon={Calendar}
                         value={selectedYear}
                         onChange={setSelectedYear}
-                        options={EVENT_YEARS}
+                        options={generateYearOptions()}
                         variant="filter"
                       />
                     </div>

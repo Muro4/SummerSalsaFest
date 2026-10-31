@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useEffect, useRef, useState } from "react";
-import { Clock, Plus, Search, Trash2, Ticket, ChevronDown, Bed, ShieldCheck } from "lucide-react";
+import { Plus, Search, Trash2, Ticket, ChevronDown, Bed, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Button from "@/components/Button";
 import RoomModal from "@/components/rooms/RoomModal";
@@ -8,12 +8,12 @@ import CustomDropdown from "@/components/CustomDropdown";
 import { usePopup } from "@/components/PopupProvider";
 import { auth } from "@/lib/firebase";
 import { getPriceAtDate } from "@/lib/pricing";
-import { HOTELS, remainingTime, roomState, roomType } from "@/lib/rooms";
+import { HOTELS, roomState, roomType } from "@/lib/rooms";
 import { isOptionalEmail } from "@/lib/validation";
 import { roomError, roomRequest } from "@/lib/room-client";
 import useRooms from "@/lib/useRooms";
 
-// --- Styling Helpers (from old UI) ---
+// --- Styling Helpers ---
 const getPassBgColor = (type) => {
   const t = (type || '').toLowerCase();
   if (t.includes('free')) return 'bg-yellow-400';
@@ -29,7 +29,7 @@ const getPassTextColor = (type) => {
 
 const getPassStyle = (type) => `${getPassBgColor(type)} ${getPassTextColor(type)} border-transparent`;
 
-// --- Core Logic & Helpers (from new UI) ---
+// --- Core Logic & Helpers ---
 const newRow = () => ({ id: crypto.randomUUID(), name: "", email: "", type: "Full Pass", accommodation: "None", roomId: null });
 const validName = name => typeof name === "string" && name.trim().length >= 2 && name.length <= 150 && /^[\p{L}\s\-']+$/u.test(name);
 const price = type => type === "Free Full Pass" ? 0 : getPriceAtDate(type);
@@ -241,17 +241,16 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                 <th className="p-4 font-bold w-[22%] border-b border-gray-100 text-left">{t("thName")}</th>
                 <th className="p-4 font-bold w-[22%] border-b border-gray-100 text-left">{t("email")}</th>
                 <th className="p-4 font-bold w-48 border-b border-gray-100 text-center">{t("thPass")}</th>
-                <th className="p-4 font-bold w-56 border-b border-gray-100 text-center">{t("thAccomm")}</th>
+                <th className="p-4 font-bold w-60 border-b border-gray-100 text-center">{t("thAccomm")}</th>
                 <th className="p-4 font-bold text-right w-32 border-b border-gray-100">{t("commission")}</th>
                 <th className="p-4 font-bold text-right w-32 border-b border-gray-100">{t("thFinal")}</th>
                 <th className="p-4 pr-8 text-right font-bold w-16 border-b border-gray-100">
-                  {selected.length > 0 && <button onClick={() => remove(selected)} disabled={disabled} title={t('btnDeleteSel')} className="text-red-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg flex items-center justify-end ml-auto transition-colors cursor-pointer disabled:opacity-50"><Trash2 size={20} /></button>}
+                  {selected.length > 0 && <button onClick={() => remove(selected)} disabled={disabled} title={t('btnDeleteSel', { count: selected.length })} className="text-red-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg flex items-center justify-end ml-auto transition-colors cursor-pointer disabled:opacity-50"><Trash2 size={20} /></button>}
                 </th>
               </tr>
             </thead>
             <tbody className="uppercase text-xs font-bold text-slate-900 overflow-visible relative">
               {visibleRows.map((row, index) => {
-                const lock = lockFor(row);
                 const room = rooms.find(rm => rm.id === row.roomId);
                 const badName = !!row.name && !validName(row.name);
                 const badEmail = !isOptionalEmail(row.email);
@@ -259,15 +258,14 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                 const rowFinal = price(row.type) + accommodationCost(row) - rowCommission;
 
                 return (
-                  <tr key={row.id} style={{ position: 'relative', zIndex: 100 - index }} className={`transition-colors group overflow-visible ${selected.includes(row.id) ? 'bg-slate-100 shadow-inner' : 'hover:bg-slate-50/50'}`}>
+                  <tr key={row.id} style={{ position: 'relative', zIndex: 100 - index }} className={`transition-colors group overflow-visible ${selected.includes(row.id) ? 'bg-slate-100 shadow-inner' : 'hover:bg-gray-100'}`}>
                     <td className="p-4 pl-8 align-middle border-b border-gray-50 text-center">
                       <div className="flex items-center justify-center gap-3 h-full">
-                        <input type="checkbox" aria-label={r("selectAttendee")} className="w-4 h-4 accent-slate-900 rounded cursor-pointer hover:scale-110 transition-transform" checked={selected.includes(row.id)} disabled={disabled} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.id] : previous.filter(id => id !== row.id))} />
+                        <input type="checkbox" aria-label={r("selectAttendee", { name: row.name || r("unnamed") })} className="w-4 h-4 accent-slate-900 rounded cursor-pointer hover:scale-110 transition-transform" checked={selected.includes(row.id)} disabled={disabled} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.id] : previous.filter(id => id !== row.id))} />
                         <span className={`text-[11px] font-bold w-6 text-right ${selected.includes(row.id) ? 'text-slate-900' : 'text-slate-400'}`}>{index + 1}.</span>
                       </div>
                     </td>
                     
-                    {/* Name */}
                     <td className="p-4 align-middle border-b border-gray-50 overflow-visible">
                       <div className="relative w-full">
                         <input aria-label={t("thName")} aria-invalid={badName} type="text" maxLength={150} value={row.name} placeholder={t("namePlaceholder")} disabled={disabled} onChange={e => update(row.id, "name", e.target.value.toUpperCase())} onBlur={() => syncName(row.id)} className={`w-full p-3 bg-white border ${badName ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none font-bold uppercase tracking-wide text-sm text-slate-900 transition-all shadow-sm text-left disabled:opacity-50`} />
@@ -275,7 +273,6 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                       </div>
                     </td>
 
-                    {/* Email */}
                     <td className="p-4 align-middle border-b border-gray-50 overflow-visible">
                       <div className="relative w-full">
                         <input aria-label={t("email")} aria-invalid={badEmail} type="email" autoComplete="off" maxLength={254} value={row.email || ""} placeholder={t("emailOptional")} disabled={disabled} onChange={e => update(row.id, "email", e.target.value)} className={`w-full p-3 bg-white border ${badEmail ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none font-bold lowercase tracking-wide text-sm text-slate-900 transition-all shadow-sm text-left disabled:opacity-50`} />
@@ -283,7 +280,6 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                       </div>
                     </td>
                     
-                    {/* Pass Type */}
                     <td className="p-4 align-middle border-b border-gray-50 overflow-visible relative text-center">
                       <CustomDropdown
                         value={row.type} variant="pill" disabled={disabled}
@@ -292,9 +288,8 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                       />
                     </td>
                     
-                    {/* Accommodation */}
-                    <td className="p-4 align-middle border-b border-gray-50 overflow-visible relative text-center">
-                      <div className="flex flex-col items-center justify-center gap-2">
+                    <td className="p-4 align-middle border-b border-gray-50 overflow-visible relative">
+                      <div className="flex flex-col items-center justify-center gap-2 w-full">
                         <div className="relative w-full shrink-0">
                           <select aria-label={t("thAccomm")} value={row.accommodation || "None"} disabled={disabled} onChange={(e) => chooseHotel(row, e.target.value)} className="w-full appearance-none bg-gray-50 border border-gray-200 text-slate-700 text-sm font-bold rounded-xl px-3 py-2.5 pr-8 outline-none focus:border-slate-900 focus:bg-white transition-all cursor-pointer shadow-sm disabled:opacity-50">
                             <option value="None">{t("accNone")}</option>
@@ -305,26 +300,28 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                           </div>
                         </div>
                         {row.roomId && (
-                          <button type="button" disabled={disabled} onClick={() => chooseHotel(row, row.accommodation)} title={r("changeRoom")} className={`w-full flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors shadow-sm focus-visible:outline-2 focus-visible:outline-salsa-pink ${lock ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"}`}>
-                            {r("roomName", { number: room?.roomNumber || "—" })}{" "}
-                            <Clock size={12} aria-hidden="true" />
-                            {loading ? "…" : lock ? remainingTime(lock.expiresAt, now) : t("expiredHold")}
-                          </button>
+                          <div className="w-full flex items-center justify-center bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-sm">
+                            <button 
+                              type="button" disabled={disabled} onClick={() => chooseHotel(row, row.accommodation)} title={r("changeRoom")} 
+                              className="flex-1 flex items-center justify-center px-2 py-1.5 hover:bg-white rounded-lg transition-colors text-center group focus-visible:outline-2 focus-visible:outline-salsa-pink"
+                            >
+                              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest truncate group-hover:text-slate-900 transition-colors">
+                                {r("roomName", { number: room?.roomNumber || "—" })}
+                              </span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>
 
-                    {/* Commission */}
                     <td className="p-4 text-right font-bold text-lg text-slate-500 align-middle border-b border-gray-50">
                       €{rowCommission.toFixed(2)}
                     </td>
                     
-                    {/* Final Price */}
                     <td className="p-4 text-right font-bold text-xl text-slate-900 align-middle border-b border-gray-50">
                       €{rowFinal.toFixed(2)}
                     </td>
                     
-                    {/* Actions */}
                     <td className="p-4 pr-8 text-right align-middle border-b border-gray-50">
                       <div className="flex items-center justify-end h-full">
                         {selected.length <= 1 && (
@@ -343,7 +340,6 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
         {/* Mobile View */}
         <div className="lg:hidden flex flex-col gap-4 p-4 sm:p-6 bg-slate-50 border-t border-gray-100 flex-grow pb-24 relative z-10">
           {visibleRows.map((row, index) => {
-            const lock = lockFor(row);
             const room = rooms.find(rm => rm.id === row.roomId);
             const badName = !!row.name && !validName(row.name);
             const badEmail = !isOptionalEmail(row.email);
@@ -355,15 +351,13 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                 <div className="flex items-start gap-4 w-full">
                   <div className="flex flex-col items-center gap-2 mt-3 shrink-0">
                     <span className="text-[10px] font-bold text-slate-400">{index + 1}.</span>
-                    <input aria-label={r("selectAttendee")} type="checkbox" className="w-4 h-4 accent-slate-900 rounded" disabled={disabled} checked={selected.includes(row.id)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.id] : previous.filter(id => id !== row.id))} />
+                    <input aria-label={r("selectAttendee", { name: row.name || r("unnamed") })} type="checkbox" className="w-4 h-4 accent-slate-900 rounded" disabled={disabled} checked={selected.includes(row.id)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.id] : previous.filter(id => id !== row.id))} />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col gap-3 relative">
-                    {/* Name Input */}
                     <div className="relative">
                       <input type="text" maxLength={150} value={row.name} placeholder={t("namePlaceholder")} disabled={disabled} onChange={e => update(row.id, "name", e.target.value.toUpperCase())} onBlur={() => syncName(row.id)} className={`w-full p-3 pr-10 bg-white border ${badName ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none font-bold uppercase text-sm text-slate-900 transition-all shadow-sm disabled:opacity-50`} />
                       {badName && <span className="text-[9px] font-bold uppercase tracking-widest text-red-500 mt-1 block animate-in fade-in zoom-in duration-200">{row.name.trim().length < 2 ? t("errMin") : t("errLetters")}</span>}
                     </div>
-                    {/* Email Input */}
                     <div className="relative">
                       <input type="email" autoComplete="off" maxLength={254} value={row.email || ""} placeholder={t("emailOptional")} disabled={disabled} onChange={e => update(row.id, "email", e.target.value)} className={`w-full p-3 pr-10 bg-white border ${badEmail ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'} rounded-xl outline-none font-bold lowercase text-sm text-slate-900 transition-all shadow-sm disabled:opacity-50`} />
                       {badEmail && <span className="text-[9px] font-bold uppercase tracking-widest text-red-500 mt-1 block animate-in fade-in zoom-in duration-200">{t("invalidEmail")}</span>}
@@ -394,11 +388,16 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
                       </div>
                     </div>
                     {row.roomId && (
-                      <button type="button" disabled={disabled} onClick={() => chooseHotel(row, row.accommodation)} title={r("changeRoom")} className={`w-full flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors shadow-sm focus-visible:outline-2 focus-visible:outline-salsa-pink ${lock ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"}`}>
-                        {r("roomName", { number: room?.roomNumber || "—" })}{" "}
-                        <Clock size={12} aria-hidden="true" />
-                        {loading ? "…" : lock ? remainingTime(lock.expiresAt, now) : t("expiredHold")}
-                      </button>
+                      <div className="w-full flex items-center justify-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                        <button 
+                          type="button" disabled={disabled} onClick={() => chooseHotel(row, row.accommodation)} title={r("changeRoom")} 
+                          className="flex-1 flex items-center justify-center px-2 py-1.5 hover:bg-slate-50 rounded-lg transition-colors text-center group focus-visible:outline-2 focus-visible:outline-salsa-pink"
+                        >
+                          <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest truncate group-hover:text-slate-900 transition-colors px-2">
+                            {r("roomName", { number: room?.roomNumber || "—" })}
+                          </span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -462,7 +461,7 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
       
       {invalidHold && !loading && <p className="text-xs font-bold text-rose-600 uppercase tracking-widest text-center mt-6">{r("renewBeforeSubmit")}</p>}
 
-      {/* Room Selection Modal */}
+      {/* NEW STRUCTURE: Room Selection Modal */}
       {picker && (
         <RoomModal title={t("roomPickerTitle", { hotel: picker.hotelId })} busy={disabled} wide onClose={() => { setPicker(null); setError(""); }}>
           <p className="mb-4 text-xs font-bold text-slate-500 font-montserrat">{r("assigningFor", { name: active?.name || r("unnamed") })} · <span className="text-salsa-pink">{t("lockHint")}</span></p>
@@ -477,43 +476,68 @@ export default function DraftTab({ groupRows, saveRoster, submitGroupToCart, sub
           ) : visibleRooms.length === 0 ? (
             <div className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest py-10">{t("noAvailableRooms")}</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[65vh] overflow-y-auto pr-2 custom-scrollbar pb-4">
               {visibleRooms.map(room => {
                 const state = roomState(room, now);
                 const heldHere = state.locks.some(lock => lock.ownerId === uid && lock.draftId === String(active?.id));
                 const occupantCount = state.occupants.length + state.locks.length;
                 
                 return (
-                  <button 
+                  <div 
                     key={room.id}
-                    disabled={disabled || !validName(active?.name)}
-                    onClick={() => assign(room)}
-                    className="text-left cursor-pointer bg-white border border-gray-200 hover:border-emerald-500 hover:ring-2 ring-emerald-500/20 p-5 rounded-2xl transition-all shadow-sm group flex flex-col gap-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:ring-0"
+                    className={`flex flex-col bg-white border rounded-[1.5rem] transition-all shadow-sm overflow-hidden ${heldHere ? 'border-salsa-pink ring-2 ring-salsa-pink/20' : 'border-gray-200 hover:border-emerald-400 hover:shadow-md'}`}
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="block text-2xl font-black text-slate-900">{r("roomName", { number: room.roomNumber })}</span>
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-lg">{r(`types.${roomType(room)}`)}</span>
+                    {/* Header */}
+                    <div className={`p-4 border-b border-gray-100 flex justify-between items-center ${heldHere ? 'bg-salsa-pink/5' : 'bg-slate-50'}`}>
+                      <div>
+                        <span className="block text-2xl font-black text-slate-900">{r("roomName", { number: room.roomNumber })}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white px-2 py-1 rounded-md border border-gray-100 mt-1 inline-block shadow-sm">{r(`types.${roomType(room)}`)}</span>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-1">
+                        <span className="text-xl font-bold text-slate-900 leading-none">€{((room.pricePerPersonPerNight || 0) * 3).toFixed(2)}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded shadow-sm border ${state.available > 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                          {r("availableCount", { available: state.available, capacity: room.capacity })}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                        {r("availableCount", { available: state.available, capacity: room.capacity })}
-                      </span>
-                      <span className="text-lg font-bold text-slate-900">€{((room.pricePerPersonPerNight || 0) * 3).toFixed(2)}</span>
+
+                    {/* Body */}
+                    <div className="p-5 flex-grow flex flex-col gap-4">
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from({ length: room.capacity }).map((_, idx) => (
+                          <div key={idx} className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-inner ${idx < occupantCount ? 'bg-slate-100 text-slate-300' : 'bg-emerald-50 text-emerald-500 border border-emerald-100'}`}>
+                            <Bed size={14} />
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-auto bg-gray-50 rounded-xl p-3 border border-gray-100 min-h-[50px] flex items-center">
+                         {occupantCount > 0 ? (
+                            <div className="flex flex-col gap-1.5 w-full">
+                              {[...state.occupants, ...state.locks].map((occupant, i) => (
+                                 <span key={i} className="flex items-center gap-2 truncate text-slate-700">
+                                   <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full shrink-0 ${occupant.draftId ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                                   <span className="truncate">{occupant.name || r("unnamed")}</span>
+                                 </span>
+                              ))}
+                            </div>
+                         ) : (
+                            <span className="text-slate-400 italic text-center w-full">——</span>
+                         )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      {Array.from({ length: room.capacity }).map((_, idx) => (
-                        <div key={idx} className={`w-8 h-8 rounded-lg flex items-center justify-center ${idx < occupantCount ? 'bg-slate-200 text-slate-400' : 'bg-emerald-100 text-emerald-600'}`}>
-                          <Bed size={14} />
-                        </div>
-                      ))}
+
+                    {/* Footer Action */}
+                    <div className="p-4 pt-0">
+                      <button 
+                        disabled={disabled || !validName(active?.name)}
+                        onClick={() => assign(room)}
+                        className={`w-full py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${heldHere ? 'bg-salsa-pink text-white hover:bg-pink-600 hover:shadow-md' : 'bg-slate-900 text-white hover:bg-emerald-500 hover:shadow-md'}`}
+                      >
+                        {r(heldHere ? "renewHold" : "assign")}
+                      </button>
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-auto truncate w-full">
-                      {[...state.occupants, ...state.locks].map(occupant => occupant.name || r("unnamed")).join(", ") || "—"}
-                    </div>
-                    <div className="w-full mt-2 pt-4 border-t border-gray-100 flex items-center justify-center font-bold text-[10px] uppercase tracking-widest text-slate-500 group-hover:text-emerald-600 transition-colors">
-                      {r(heldHere ? "renewHold" : "assign")}
-                    </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

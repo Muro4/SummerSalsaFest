@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Search, Ticket, Calendar, CheckCircle, Clock, Eye } from "lucide-react";
+import { Search, Ticket, Calendar, CheckCircle, Clock } from "lucide-react";
+import EditableEmail from "@/components/ambassador/EditableEmail";
+import SendTicketButton from "@/components/ambassador/SendTicketButton";
 import CustomDropdown from "@/components/CustomDropdown";
-import { EVENT_YEARS } from "@/lib/constants";
+import { generateYearOptions } from "@/lib/constants";
 import { useTranslations } from 'next-intl';
 
 // Shared Styling Helpers
@@ -30,11 +32,14 @@ const getHotelPrice = (hotel) => {
    return 0;
 };
 
-export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedYear, setSelectedYear }) {
+export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedYear, setSelectedYear, onEmailSaved }) {
    const t = useTranslations('HistoryTab');
 
    const [searchQuery, setSearchQuery] = useState("");
    const [passFilter, setPassFilter] = useState("All");
+   const yearOptions = [...new Set([...generateYearOptions().map(option => option.value), String(selectedYear), ...paidTickets.map(ticket => String(ticket.festivalYear)).filter(year => /^\d{4}$/.test(year))])]
+      .sort((a, b) => Number(b) - Number(a))
+      .map(year => ({ label: `SSF ${year}`, value: year, isPill: true, colorClass: 'bg-slate-100 text-slate-600' }));
 
    // Helper to translate internal DB pass names for the UI
    const translatePassDisplay = (type) => {
@@ -46,7 +51,7 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
    };
 
    const filteredHistory = paidTickets.filter(ticket => {
-      const matchesYear = ticket.festivalYear?.toString() === selectedYear;
+      const matchesYear = String(ticket.festivalYear) === String(selectedYear);
       const matchesSearch = (ticket.userName?.toLowerCase().includes(searchQuery.toLowerCase()) || ticket.ticketID?.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesPass = passFilter === "All" || (ticket.passType || "").toLowerCase() === passFilter.toLowerCase();
       return matchesYear && matchesSearch && matchesPass;
@@ -97,7 +102,7 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                   />
                </div>
                <div className="relative w-full sm:w-auto z-30">
-                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={EVENT_YEARS} variant="filter"/>
+                  <CustomDropdown icon={Calendar} value={selectedYear} onChange={setSelectedYear} options={yearOptions} variant="filter"/>
                </div>
             </div>
          </div>
@@ -143,43 +148,48 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
 
             {/* DESKTOP TABLE */}
             <div className="hidden lg:block overflow-x-auto w-full flex-grow pb-16">
-               <table className="w-full text-left border-separate border-spacing-0 min-w-[950px] font-montserrat relative">
+               <table className="w-full text-left border-separate border-spacing-0 min-w-[1350px] font-montserrat relative">
                   <thead className="bg-white text-[11px] font-bold uppercase text-slate-500 tracking-widest relative z-10">
                      <tr>
-                        <th className="p-4 pl-8 font-bold w-16 border-b border-gray-100 text-center">#</th>
-                        <th className="p-4 font-bold w-1/3 border-b border-gray-100 text-left">{t('thName') || 'Dancer Name'}</th>
-                        <th className="p-4 font-bold w-48 border-b border-gray-100 text-center">{t('thPassType') || 'Pass Type'}</th>
-                        <th className="p-4 font-bold w-56 border-b border-gray-100 text-center">{t('thAccomm') || 'Accommodation'}</th>
-                        <th className="p-4 font-bold w-32 border-b border-gray-100 text-center">{t('thFinal') || 'Final Price'}</th>
-                        <th className="p-4 pr-8 font-bold w-32 border-b border-gray-100 text-center">{t('thStatus') || 'Status'}</th>
+                        <th className="p-5 pl-8 font-bold w-16 border-b border-gray-100 text-center">#</th>
+                        <th className="p-5 font-bold w-1/3 border-b border-gray-100 text-left">{t('thName') || 'Dancer Name'}</th>
+                        <th className="p-5 font-bold w-64 border-b border-gray-100 text-left">{t("thEmail")}</th>
+                        <th className="p-5 font-bold w-48 border-b border-gray-100 text-center">{t('thPassType') || 'Pass Type'}</th>
+                        <th className="p-5 font-bold w-56 border-b border-gray-100 text-center">{t('thAccomm') || 'Accommodation'}</th>
+                        <th className="p-5 font-bold w-32 border-b border-gray-100 text-center">{t('thFinal') || 'Final Price'}</th>
+                        <th className="p-5 pr-8 font-bold w-32 border-b border-gray-100 text-center">{t('thStatus') || 'Status'}</th>
                      </tr>
                   </thead>
-                  <tbody className="uppercase text-xs font-bold text-slate-900">
+                  <tbody className="font-montserrat uppercase text-xs font-bold text-slate-700">
                      {filteredHistory.map((ticket, i) => {
                         const hotelPrice = getHotelPrice(ticket.accommodation);
                         const finalPrice = (ticket.price || 0) + hotelPrice - (ticket.commission || 0);
 
                         return (
-                           <tr key={ticket.id} onClick={() => setFullScreenTicket(ticket)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                           <tr key={ticket.id} onClick={() => setFullScreenTicket(ticket)} className="hover:bg-gray-100 transition-colors cursor-pointer group">
                               
-                              <td className="p-4 pl-8 align-middle border-b border-gray-50 text-center">
-                                 <span className="text-[11px] font-bold text-slate-400 group-hover:text-salsa-pink transition-colors">{i + 1}.</span>
+                              <td className="p-5 pl-8 align-middle border-b border-gray-50 text-center">
+                                 <span className="text-[11px] font-bold text-slate-400 group-hover:text-slate-900 transition-colors">{i + 1}.</span>
                               </td>
                               
                               {/* 1. Name */}
-                              <td className="p-4 align-middle border-b border-gray-50 max-w-[300px] text-left">
-                                 <span title={ticket.userName} className="block text-sm font-bold text-slate-900 tracking-wide group-hover:text-salsa-pink transition-colors truncate uppercase">{ticket.userName}</span>
+                              <td className="p-5 align-middle border-b border-gray-50 max-w-[300px] text-left">
+                                 <span title={ticket.userName} className="block text-sm font-bold text-slate-900 tracking-wide group-hover:text-slate-900 transition-colors truncate uppercase">{ticket.userName}</span>
                               </td>
                               
+                              <td className="p-5 align-middle border-b border-gray-50">
+                                 <EditableEmail ticket={ticket} onSaved={onEmailSaved} />
+                              </td>
+
                               {/* 2. Pass Type (Centered) */}
-                              <td className="p-4 align-middle border-b border-gray-50 text-center">
+                              <td className="p-5 align-middle border-b border-gray-50 text-center">
                                  <span className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-sm ${getPassStyle(ticket.passType)}`}>
                                     {translatePassDisplay(ticket.passType)}
                                  </span>
                               </td>
 
                               {/* 3. Accommodation (Centered) */}
-                              <td className="p-4 align-middle border-b border-gray-50 text-center">
+                              <td className="p-5 align-middle border-b border-gray-50 text-center">
                                  <div className="flex items-center justify-center gap-3">
                                     <span className={`text-sm font-bold ${ticket.accommodation === 'None' || !ticket.accommodation ? 'text-slate-400' : 'text-slate-700'}`}>
                                        {ticket.accommodation === 'None' || !ticket.accommodation ? '-' : ticket.accommodation}
@@ -191,24 +201,22 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                               </td>
 
                               {/* 4. Final Price (Centered) */}
-                              <td className="p-4 text-center font-bold text-xl text-slate-900 align-middle border-b border-gray-50">€{finalPrice}</td>
+                              <td className="p-5 text-center font-bold text-xl text-slate-900 align-middle border-b border-gray-50">€{finalPrice}</td>
 
                               {/* Status & Actions (Centered) */}
-                              <td className="p-4 pr-8 align-middle font-montserrat border-b border-gray-50 text-center">
+                              <td className="p-5 pr-8 align-middle font-montserrat border-b border-gray-50 text-center">
                                  <div className="flex items-center justify-center gap-4 h-full">
                                     <div className={`flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase ${ticket.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
                                        {ticket.status === 'active' ? <CheckCircle size={14} /> : <Clock size={14} />} {ticket.status === 'active' ? t('statusActive') : t('statusPending')}
                                     </div>
-                                    <div className="bg-white p-2 rounded-xl text-slate-400 group-hover:bg-salsa-pink group-hover:text-white transition-all duration-300 shadow-sm border border-gray-200 group-hover:border-salsa-pink group-hover:scale-110" title={t('viewTicket') || 'View Ticket'}>
-                                       <Eye size={16} />
-                                    </div>
+                                    <SendTicketButton roster={{ ...ticket, email: ticket.guestEmail ?? ticket.email }} />
                                  </div>
                               </td>
 
                            </tr>
                         );
                      })}
-                     {filteredHistory.length === 0 && <tr><td colSpan="6" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">{t('noPaidFound') || 'No records found'}</td></tr>}
+                     {filteredHistory.length === 0 && <tr><td colSpan="7" className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest font-montserrat border-b border-gray-50">{t('noPaidFound') || 'No records found'}</td></tr>}
                   </tbody>
                </table>
             </div>
@@ -222,7 +230,7 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                   const finalPrice = (ticket.price || 0) + hotelPrice - (ticket.commission || 0);
 
                   return (
-                     <div key={ticket.id} onClick={() => setFullScreenTicket(ticket)} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-4 relative cursor-pointer hover:ring-2 ring-salsa-pink/50 transition-all">
+                     <div key={ticket.id} onClick={() => setFullScreenTicket(ticket)} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-4 relative cursor-pointer hover:bg-gray-100 transition-colors">
                         
                         {/* Priority 1: Index, Name, Status */}
                         <div className="flex items-start justify-between gap-4 w-full">
@@ -253,11 +261,14 @@ export default function HistoryTab({ paidTickets, setFullScreenTicket, selectedY
                            </div>
                         </div>
 
+                        <div className="min-w-0 pl-6">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("thEmail")}</span>
+                           <EditableEmail ticket={ticket} onSaved={onEmailSaved} />
+                        </div>
+
                         {/* Bottom Row: Action & Final Price */}
                         <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-1 w-full pl-6">
-                           <div className="bg-white p-2 rounded-xl text-slate-400 transition-all duration-300 shadow-sm border border-gray-200" title={t('viewTicket') || 'View Ticket'}>
-                              <Eye size={16} />
-                           </div>
+                           <SendTicketButton roster={{ ...ticket, email: ticket.guestEmail ?? ticket.email }} />
                            <div className="text-right">
                               <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{t('thFinal') || 'Final Price'}</span>
                               <span className="block text-2xl font-bold text-slate-900 leading-none">€{finalPrice}</span>

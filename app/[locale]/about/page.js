@@ -1,4 +1,3 @@
-"use client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Facebook, Youtube, CalendarHeart, Sun, MoonStar, Music, ArrowUpRight } from "lucide-react";

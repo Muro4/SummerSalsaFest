@@ -6,14 +6,15 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --project demo-salsafest-audit --only firestore \"vitest run __tests__/firestore-rules.test.js\""
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@stripe/stripe-js": "^8.8.0",
     "country-flag-emoji": "^1.0.3",
     "firebase": "^11.10.0",
-    "firebase-admin": "^13.8.0",
+    "firebase-admin": "^14.5.0",
     "html-to-image": "^1.11.13",
     "html5-qrcode": "^2.3.8",
     "js-cookie": "^3.0.5",
@@ -22,7 +23,7 @@
     "lucide-react": "^0.453.0",
     "next": "^15.5.12",
     "next-intl": "^4.8.3",
-    "nodemailer": "^8.0.2",
+    "nodemailer": "^10.2.1",
     "qrcode.react": "^4.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -31,15 +32,28 @@
     "stripe": "^20.3.1"
   },
   "devDependencies": {
+    "@babel/parser": "^8.0.8",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.5.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "firebase-tools": "^15.34.1",
     "jsdom": "^29.0.1",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.23",
     "tailwindcss": "^4.0.0",
     "vitest": "^4.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6",
+    "postcss": "$postcss",
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
   }
 }

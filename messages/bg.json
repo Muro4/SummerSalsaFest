@@ -766,6 +766,8 @@
     "defaultCancel": "Отказ"
   },
   "TicketModal": {
+    "errSendTitle": "Имейлът не е изпратен",
+    "errSendMsg": "Неуспешно изпращане на билета. Моля, опитайте отново.",
     "errCapture": "Грешка при заснемане",
     "errExportTitle": "Грешка при експорт",
     "errExportMsg": "Неуспешно изтегляне. Моля, опитайте отново.",
@@ -894,6 +896,13 @@
     "noAvailableRooms": "Няма свободни стаи в този хотел."
   },
 "HistoryTab": {
+    "thEmail": "Имейл",
+    "editEmail": "Редактирай имейла на {name}",
+    "emailEmpty": "Добави имейл",
+    "emailInvalid": "Въведете валиден имейл адрес.",
+    "emailSaving": "Запазване на имейл",
+    "emailSaved": "Имейлът е запазен",
+    "emailSaveError": "Имейлът не беше запазен. Моля, опитайте отново.",
   "searchPlaceholder": "Търсене в записите...",
   "filterAll": "Всички пасове",
   "passFull": "Full Pass",

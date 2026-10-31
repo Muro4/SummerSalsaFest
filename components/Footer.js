@@ -1,4 +1,3 @@
-"use client";
 import { MapPin, Phone, Mail, Instagram, Facebook, Twitter } from "lucide-react";
 import { Link } from '@/routing'; // THE FIX: Custom routing
 import Image from "next/image";

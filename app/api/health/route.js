@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
+import { apiError, authenticate } from "@/lib/room-server";
+
 export async function GET(req) {
+  try { await authenticate(req, ["superadmin"]); } catch (error) { return apiError(error); }
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,19 +22,6 @@ export async function GET(req) {
   };
 
   try {
-    // Safety check in case the env variables are completely missing
-    if (!adminAuth || !adminDb) {
-      throw new Error("Firebase Admin SDK failed to initialize. Check your env variables.");
-    }
-
-    // 1. Verify Admin Token and Role
-    const token = authHeader.split('Bearer ')[1];
-    const decoded = await adminAuth.verifyIdToken(token);
-    
-    const userDoc = await adminDb.collection('users').doc(decoded.uid).get();
-    if (!userDoc.exists || userDoc.data().role !== 'superadmin') {
-       throw new Error("Access Denied: Not a superadmin");
-    }
     results["Firebase Auth"] = { status: "pass", message: "Admin Auth Operational" };
 
     // 2. Test Firebase DB Connection
@@ -77,9 +67,9 @@ export async function GET(req) {
     // Mark anything still pending as failed/aborted so the panel explains why it stopped
     Object.keys(results).forEach(key => {
       if (results[key].status === "pending") {
-        results[key] = { status: "fail", message: `Aborted: ${error.message}` };
+        results[key] = { status: "fail", message: "Service check failed" };
       }
     });
-    return NextResponse.json({ success: false, error: error.message, results }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Service check failed", results }, { status: 500 });
   }
 }

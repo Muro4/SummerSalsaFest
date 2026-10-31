@@ -1,4 +1,3 @@
-"use client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Scale, Ticket, Users, Camera, ShieldAlert, FileText } from "lucide-react";

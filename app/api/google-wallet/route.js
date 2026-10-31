@@ -1,43 +1,18 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { adminAuth, adminDb } from '@/lib/firebase-admin'; // <-- IMPORT adminDb
+import { adminDb } from "@/lib/firebase-admin";
+import { ApiError, apiError, authenticate, documentId, requestBody } from "@/lib/room-server";
 
 export async function POST(req) {
   console.log("💳 POST request received at /api/google-wallet");
 
   try {
-    // =======================================================================
-    // 🔒 SECURITY CHECK: VERIFY FIREBASE TOKEN
-    // =======================================================================
-    const authHeader = req.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error("❌ Unauthorized: No token provided");
-      return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-    let decodedToken;
-
-    try {
-      // Verify the token is real and belongs to an active user
-      decodedToken = await adminAuth.verifyIdToken(token);
-      console.log(`✅ Authorized wallet request from user ID: ${decodedToken.uid}`);
-    } catch (authError) {
-      console.error("❌ Unauthorized: Invalid token", authError.message);
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
-    }
-    // =======================================================================
-
-    const { ticket } = await req.json();
-
-    // 1. Strict Validation
-    if (!ticket || !ticket.id) {
-      return NextResponse.json({ error: 'Missing ticket data' }, { status: 400 });
-    }
+    const actor = await authenticate(req);
+    const { ticket } = await requestBody(req);
+    const id = documentId(ticket?.id);
 
     // 2. Fetch the REAL ticket from the database to prevent spoofing
-    const ticketDoc = await adminDb.collection("tickets").doc(ticket.id).get();
+    const ticketDoc = await adminDb.collection("tickets").doc(id).get();
     
     if (!ticketDoc.exists) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
@@ -46,13 +21,15 @@ export async function POST(req) {
     const ticketData = ticketDoc.data();
 
     // 3. Verify ownership (or allow if the user is an admin)
-    const isOwner = ticketData.userId === decodedToken.uid;
-    const isAdmin = decodedToken.role === 'admin' || decodedToken.role === 'superadmin';
+    const isOwner = ticketData.userId === actor.uid;
+    const isAdmin = actor.role === 'admin' || actor.role === 'superadmin';
 
     if (!isOwner && !isAdmin) {
-      console.error(`❌ Forbidden: User ${decodedToken.uid} attempted to add ticket owned by ${ticketData.userId} to wallet`);
+      console.error(`❌ Forbidden: User ${actor.uid} attempted to add ticket owned by ${ticketData.userId} to wallet`);
       return NextResponse.json({ error: 'Forbidden: You do not own this ticket' }, { status: 403 });
     }
+
+    if (!["active", "used"].includes(ticketData.status)) throw new ApiError("paymentRequired", 409);
 
     const ISSUER_EMAIL = process.env.GOOGLE_CLIENT_EMAIL; 
     const ISSUER_ID = process.env.GOOGLE_ISSUER_ID;
@@ -107,6 +84,6 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("❌ Google Wallet Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error);
   }
 }
