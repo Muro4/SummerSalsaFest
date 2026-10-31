@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { signInAnonymously } from "firebase/auth";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -17,6 +17,7 @@ export default function TicketPage() {
   const autoSalesOpen = isSalesOpen();
   
   /* Component State */
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [realName, setRealName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +36,14 @@ export default function TicketPage() {
   const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
   const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
 
- 
+  /* Track Firebase Auth Initialization */
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, () => {
+      setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   /* Calculate dynamic pricing exclusively on the client to prevent hydration errors */
   useEffect(() => {
     // Add 5€ markup for direct website purchases
@@ -180,24 +188,28 @@ export default function TicketPage() {
                 <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest text-[10px] sm:text-xs">
                   <tr>
                     <th className="py-4 px-2 border-b border-gray-200">Until 31.03</th>
-                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 30.05</th>
-                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 31.08</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 31.05</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 29.07</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">On spot</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">From your promoter</th>
                   </tr>
                 </thead>
                 <tbody className="text-slate-900 font-bold text-lg sm:text-xl">
-  <tr>
-    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
-    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
-    <td className="py-5 px-2">{pricingTable['Full Pass'][2] + 5} €</td>
-  </tr>
-</tbody>
+                  <tr>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][2] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">150 €</td>
+                    <td className="py-5 px-2">5 € </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 bg-white rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 md:p-12 shadow-2xl border border-gray-100">
             
-            {/* LEFT COLUMN: Pass Details (Reverted to original) */}
+            {/* LEFT COLUMN: Pass Details */}
             <div className="flex flex-col justify-center">
               <div className="inline-flex px-6 py-2.5 rounded-full mb-6 bg-salsa-pink text-white self-start shadow-sm">
                 <h2 className="font-bebas text-3xl sm:text-4xl leading-none tracking-wide">{t('passes.fullName')}</h2>
@@ -220,8 +232,8 @@ export default function TicketPage() {
               <h3 className="font-bebas text-4xl sm:text-5xl mb-8 uppercase leading-none text-slate-900 tracking-wide">{t('verifyTitle')}</h3>
 
               <div className="space-y-5 relative z-10">
-                {/* Guest Email Field - Shows when logged out OR when explicitly anonymous */}
-                {(!auth.currentUser || auth.currentUser?.isAnonymous) && (
+                {/* Guest Email Field - Shows when logged out OR when explicitly anonymous, blocked while auth loads */}
+                {(!isAuthLoading && (!auth.currentUser || auth.currentUser?.isAnonymous)) && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
                     <input
@@ -253,20 +265,20 @@ export default function TicketPage() {
                 </div>
 
                 <button
-  onClick={handleAddToCart}
-  disabled={!realName || isNameInvalid || ((!auth.currentUser || auth.currentUser?.isAnonymous) && !guestEmail) || loading || !salesEnabled || !autoSalesOpen}
-  className="cursor-pointer w-full h-14 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:-translate-y-1 active:translate-y-0 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:translate-y-0 mt-8"
->
-  {loading ? (
-    <Loader2 className="animate-spin" size={18} />
-  ) : !autoSalesOpen ? (
-    t('salesClosedMsg')
-  ) : !salesEnabled ? (
-    t('salesPausedMsg')
-  ) : (
-    t('addBtn')
-  )}
-</button>
+                  onClick={handleAddToCart}
+                  disabled={isAuthLoading || !realName || isNameInvalid || ((!auth.currentUser || auth.currentUser?.isAnonymous) && !guestEmail) || loading || !salesEnabled || !autoSalesOpen}
+                  className="cursor-pointer w-full h-14 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:-translate-y-1 active:translate-y-0 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:translate-y-0 mt-8"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : !autoSalesOpen ? (
+                    t('salesClosedMsg')
+                  ) : !salesEnabled ? (
+                    t('salesPausedMsg')
+                  ) : (
+                    t('addBtn')
+                  )}
+                </button>
               </div>
             </div>
 

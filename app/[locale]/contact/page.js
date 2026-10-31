@@ -41,7 +41,8 @@ export default function ContactPage() {
 
   const contactLinks = [
     { name: "ssf.varna@gmail.com", sub: t('subEmail'), icon: Mail, url: "mailto:ssf.varna@gmail.com" },
-    { name: "+359 888 123 456", sub: t('subCall'), icon: Phone, url: "tel:+359888123456" }
+    { name: "+359 888 539 188", sub: t('subCall'), icon: Phone, url: "tel:+359888539188" },
+    { name: "+359 877 377 294", sub: t('subCall'), icon: Phone, url: "tel:+359877377294" }
   ];
 
   const festivalEvents = [
