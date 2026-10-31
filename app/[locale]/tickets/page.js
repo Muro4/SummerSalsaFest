@@ -8,37 +8,39 @@ import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { usePopup } from "@/components/PopupProvider";
-import { Check, ArrowRight, Loader2, ChevronLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { getPriceAtDate } from "@/lib/pricing";
+import { getPriceAtDate, pricingTable, isSalesOpen } from "@/lib/pricing";
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
-
+  const autoSalesOpen = isSalesOpen();
+  
   /* Component State */
-  const [step, setStep] = useState(1);
-  const [selected, setSelected] = useState(null);
   const [realName, setRealName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [salesEnabled, setSalesEnabled] = useState(true);
+  
+  // NEW: State to hold the dynamically calculated price for hydration safety
+  const [fullPassPrice, setFullPassPrice] = useState("...");
 
   const router = useRouter();
   const { showPopup } = usePopup();
-
-  /* Ticket configuration and pricing definitions */
-  const PASSES = [
-    { id: 'party', name: t('passes.partyName'), rawName: 'Party Pass', price: getPriceAtDate('Party Pass'), desc: t('passes.partyDesc'), color: 'bg-violet-600', text: 'text-white' },
-    { id: 'full', name: t('passes.fullName'), rawName: 'Full Pass', price: getPriceAtDate('Full Pass'), desc: t('passes.fullDesc'), color: 'bg-salsa-pink', text: 'text-white' },
-    { id: 'day', name: t('passes.dayName'), rawName: 'Day Pass', price: getPriceAtDate('Day Pass'), desc: t('passes.dayDesc'), color: 'bg-teal-300', text: 'text-teal-950' },
-  ];
 
   /* Input validation criteria */
   const isValidNameChars = /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(realName);
   const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
   const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
+
+ 
+  /* Calculate dynamic pricing exclusively on the client to prevent hydration errors */
+  useEffect(() => {
+    // Add 5€ markup for direct website purchases
+    setFullPassPrice(getPriceAtDate('Full Pass') + 5);
+  }, []);
 
   /* User profile data synchronization */
   useEffect(() => {
@@ -68,59 +70,37 @@ export default function TicketPage() {
     return () => unsub();
   }, []);
 
-  /* Authentication and role-based limit verification */
-  const handleProceedToDetails = async () => {
-    if (!auth.currentUser) {
-      setShowModal(true);
-      return;
-    }
-
-    if (auth.currentUser && userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
-      setLoading(true);
-      const q = query(
-        collection(db, "tickets"),
-        where("userId", "==", auth.currentUser.uid),
-        where("festivalYear", "==", 2026)
-      );
-      const snap = await getDocs(q);
-
-      if (snap.size >= 5) {
-        setLoading(false);
-        const isAnon = auth.currentUser.isAnonymous;
-        showPopup({
-          type: "info",
-          title: t('limitTitle'),
-          message: isAnon ? t('limitMsgGuest') : t('limitMsgUser'),
-          confirmText: isAnon ? t('createAccountBtn') : t('applyBtn'),
-          cancelText: t('cancelBtn'),
-          onConfirm: () => router.push(isAnon ? "/login" : "/apply")
-        });
-        return;
-      }
-      setLoading(false);
-    }
-
-    setStep(2);
-  };
-
-  /* Initializes an anonymous Firebase session for guest users */
-  const handleGuestContinue = async () => {
-    try {
-      setLoading(true);
-      await signInAnonymously(auth);
-      setShowModal(false);
-      setStep(2);
-    } catch (error) {
-      showPopup({ type: "error", title: "Authentication Error", message: "Could not initialize guest session.", confirmText: "Close" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* Handles payload generation and backend submission */
-  const handleAddToCart = async () => {
+  /* Check limits and submit the ticket payload */
+  const executeCheckout = async (isGuestAction = false) => {
     setLoading(true);
     try {
+      // 1. Check purchase limits for authenticated users
+      if (!isGuestAction && auth.currentUser) {
+        if (userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
+          const q = query(
+            collection(db, "tickets"),
+            where("userId", "==", auth.currentUser.uid),
+            where("festivalYear", "==", 2026)
+          );
+          const snap = await getDocs(q);
+
+          if (snap.size >= 5) {
+            setLoading(false);
+            const isAnon = auth.currentUser.isAnonymous;
+            showPopup({
+              type: "info",
+              title: t('limitTitle'),
+              message: isAnon ? t('limitMsgGuest') : t('limitMsgUser'),
+              confirmText: isAnon ? t('createAccountBtn') : t('applyBtn'),
+              cancelText: t('cancelBtn'),
+              onConfirm: () => router.push(isAnon ? "/login" : "/apply")
+            });
+            return;
+          }
+        }
+      }
+
+      // 2. Build request and submit
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -132,7 +112,7 @@ export default function TicketPage() {
           isGuest: auth.currentUser?.isAnonymous || false,
           tickets: [{
             userName: realName,
-            passType: selected.rawName,
+            passType: 'Full Pass',
             guestEmail: guestEmail
           }]
         })
@@ -154,8 +134,30 @@ export default function TicketPage() {
     }
   };
 
+  /* Checkout Entry Point */
+  const handleAddToCart = async () => {
+    if (!auth.currentUser) {
+      setShowModal(true);
+      return;
+    }
+    await executeCheckout(false);
+  };
+
+  /* Initializes an anonymous Firebase session for guest users */
+  const handleGuestContinue = async () => {
+    try {
+      setLoading(true);
+      await signInAnonymously(auth);
+      setShowModal(false);
+      await executeCheckout(true);
+    } catch (error) {
+      showPopup({ type: "error", title: "Authentication Error", message: "Could not initialize guest session.", confirmText: "Close" });
+      setLoading(false);
+    }
+  };
+
   return (
-    <main className="min-h-screen flex flex-col bg-salsa-white font-montserrat">
+    <main className="min-h-screen bg-salsa-white font-montserrat">
       <Navbar />
       <AuthModal 
         isOpen={showModal} 
@@ -163,91 +165,63 @@ export default function TicketPage() {
         onGuestContinue={handleGuestContinue} 
       />
 
-      <div className="flex-grow flex flex-col justify-center items-center w-full pt-28 pb-12 px-6">
+      <div className="flex-grow flex flex-col justify-center items-center w-full pt-32 pb-16 px-4 sm:px-6">
         
-        {/* Progress Indication */}
-        <div className="w-full max-w-xl mb-12">
-          <div className="grid grid-cols-3 mb-4 text-[11px] font-black uppercase tracking-widest text-center">
-            <span className={`text-left transition-colors duration-500 ${step >= 1 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step1')}</span>
-            <span className={`transition-colors duration-500 ${step >= 2 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step2')}</span>
-            <span className={`text-right transition-colors duration-500 ${step >= 3 ? "text-salsa-pink" : "text-gray-400"}`}>{t('step3')}</span>
-          </div>
-          <div className="relative h-1.5 bg-gray-100 rounded-full">
-            <div className="absolute top-0 left-0 h-full bg-salsa-pink transition-all duration-700 rounded-full" style={{ width: `${step === 1 ? '0%' : step === 2 ? '50%' : '100%'}` }}></div>
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full flex justify-between">
-              {[1, 2, 3].map((num) => (
-                <div key={num} className={`w-4 h-4 rounded-full border-2 shadow-sm transition-all duration-700 ${step >= num ? 'bg-white border-salsa-pink scale-110' : 'bg-white border-gray-200'}`}></div>
-              ))}
+        <div className="w-full max-w-5xl animate-in fade-in duration-500">
+          <h1 className="font-modak text-5xl sm:text-6xl text-slate-900 mb-10 uppercase tracking-wide text-center drop-shadow-sm">
+            {t('buyPassTitle')}
+          </h1>
+
+          
+          <div className="w-full max-w-2xl mx-auto mb-12 text-center">
+            <h3 className="font-bebas text-2xl text-slate-400 mb-4 uppercase tracking-widest">{t('pricingScheduleHeading')}</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md">
+              <table className="w-full text-center text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest text-[10px] sm:text-xs">
+                  <tr>
+                    <th className="py-4 px-2 border-b border-gray-200">Until 31.03</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 30.05</th>
+                    <th className="py-4 px-2 border-b border-gray-200 border-l">Until 31.08</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-900 font-bold text-lg sm:text-xl">
+  <tr>
+    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
+    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
+    <td className="py-5 px-2">{pricingTable['Full Pass'][2] + 5} €</td>
+  </tr>
+</tbody>
+              </table>
             </div>
           </div>
-        </div>
 
-        {/* Step 1: Ticket Selection */}
-        {step === 1 ? (
-          <div className="flex flex-col items-center w-full animate-in fade-in duration-500">
-            <h1 className="font-bebas text-5xl md:text-6xl text-slate-900 mb-2 uppercase tracking-normal">{t('title')}</h1>
-            <p className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-8">{t('subtitle')}</p>
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 bg-white rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 md:p-12 shadow-2xl border border-gray-100">
+            
+            {/* LEFT COLUMN: Pass Details (Reverted to original) */}
+            <div className="flex flex-col justify-center">
+              <div className="inline-flex px-6 py-2.5 rounded-full mb-6 bg-salsa-pink text-white self-start shadow-sm">
+                <h2 className="font-bebas text-3xl sm:text-4xl leading-none tracking-wide">{t('passes.fullName')}</h2>
+              </div>
+              
+              <div className="flex items-start gap-1 mb-6">
+                <span className="text-xl sm:text-2xl font-bold text-slate-400 mt-2">€</span>
+                <span className="text-6xl sm:text-7xl font-black text-slate-900 tracking-tight">{fullPassPrice}</span>
+              </div>
 
-            <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
-              {PASSES.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => setSelected(p)}
-                  className={`bg-white p-8 rounded-[2.5rem] border-2 transition-all duration-300 cursor-pointer flex flex-col items-center text-center relative hover:-translate-y-1
-                  ${selected?.id === p.id
-                      ? 'border-slate-900 shadow-2xl scale-[1.02]'
-                      : 'border-gray-100 hover:border-slate-200 shadow-sm'
-                    }`}
-                >
-                  <div className={`absolute -top-3 -right-3 bg-slate-900 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${selected?.id === p.id ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
-                    <Check size={16} strokeWidth={4} />
-                  </div>
-
-                  <div className={`px-6 py-2 rounded-full mb-4 ${p.color} ${p.text}`}>
-                    <h2 className="font-bebas text-3xl leading-none tracking-wide">{p.name}</h2>
-                  </div>
-
-                  <div className="flex items-start justify-center gap-1 mb-4">
-                    <span className="text-lg font-bold text-slate-400 mt-1">€</span>
-                    <span className="text-5xl font-black text-slate-900 tracking-tighter">{p.price}</span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed px-2 border-t border-gray-100 pt-4">{p.desc}</p>
-                </div>
-              ))}
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                {t('passes.fullDesc')}
+              </p>
             </div>
 
-            <button
-              onClick={handleProceedToDetails}
-              disabled={!selected || loading}
-              className="cursor-pointer group bg-slate-900 text-white font-black px-16 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-salsa-pink transition-all shadow-xl tracking-widest text-[11px] uppercase disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : <>{t('nextBtn')} <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
-            </button>
-          </div>
-        ) : (
-          /* Step 2: Attendee Details Collection */
-          <div className="flex flex-col items-center justify-center w-full max-w-md animate-in fade-in slide-in-from-right-8 duration-500">
-            <button
-              onClick={() => setStep(1)}
-              className="flex items-center gap-2 mb-6 text-slate-400 hover:text-slate-900 transition-colors font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer self-start ml-2"
-            >
-              <ChevronLeft size={16} strokeWidth={3} /> {t('changePass')}
-            </button>
-
-            <div className="w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-              <h2 className="font-bebas text-5xl mb-6 uppercase leading-none text-center text-slate-900 relative z-10 tracking-normal">{t('verifyTitle')}</h2>
+            {/* RIGHT COLUMN: Attendee Form */}
+            <div className="flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-gray-100 pt-10 lg:pt-0 lg:pl-12 relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-salsa-mint/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+              
+              <h3 className="font-bebas text-4xl sm:text-5xl mb-8 uppercase leading-none text-slate-900 tracking-wide">{t('verifyTitle')}</h3>
 
               <div className="space-y-5 relative z-10">
-                <div className="flex flex-col items-center gap-2 mb-2">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{t('selected')}</span>
-                  <span className={`border border-transparent px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ${selected?.color} ${selected?.text}`}>
-                    {selected?.name}
-                  </span>
-                </div>
-
-                {auth.currentUser?.isAnonymous && (
+                {/* Guest Email Field - Shows when logged out OR when explicitly anonymous */}
+                {(!auth.currentUser || auth.currentUser?.isAnonymous) && (
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
                     <input
@@ -255,7 +229,7 @@ export default function TicketPage() {
                       placeholder={t('emailPlaceholder')}
                       required
                       maxLength={100}
-                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900"
+                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900"
                       onChange={e => setGuestEmail(e.target.value)}
                     />
                   </div>
@@ -268,7 +242,7 @@ export default function TicketPage() {
                     placeholder={t('namePlaceholder')}
                     required
                     maxLength={50}
-                    className={`w-full p-3.5 bg-gray-50 border rounded-2xl outline-none focus:bg-white font-bold uppercase text-sm transition-all text-slate-900 ${isNameInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`}
+                    className={`w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:bg-white font-bold uppercase text-sm transition-all text-slate-900 ${isNameInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`}
                     onChange={e => setRealName(e.target.value)}
                   />
                   {isNameInvalid && (
@@ -279,22 +253,26 @@ export default function TicketPage() {
                 </div>
 
                 <button
-                  onClick={handleAddToCart}
-                  disabled={!realName || isNameInvalid || (auth.currentUser?.isAnonymous && !guestEmail) || loading || !salesEnabled}
-                  className="cursor-pointer w-full h-[52px] bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:scale-105 active:scale-95 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:scale-100 mt-6"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : !salesEnabled ? (
-                    "Sales Temporarily Paused"
-                  ) : (
-                    t('addBtn')
-                  )}
-                </button>
+  onClick={handleAddToCart}
+  disabled={!realName || isNameInvalid || ((!auth.currentUser || auth.currentUser?.isAnonymous) && !guestEmail) || loading || !salesEnabled || !autoSalesOpen}
+  className="cursor-pointer w-full h-14 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:-translate-y-1 active:translate-y-0 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:translate-y-0 mt-8"
+>
+  {loading ? (
+    <Loader2 className="animate-spin" size={18} />
+  ) : !autoSalesOpen ? (
+    t('salesClosedMsg')
+  ) : !salesEnabled ? (
+    t('salesPausedMsg')
+  ) : (
+    t('addBtn')
+  )}
+</button>
               </div>
             </div>
+
           </div>
-        )}
+        </div>
+
       </div>
     </main>
   );
