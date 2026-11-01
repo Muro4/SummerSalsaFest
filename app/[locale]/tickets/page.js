@@ -195,14 +195,23 @@ export default function TicketPage() {
                   </tr>
                 </thead>
                 <tbody className="text-slate-900 font-bold text-lg sm:text-xl">
-                  <tr>
-                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
-                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
-                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][2] + 5} €</td>
-                    <td className="py-5 px-2 border-r border-gray-100">150 €</td>
-                    <td className="py-5 px-2">5 € </td>
-                  </tr>
-                </tbody>
+  <tr>
+    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
+    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
+    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][2] + 5} €</td>
+    <td className="py-5 px-2 border-r border-gray-100">150 €</td>
+    <td className="py-5 px-2">
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-sm sm:text-base text-slate-400 line-through font-semibold">
+          {fullPassPrice} €
+        </span>
+        <span>
+          {typeof fullPassPrice === 'number' ? fullPassPrice - 5 : '...'} €
+        </span>
+      </div>
+    </td>
+  </tr>
+</tbody>
               </table>
             </div>
           </div>
