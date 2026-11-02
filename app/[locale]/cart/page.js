@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, deleteDoc, writeBatch } from "firebase/firestore";
-import { useRouter } from "@/routing"; // THE FIX: Custom routing for i18n
+import { useRouter } from "@/routing";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -49,7 +49,7 @@ export default function Cart() {
   const { showPopup } = usePopup();
 
   // Helper to translate internal DB pass names for the UI
-   const translatePassDisplay = (type) => {
+  const translatePassDisplay = (type) => {
     const typeLower = (type || '').toLowerCase();
     if (typeLower.includes('full')) return t('passFull');
     if (typeLower.includes('party')) return t('passParty');
@@ -59,11 +59,15 @@ export default function Cart() {
   };
 
   useEffect(() => {
+    let unsubSnap = null;
     const unsubAuth = auth.onAuthStateChanged(user => {
-      const currentID = user ? user.uid : sessionStorage.getItem("guestSessionID");
-      if (currentID) {
-        const q = query(collection(db, "tickets"), where("userId", "==", currentID), where("status", "==", "pending"));
-        const unsub = onSnapshot(q, 
+      if (unsubSnap) {
+        unsubSnap();
+        unsubSnap = null;
+      }
+      if (user && !user.isAnonymous) {
+        const q = query(collection(db, "tickets"), where("userId", "==", user.uid), where("status", "==", "pending"));
+        unsubSnap = onSnapshot(q, 
           (snap) => {
             setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             setLoading(false);
@@ -73,13 +77,17 @@ export default function Cart() {
             setLoading(false);
           }
         );
-        return () => unsub();
-      } else { 
-        setLoading(false); 
+      } else {
+        setItems([]);
+        setLoading(false);
       }
     });
-    return () => unsubAuth();
+    return () => {
+      unsubAuth();
+      if (unsubSnap) unsubSnap();
+    };
   }, []);
+
   const total = items.reduce((acc, item) => acc + (item.price || 0), 0);
   const counts = items.reduce((acc, item) => {
     acc[item.passType] = (acc[item.passType] || 0) + 1;
@@ -113,32 +121,32 @@ export default function Cart() {
   };
 
   const handleCheckout = async () => {
+    if (!auth.currentUser) {
+      router.push("/login");
+      return;
+    }
+
     setIsPaying(true);
-    
-    // 🔒 SECURITY: Grab the user's auth token or guest ID to prove identity
-    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-    const currentID = auth.currentUser ? auth.currentUser.uid : sessionStorage.getItem("guestSessionID");
-    
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const token = await auth.currentUser.getIdToken();
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
     
     if (total === 0) {
       try {
         const ticketIds = items.map(item => item.id);
-        
-        // 🐛 BUG FIX: Changed from "/api/activate-free" to the correct route "/api/activate"
         const response = await fetch("/api/activate", {
           method: "POST",
-          headers, // Send the secure headers
-          body: JSON.stringify({ ticketIds, guestSessionId: currentID }) // Send the guest ID
+          headers,
+          body: JSON.stringify({ ticketIds })
         });
         
         if (!response.ok) throw new Error("Failed to activate free passes securely.");
 
         setIsSuccess(true);
         setTimeout(() => { 
-          if (auth.currentUser) router.push("/account"); 
-          else { sessionStorage.removeItem("guestSessionID"); router.push("/"); } 
+          router.push("/account"); 
         }, 3000);
         return;
       } catch (err) {
@@ -152,8 +160,8 @@ export default function Cart() {
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
-        headers, // Send the secure headers
-        body: JSON.stringify({ items, guestSessionId: currentID }), // Send the guest ID
+        headers,
+        body: JSON.stringify({ items }),
       });
       const data = await response.json();
       if (data.url) window.location.href = data.url;

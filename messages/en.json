@@ -724,13 +724,13 @@
     "emptyMsg": "No users match your search."
   },
   "AuthModal": {
-    "title": "Join the festival",
-    "subtitle": "Choose your checkout method",
-    "createAccount": "Create Account",
-    "createAccountDesc": "Manage up to 5 group tickets and view your QR codes at any time",
-    "guestCheckout": "Checkout as Guest",
-    "guestCheckoutDesc": "Fast checkout. Ticket sent to your email"
-  },
+  "title": "Account Required",
+  "subtitle": "Please log in or create a profile to purchase passes",
+  "createAccount": "Create an Account",
+  "createAccountDesc": "Register a new profile to purchase and manage your festival passes.",
+  "loginTitle": "Log In",
+  "loginDesc": "Already have a profile? Sign in to your account here."
+},
   "CookieBanner": {
     "title": "We Use Cookies",
     "desc1": "We use cookies to improve your festival experience, analyze site traffic, and serve tailored content. By clicking \"Accept All\", you consent to our use of cookies. Read our ",

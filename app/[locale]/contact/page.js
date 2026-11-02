@@ -52,9 +52,9 @@ export default function ContactPage() {
   ];
 
   const mainSocials = [
-    { name: "Facebook", icon: Facebook, url: "https://facebook.com", baseBg: "bg-blue-50", baseColor: "text-blue-500", hoverClass: "hover:bg-blue-500 hover:text-white hover:shadow-blue-500/30" },
-    { name: "Instagram", icon: Instagram, url: "https://instagram.com", baseBg: "bg-pink-50", baseColor: "text-pink-500", hoverClass: "hover:bg-pink-500 hover:text-white hover:shadow-pink-500/30" },
-    { name: "YouTube", icon: Youtube, url: "https://youtube.com", baseBg: "bg-red-50", baseColor: "text-red-500", hoverClass: "hover:bg-red-500 hover:text-white hover:shadow-red-500/30" }
+    { name: "Facebook", icon: Facebook, url: "https://www.facebook.com/SummerSalsaFestVarna/", baseBg: "bg-blue-50", baseColor: "text-blue-500", hoverClass: "hover:bg-blue-500 hover:text-white hover:shadow-blue-500/30" },
+    { name: "Instagram", icon: Instagram, url: "https://www.instagram.com/summersalsafest/", baseBg: "bg-pink-50", baseColor: "text-pink-500", hoverClass: "hover:bg-pink-500 hover:text-white hover:shadow-pink-500/30" },
+    { name: "YouTube", icon: Youtube, url: "https://www.youtube.com/@marialilianova4405", baseBg: "bg-red-50", baseColor: "text-red-500", hoverClass: "hover:bg-red-500 hover:text-white hover:shadow-red-500/30" }
   ];
 
   const generateCaptcha = () => {

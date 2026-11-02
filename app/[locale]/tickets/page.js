@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
@@ -19,7 +19,6 @@ export default function TicketPage() {
   /* Component State */
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [realName, setRealName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -79,11 +78,11 @@ export default function TicketPage() {
   }, []);
 
   /* Check limits and submit the ticket payload */
-  const executeCheckout = async (isGuestAction = false) => {
+  const executeCheckout = async () => {
     setLoading(true);
     try {
       // 1. Check purchase limits for authenticated users
-      if (!isGuestAction && auth.currentUser) {
+      if (auth.currentUser) {
         if (userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
           const q = query(
             collection(db, "tickets"),
@@ -94,14 +93,13 @@ export default function TicketPage() {
 
           if (snap.size >= 5) {
             setLoading(false);
-            const isAnon = auth.currentUser.isAnonymous;
             showPopup({
               type: "info",
               title: t('limitTitle'),
-              message: isAnon ? t('limitMsgGuest') : t('limitMsgUser'),
-              confirmText: isAnon ? t('createAccountBtn') : t('applyBtn'),
+              message: t('limitMsgUser'),
+              confirmText: t('applyBtn'),
               cancelText: t('cancelBtn'),
-              onConfirm: () => router.push(isAnon ? "/login" : "/apply")
+              onConfirm: () => router.push("/apply")
             });
             return;
           }
@@ -117,11 +115,9 @@ export default function TicketPage() {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          isGuest: auth.currentUser?.isAnonymous || false,
           tickets: [{
             userName: realName,
-            passType: 'Full Pass',
-            guestEmail: guestEmail
+            passType: 'Full Pass'
           }]
         })
       });
@@ -148,20 +144,7 @@ export default function TicketPage() {
       setShowModal(true);
       return;
     }
-    await executeCheckout(false);
-  };
-
-  /* Initializes an anonymous Firebase session for guest users */
-  const handleGuestContinue = async () => {
-    try {
-      setLoading(true);
-      await signInAnonymously(auth);
-      setShowModal(false);
-      await executeCheckout(true);
-    } catch (error) {
-      showPopup({ type: "error", title: "Authentication Error", message: "Could not initialize guest session.", confirmText: "Close" });
-      setLoading(false);
-    }
+    await executeCheckout();
   };
 
   return (
@@ -170,7 +153,6 @@ export default function TicketPage() {
       <AuthModal 
         isOpen={showModal} 
         onClose={() => setShowModal(false)} 
-        onGuestContinue={handleGuestContinue} 
       />
 
       <div className="flex-grow flex flex-col justify-center items-center w-full pt-32 pb-16 px-4 sm:px-6">
@@ -195,23 +177,23 @@ export default function TicketPage() {
                   </tr>
                 </thead>
                 <tbody className="text-slate-900 font-bold text-lg sm:text-xl">
-  <tr>
-    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
-    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
-    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][2] + 5} €</td>
-    <td className="py-5 px-2 border-r border-gray-100">150 €</td>
-    <td className="py-5 px-2">
-      <div className="flex items-center justify-center gap-2">
-        <span className="text-sm sm:text-base text-slate-400 line-through font-semibold">
-          {fullPassPrice} €
-        </span>
-        <span>
-          {typeof fullPassPrice === 'number' ? fullPassPrice - 5 : '...'} €
-        </span>
-      </div>
-    </td>
-  </tr>
-</tbody>
+                  <tr>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][0] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][1] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">{pricingTable['Full Pass'][2] + 5} €</td>
+                    <td className="py-5 px-2 border-r border-gray-100">150 €</td>
+                    <td className="py-5 px-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm sm:text-base text-slate-400 line-through font-semibold">
+                          {fullPassPrice} €
+                        </span>
+                        <span>
+                          {typeof fullPassPrice === 'number' ? fullPassPrice - 5 : '...'} €
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -241,20 +223,6 @@ export default function TicketPage() {
               <h3 className="font-bebas text-4xl sm:text-5xl mb-8 uppercase leading-none text-slate-900 tracking-wide">{t('verifyTitle')}</h3>
 
               <div className="space-y-5 relative z-10">
-                {/* Guest Email Field - Shows when logged out OR when explicitly anonymous, blocked while auth loads */}
-                {(!isAuthLoading && (!auth.currentUser || auth.currentUser?.isAnonymous)) && (
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('emailLabel')}</label>
-                    <input
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      required
-                      maxLength={100}
-                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 font-bold text-sm transition-all text-slate-900"
-                      onChange={e => setGuestEmail(e.target.value)}
-                    />
-                  </div>
-                )}
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-2">{t('nameLabel')}</label>
@@ -275,7 +243,7 @@ export default function TicketPage() {
 
                 <button
                   onClick={handleAddToCart}
-                  disabled={isAuthLoading || !realName || isNameInvalid || ((!auth.currentUser || auth.currentUser?.isAnonymous) && !guestEmail) || loading || !salesEnabled || !autoSalesOpen}
+                  disabled={isAuthLoading || !realName || isNameInvalid || loading || !salesEnabled || !autoSalesOpen}
                   className="cursor-pointer w-full h-14 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-salsa-pink hover:-translate-y-1 active:translate-y-0 transition-all tracking-widest flex items-center justify-center gap-3 text-[11px] uppercase disabled:opacity-50 disabled:hover:bg-slate-900 disabled:hover:translate-y-0 mt-8"
                 >
                   {loading ? (

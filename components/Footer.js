@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Instagram, Facebook, Twitter } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Facebook, Youtube } from "lucide-react";
 import { Link } from '@/routing'; // THE FIX: Custom routing
 import Image from "next/image";
 import logoImg from "../assets/logo.png"; 
@@ -54,9 +54,9 @@ export default function Footer() {
         <div className="space-y-6">
           <h4 className="font-bold text-[11px] uppercase tracking-[0.4em] text-gray-400">{t('contactHeading')}</h4>
           <div className="space-y-4 text-xs font-bold text-gray-700 uppercase tracking-widest">
-            <div className="flex items-center gap-3"><MapPin size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">{t('contactLocation')}</span></div>
-            <div className="flex items-center gap-3"><Phone size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">+359 888 123 456</span></div>
-            <div className="flex items-center gap-3"><Mail size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">info@summersalsa.com</span></div>
+            <div className="flex items-center gap-3"><Phone size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">+359 888 539 188</span></div>
+            <div className="flex items-center gap-3"><Phone size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">+359 877 377 294</span></div>
+            <div className="flex items-center gap-3"><Mail size={16} className="text-salsa-pink shrink-0" /> <span className="truncate">ssf.varna@gmail.com</span></div>
           </div>
         </div>
 
@@ -64,9 +64,9 @@ export default function Footer() {
         <div className="space-y-6">
           <h4 className="font-bold text-[11px] uppercase tracking-[0.4em] text-gray-400">{t('socialsHeading')}</h4>
           <div className="flex gap-4">
-            <a href="#" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Instagram size={20} /></a>
-            <a href="#" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Facebook size={20} /></a>
-            <a href="#" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Twitter size={20} /></a>
+            <a href="https://www.instagram.com/summersalsafest/" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Instagram size={20} /></a>
+            <a href="https://www.facebook.com/SummerSalsaFestVarna/" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Facebook size={20} /></a>
+            <a href="https://www.youtube.com/@marialilianova4405" className="p-3 bg-gray-50 rounded-xl hover:bg-salsa-pink hover:text-white transition shadow-sm"><Youtube size={20} /></a>
           </div>
         </div>
 

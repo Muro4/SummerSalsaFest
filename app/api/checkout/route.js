@@ -8,6 +8,8 @@ import { getActiveFestivalYear } from "@/lib/utils";
 export async function POST(req) {
   try {
     const actor = await authenticate(req);
+    if (actor.anonymous) throw new ApiError("unauthorized", 401);
+
     const { items } = await requestBody(req);
     if (!Array.isArray(items) || !items.length || items.length > 100) throw new ApiError("invalidInput");
     const ids = items.map(item => documentId(item?.id));
@@ -27,7 +29,12 @@ export async function POST(req) {
         if (ticket.userId !== actor.uid) throw new ApiError("forbidden", 403);
         if (ticket.status !== "pending" || ticket.roomId || ticket.festivalYear !== getActiveFestivalYear()) throw new ApiError("invalidStatus", 409);
         if (!["Full Pass", "Party Pass", "Day Pass", "Performers Pass"].includes(ticket.passType)) throw new ApiError("invalidInput");
-        return { ...ticket, price: getPriceAtDate(ticket.passType) };
+        let currentPrice = getPriceAtDate(ticket.passType);
+// Re-apply the 5€ markup if the ticket has no ambassador attached (direct purchase)
+if (!ticket.ambassadorId && currentPrice > 0) {
+  currentPrice += 5;
+}
+return { ...ticket, price: currentPrice };
       });
       const amountTotal = records.reduce((sum, ticket) => sum + Math.round(ticket.price * 100), 0);
       if (amountTotal <= 0) throw new ApiError("invalidInput");
@@ -44,7 +51,7 @@ export async function POST(req) {
       success_url: `${origin}/cart/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
       metadata: { checkoutSessionId: sessionRef.id },
-      ...(actor.email || tickets[0].guestEmail ? { customer_email: actor.email || tickets[0].guestEmail } : {}),
+      ...(actor.email ? { customer_email: actor.email } : {}),
     });
     await sessionRef.update({ stripeSessionId: session.id });
     return NextResponse.json({ url: session.url });

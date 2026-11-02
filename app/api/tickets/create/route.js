@@ -5,7 +5,6 @@ import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
 import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
 import { isOptionalEmail } from "@/lib/validation";
-import { emailAddress } from "@/lib/server-validation";
 
 const PUBLIC_PASSES = ["Full Pass", "Party Pass", "Day Pass"];
 const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Free Pass"];
@@ -13,8 +12,9 @@ const STAFF_PASSES = [...PUBLIC_PASSES, "Performers Pass", "Free Full Pass", "Fr
 export async function POST(req) {
   try {
     const actor = await authenticate(req);
+    if (actor.anonymous) throw new ApiError("unauthorized", 401);
+
     const { tickets, isAmbassadorRegistration } = await requestBody(req);
-    const isGuest = actor.anonymous;
     const staff = ["ambassador", "superadmin"].includes(actor.role);
     if (isAmbassadorRegistration && !staff) throw new ApiError("forbidden", 403);
     const registration = !!isAmbassadorRegistration && staff;
@@ -97,12 +97,16 @@ export async function POST(req) {
         } else if (draft?.state === "held") {
           throw new ApiError("assignmentMismatch", 409);
         }
-        const price = input.passType === "Free Full Pass" ? 0 : getPriceAtDate(input.passType);
+        let price = input.passType === "Free Full Pass" ? 0 : getPriceAtDate(input.passType);
+// Apply the 5€ markup for direct website purchases (not ambassador registrations)
+if (!registration && price > 0) {
+  price += 5;
+}
         const status = price === 0 || registration ? "active" : "pending";
         const ticket = {
           userId: actor.uid, userName: input.userName.trim().toUpperCase(),
-          guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : isGuest ? emailAddress(input.guestEmail) : actor.email,
-          isGuest: !!isGuest, passType: input.passType, price,
+          guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : (actor.email || ""),
+          isGuest: false, passType: input.passType, price,
           commission: registration && input.passType === "Full Pass" ? 10 : 0,
           accommodation: entry?.room.hotelId || "None", roomId: item.roomId,
           accommodationPrice: entry ? 3 * (entry.room.pricePerPersonPerNight || 0) : 0,
