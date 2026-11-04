@@ -29,8 +29,8 @@ const modak = Modak({
 });
 
 export const metadata = {
-  title: "Summer Salsa Varna 2026",
-  description: "The 14th edition of Summer Salsa Fest",
+  title: "Summer Salsa Fest Varna",
+
 };
 
 export const viewport = {

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { db } from "@/lib/firebase";
-import { collection, doc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Plus, Trash2, Save, X, UploadCloud, Instagram, Edit2, AlertCircle, Search } from "lucide-react";
 import { usePopup } from "@/components/PopupProvider";
 import Button from "@/components/Button";
@@ -10,10 +10,8 @@ import Image from "next/image";
 import { useTranslations, useLocale } from 'next-intl';
 import Emoji from "@/components/Emoji"; 
 
-// Using relative path to guarantee it works without alias issues
 import { WORLD_FLAGS } from "../../lib/flags";
 
-// 📚 MASSIVELY EXPANDED DICTIONARY FOR AUTO-TRANSLATION
 const DICTIONARY = {
   // Genres
   'bachata': 'Бачата',
@@ -91,7 +89,6 @@ const DICTIONARY = {
   'united arab emirates': 'Обединени Арабски Емирства'
 };
 
-// 🌟 CUSTOM SEARCHABLE DROPDOWN COMPONENT
 function SearchableFlagSelect({ value, onChange, placeholder, onClear }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -163,7 +160,9 @@ function SearchableFlagSelect({ value, onChange, placeholder, onClear }) {
   );
 }
 
-export default function ArtistsTab({ artists, onStageChange }) {
+// Option A: Removed 'artists' and 'onStageChange' props because this component now 
+// manages the single document ('settings/artists') internally
+export default function ArtistsTab() {
   const t = useTranslations('AdminArtistsTab');
   const locale = useLocale();
   const { showPopup } = usePopup();
@@ -174,15 +173,32 @@ export default function ArtistsTab({ artists, onStageChange }) {
   
   const [errors, setErrors] = useState({});
   const [editingId, setEditingId] = useState(null);
+  const [localArtists, setLocalArtists] = useState([]);
   
   const [formData, setFormData] = useState({
     name: "", genreEn: "", genreBg: "", countryEn: "", countryBg: "",
-    flag1: "🇪🇸", flag2: "", instagramUrl: "", imageUrl: "", file: null
+    flag1: "🇪🇸", flag2: "", instagramUrl: "", imageUrl: "", category: "stars", file: null
   });
 
   const fileInputRef = useRef(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true); 
+    fetchArtists();
+  }, []);
+
+  const fetchArtists = async () => {
+    try {
+      const docRef = doc(db, "settings", "artists");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data().list || [];
+        setLocalArtists(data);
+      }
+    } catch (e) {
+      console.error("Error fetching artists:", e);
+    }
+  };
 
   const handleOpenModal = (artist = null) => {
     setErrors({});
@@ -201,11 +217,15 @@ export default function ArtistsTab({ artists, onStageChange }) {
         flag2: f2,
         instagramUrl: artist.instagramUrl || "",
         imageUrl: artist.imageUrl || "",
+        category: artist.category || "stars",
         file: null
       });
     } else {
       setEditingId(null);
-      setFormData({ name: "", genreEn: "", genreBg: "", countryEn: "", countryBg: "", flag1: "🇪🇸", flag2: "", instagramUrl: "", imageUrl: "", file: null });
+      setFormData({ 
+        name: "", genreEn: "", genreBg: "", countryEn: "", countryBg: "", 
+        flag1: "🇪🇸", flag2: "", instagramUrl: "", imageUrl: "", category: "stars", file: null 
+      });
     }
     document.body.style.overflow = "hidden";
     setIsModalOpen(true);
@@ -241,7 +261,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
     const val = e.target.value.toUpperCase();
     const searchVal = val.toLowerCase();
     
-    // Split input by "&", "and", "," or "/"
     const parts = searchVal.split(/\s*(?:&|and|,|\/)\s*/i).map(p => p.trim()).filter(Boolean);
     
     let foundFlag1 = formData.flag1;
@@ -311,7 +330,7 @@ export default function ArtistsTab({ artists, onStageChange }) {
     }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     
     const newErrors = {};
@@ -320,7 +339,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
     if (!formData.genreBg.trim()) newErrors.genreBg = true;
     if (!formData.countryEn.trim()) newErrors.countryEn = true;
     if (!formData.countryBg.trim()) newErrors.countryBg = true;
-    if (!formData.instagramUrl.trim()) newErrors.instagramUrl = true;
     if (!formData.imageUrl) newErrors.imageUrl = true;
 
     if (Object.keys(newErrors).length > 0) {
@@ -337,22 +355,48 @@ export default function ArtistsTab({ artists, onStageChange }) {
       flag: combinedFlags,
       instagramUrl: formData.instagramUrl.trim(),
       imageUrl: formData.imageUrl.trim(),
+      category: formData.category,
       updatedAt: new Date().toISOString()
     };
 
-    if (editingId) {
-      onStageChange('artists', editingId, payload);
-    } else {
-      const newId = doc(collection(db, "artists")).id;
-      onStageChange('artists', newId, { ...payload, createdAt: new Date().toISOString(), isNew: true });
+    try {
+      const docRef = doc(db, "settings", "artists");
+      let updatedList = [...localArtists];
+
+      if (editingId) {
+        payload.id = editingId;
+        updatedList = updatedList.map(a => a.id === editingId ? payload : a);
+      } else {
+        payload.id = Date.now().toString(); // Generate simple ID for array objects
+        payload.createdAt = new Date().toISOString();
+        updatedList.push(payload);
+      }
+      
+      await setDoc(docRef, { list: updatedList }, { merge: true });
+      setLocalArtists(updatedList);
+      handleCloseModal();
+    } catch (err) {
+      showPopup({ type: "error", title: "Save Failed", message: err.message });
     }
-    handleCloseModal();
   };
 
   const handleDelete = (id, name) => {
     showPopup({
-      type: "danger", title: t('deleteTitle'), message: t('deleteMsg', { name }), confirmText: t('deleteConfirm'), cancelText: t('cancel'),
-      onConfirm: () => onStageChange('artists', id, { _deleted: true })
+      type: "danger", 
+      title: t('deleteTitle'), 
+      message: t('deleteMsg', { name }), 
+      confirmText: t('deleteConfirm'), 
+      cancelText: t('cancel'),
+      onConfirm: async () => {
+        try {
+          const docRef = doc(db, "settings", "artists");
+          const updatedList = localArtists.filter(a => a.id !== id);
+          await setDoc(docRef, { list: updatedList }, { merge: true });
+          setLocalArtists(updatedList);
+        } catch (err) {
+          showPopup({ type: "error", title: "Delete Failed", message: err.message });
+        }
+      }
     });
   };
 
@@ -385,6 +429,21 @@ export default function ArtistsTab({ artists, onStageChange }) {
             </div>
           )}
 
+          {/* NEW CATEGORY SELECTOR */}
+          <div className="space-y-2 shrink-0">
+            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblCategory')}</label>
+            <select 
+              value={formData.category} 
+              onChange={e => handleInputChange('category', e.target.value)} 
+              className={inputClass(false)}
+            >
+              <option value="stars">{t('catStars')}</option>
+              <option value="artists">{t('catArtists')}</option>
+              <option value="djs">{t('catDjs')}</option>
+              <option value="media">{t('catMedia')}</option>
+            </select>
+          </div>
+
           <div className="space-y-2 shrink-0">
             <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblName')}</label>
             <input type="text" maxLength={100} value={formData.name} onChange={e => handleInputChange('name', e.target.value)} className={inputClass(errors.name)} />
@@ -401,7 +460,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
             </div>
           </div>
 
-          {/* ⬇️ MOVED: Countries on their own row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblCountryEn')}</label>
@@ -413,7 +471,6 @@ export default function ArtistsTab({ artists, onStageChange }) {
             </div>
           </div>
           
-          {/* ⬇️ MOVED: Flags on their own row, right underneath the countries */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Flag 1</label>
@@ -436,7 +493,7 @@ export default function ArtistsTab({ artists, onStageChange }) {
 
           <div className="space-y-2 shrink-0">
             <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">{t('lblInstagram')}</label>
-            <input type="url" maxLength={150} value={formData.instagramUrl} onChange={e => handleInputChange('instagramUrl', e.target.value)} className={inputClass(errors.instagramUrl) + " tracking-normal font-medium text-slate-600"} />
+            <input type="url" maxLength={150} value={formData.instagramUrl} onChange={e => handleInputChange('instagramUrl', e.target.value)} className={inputClass(errors.instagramUrl) + " tracking-normal font-medium text-slate-600"} placeholder="https://..." />
           </div>
 
           <div className="space-y-2 pt-2 flex-1 flex flex-col min-h-[220px]">
@@ -481,46 +538,38 @@ export default function ArtistsTab({ artists, onStageChange }) {
     </div>
   );
   
-  const uniqueArtists = Array.from(new Map(artists.map(a => [a.id, a])).values());
+  // Sort artists so they display consistently
+  const sortedArtists = [...localArtists].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative z-10 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
         <div>
           <h2 className="font-bebas tracking-wide text-4xl text-slate-900 uppercase leading-none">{t('title')}</h2>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{t('subtitle', { count: uniqueArtists.length })}</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{t('subtitle', { count: sortedArtists.length })}</p>
         </div>
         <Button onClick={() => handleOpenModal()} variant="primary" icon={Plus} className="w-full md:w-auto shadow-salsa-pink/20 px-8">
           {t('btnAdd')}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mt-8">
-        {uniqueArtists.map((artist) => (
-          <div key={artist.id} className="relative w-full aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-xl bg-slate-100 group">
-            {artist.imageUrl && <Image src={artist.imageUrl} alt={artist.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
-
-            <div className="absolute top-5 right-5 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => handleOpenModal(artist)} className="p-3 bg-white/90 hover:bg-white text-slate-700 rounded-full shadow-lg backdrop-blur-sm transition-all"><Edit2 size={16} /></button>
-              <button onClick={() => handleDelete(artist.id, artist.name)} className="p-3 bg-red-500/90 hover:bg-red-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all"><Trash2 size={16} /></button>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        {sortedArtists.map((artist) => (
+          <div key={artist.id} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
+            {/* Minimalist row-based card for the admin panel to save space */}
+            <div className="relative w-16 h-20 shrink-0 rounded-2xl overflow-hidden bg-slate-100">
+              {artist.imageUrl && <Image src={artist.imageUrl} alt={artist.name} fill className="object-cover" sizes="64px" />}
+            </div>
+            
+            <div className="flex-grow min-w-0">
+              <span className="text-[9px] font-black uppercase tracking-widest text-salsa-pink block truncate">{artist.category || 'stars'}</span>
+              <h3 className="font-bold text-slate-900 truncate leading-tight">{artist.name}</h3>
+              <p className="text-[10px] text-slate-500 truncate">{artist.flag} {artist.country?.en}</p>
             </div>
 
-            <div className="absolute bottom-5 left-5 right-5 bg-white p-5 rounded-2xl flex items-center justify-between shadow-lg">
-              <Emoji className="flex flex-col text-left pr-4 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-salsa-pink mb-1 block truncate">{artist.genre?.[locale] || artist.genre?.en}</span>
-                <h3 className="font-bebas text-3xl text-slate-900 tracking-wide leading-none mb-1.5 truncate">{artist.name}</h3>
-                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest truncate">
-                  <span className="text-sm shadow-sm leading-none">{artist.flag}</span>
-                  <span className="truncate">{artist.country?.[locale] || artist.country?.en}</span>
-                </div>
-              </Emoji>
-
-              <div className="shrink-0 pl-4 border-l border-gray-100">
-                <a href={artist.instagramUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center bg-gray-50 hover:bg-salsa-pink text-slate-400 hover:text-white p-3.5 rounded-xl transition-colors">
-                  <Instagram size={20} strokeWidth={2.5} />
-                </a>
-              </div>
+            <div className="shrink-0 flex flex-col gap-2">
+              <button onClick={() => handleOpenModal(artist)} className="p-2 bg-gray-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-colors"><Edit2 size={14} /></button>
+              <button onClick={() => handleDelete(artist.id, artist.name)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}

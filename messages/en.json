@@ -179,36 +179,13 @@
   },
 
   "Gallery": {
-    "heroPre": "Memories",
-    "heroTitle1": "The",
-    "heroTitle2": "Gallery",
-    "heroDesc": "Relive the energy, the music, and the beautiful moments from our previous editions.",
-    "swipe": "Swipe"
-  },
+  "heroTitle1": "The Gallery",
+  "fbTitle": "View all our photos",
+  "fbAlbum": "Go to Facebook",
+  "swipe": "Swipe"
+},
 
-  "About": {
-    "heroPre": "The Heartbeat of Varna",
-    "heroTitle1": "OUR",
-    "heroTitle2": "STORY",
-    "storyTitle": "From a Dance Floor Dream to a Global Festival",
-    "storyP1": "It all started in 2012 with a simple but powerful dream. Mimi and Marto, the passionate founders of the 'Malambo' dance school, wanted to create something more than just another dance event.",
-    "storyP2": "They envisioned a festival where the global dance community could unite under the Bulgarian sun. A place where world-class instruction meets the warmth of a family, and where the parties don't stop until the sun comes up over the Black Sea.",
-    "storyP3": "Fourteen years later, Summer Salsa Fest Varna has grown into one of the most anticipated events of the year. While the festival has expanded to host thousands of dancers and over 50 international champions, the core mission remains exactly the same as it was on day one: pure love for the music, authentic connection, and sharing the magic of the dance floor.",
-    "connectTitle": "Connect With The Community",
-    "connectDesc": "Follow our journey, watch our favorite memories, and join the official event groups below to stay updated on the 2026 edition!",
-    "socials": "Official Socials",
-    "fbPage": "Official Facebook Page",
-    "ytPage": "Official YouTube Channel",
-    "eventsTitle": "Official 2026 Events",
-    "preParty": "Pre-Party SSF",
-    "prePartyDate": "Thursday • 30.07.2026",
-    "mainFest": "Summer Salsa Fest Varna",
-    "mainFestDate": "Friday - Sunday • 31.07 - 03.08.2026",
-    "beachFiesta": "Free Beach Fiesta",
-    "beachFiestaDate": "Monday • 03.08.2026",
-    "goodbyeParty": "Goodbye Party SSF",
-    "goodbyePartyDate": "Monday Night • 03.08.2026"
-  },
+  
   
   "Contact": {
     "pageTitle": "Contact Us",
@@ -401,66 +378,7 @@
     "errGenTitle": "Error",
     "btnClose": "Close"
   },
-  "DraftTab": {
-    "searchPlaceholder": "SEARCH DRAFT NAMES...",
-    "filterAll": "All Passes",
-    "title": "Pending Group",
-    "subtitle": "Draft names and select passes. Changes save automatically.",
-    "drafted": "Drafted:",
-    "btnAdd": "Add",
-    "thSelected": "{count} Selected",
-    "thName": "Legal Name (As Per ID)",
-    "thPass": "Pass Selection",
-    "thPrice": "Price",
-    "deleteTitle": "Delete Rows?",
-    "deleteMsgMass": "Are you sure you want to delete {count} selected row(s)?",
-    "deleteMsgSingle": "Are you sure you want to remove '{name}'?",
-    "deleteMsgEmpty": "Are you sure you want to remove this empty row?",
-    "deleteBtn": "Yes, Delete",
-    "cancelBtn": "Cancel",
-    "errAmountTitle": "Invalid Amount",
-    "errAmountMsg": "You must add at least 1 row.",
-    "errLimitTitle": "Limit Reached",
-    "errLimitMsg": "The maximum draft size is 100 passes.",
-    "okBtn": "OK",
-    "gotItBtn": "Got It",
-    "errReq": "Name is required",
-    "errMin": "Min 2 letters",
-    "errLetters": "Letters only",
-    "namePlaceholder": "ATTENDEE NAME",
-    "noDrafts": "No drafts found. Try adding rows.",
-    "btnDeleteSel": "Delete Selected ({count})",
-    "totalAmt": "Total Amount",
-    "btnCart": "Send to Cart",
-    "passFull": "Full Pass",
-    "passParty": "Party Pass",
-    "passDay": "Day Pass",
-    "passFree": "Free Pass"
-  },
-  "HistoryTab": {
-  "searchPlaceholder": "Search records...",
-  "filterAll": "All Passes",
-  "passFull": "Full Pass",
-  "passPerformers": "Performers Pass",
-  "passFree": "Free Full Pass",
-  "title": "Registration History",
-  "subtitle": "View all tickets you have registered.",
-  "registered": "Registered",
-  "totalPaid": "Total Paid",
-  "thName": "Dancer Name",
-  "thPassType": "Pass Type",
-  "thAccomm": "Accommodation",
-  "thFinal": "Final Price",
-  "thEmailed": "Emailed",
-  "thStatus": "Status",
-  "accNone": "None",
-  "statusActive": "Active",
-  "statusPending": "Pending",
-  "viewTicket": "View Ticket",
-  "noPaidFound": "No records found",
-  "lblId": "ID",
-  "noPaidMobile": "No records found"
-},
+  
   "Auth": {
     "reqLength": "8+ Characters",
     "reqUpper": "Uppercase Letter",
@@ -784,9 +702,13 @@
   },
   "Artists": {
     "heroPre": "The Lineup",
-    "heroTitle1": "Confirmed",
-    "heroTitle2": "Artists",
-    "heroDesc": "Get ready to learn and dance with the world's finest. Our 2026 lineup features international champions and the hottest rising stars."
+    "heroTitle1": "Artists",
+    "heroDesc": "Get ready to learn and dance with the world's finest. Our 2026 lineup features international champions and the hottest rising stars.",
+    "catStars": "Stars",
+   "catArtists": "Artists",
+   "catDjs": "DJs",
+    "catMedia": "Media & Photo",
+    "empty": "Lineup coming soon!"
   },
   "AdminArtistsTab": {
     "title": "Artist Roster",
@@ -814,7 +736,12 @@
     "deleteMsg": "Are you sure you want to remove {name} from the lineup?",
     "deleteConfirm": "Yes, Delete",
     "deleted": "Deleted",
-    "deleteSuccess": "Artist removed successfully."
+    "deleteSuccess": "Artist removed successfully.",
+    "lblCategory": "Category",
+  "catStars": "Stars",
+  "catArtists": "Artists",
+  "catDjs": "DJs",
+  "catMedia": "Media & Photo"
   },
 
   "DraftTab": {
@@ -1081,7 +1008,6 @@
   "artists": "Artists",
   "gallery": "Gallery",
   "charity": "Charity", 
-  "about": "About",
   "contact": "Contact",
   "myAccount": "My Account",
   "dashboard": "Dashboard",
