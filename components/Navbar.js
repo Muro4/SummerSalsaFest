@@ -231,7 +231,9 @@ export default function Navbar() {
             <Link href="/artists" className={desktopLinkClass('/artists')}>{t('artists')}</Link>
             <Link href="/gallery" className={desktopLinkClass('/gallery')}>{t('gallery')}</Link>
             <Link href="/charity" className={desktopLinkClass('/charity')}>{t('charity')}</Link>
+            <Link href="/jack-and-jill" className={desktopLinkClass('/jack-and-jill')}>{t('navJackJill')}</Link>
             <Link href="/contact" className={desktopLinkClass('/contact')}>{t('contact')}</Link>
+            
           </div>
 
           <div className="flex-1 flex justify-end items-center gap-3 md:gap-4">

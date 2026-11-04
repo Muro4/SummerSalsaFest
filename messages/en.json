@@ -376,7 +376,20 @@
     "errCartMsg": "Your drafted group has been moved to your cart.",
     "btnGoCart": "Go to Cart",
     "errGenTitle": "Error",
-    "btnClose": "Close"
+    "btnClose": "Close",
+    "pricingTitle": "Pricing & Commissions",
+  "policyTitle": "Transfer Policy",
+  "passType": "Pass Type",
+  "deadline1": "Until 31.03",
+  "deadline2": "Until 31.05",
+  "deadline3": "Until 29.07",
+  "onSpot": "On Spot",
+  "commission": "Commission",
+  "fullPass": "Full Pass",
+  "performersPass": "Performers Full Pass",
+  "transferFree": "Until 07.07, the pass owner can be changed free of charge.",
+  "transferFee": "From July 7th to July 26th, changes can be made for a fee of 25 €.",
+  "transferClosed": "After July 27th, no changes will be allowed."
   },
   
   "Auth": {
@@ -658,7 +671,8 @@
   "contactHeading": "Contact",
   "contactLocation": "Varna, Bulgaria",
   "socialsHeading": "Follow Us",
-  "copyright": "© {year} Summer Salsa Fest Varna. All Rights Reserved."
+  "copyright": "© {year} Summer Salsa Fest Varna. All Rights Reserved.",
+  "navJackJill": "Jack & Jill"
 },
   "Popup": {
     "defaultOk": "OK",
@@ -1016,7 +1030,8 @@
   "adminPanel": "Admin Panel",
   "login": "Login",
   "signOut": "Sign Out",
-  "menu": "Menu"
+  "menu": "Menu",
+  "navJackJill": "Jack & Jill"
 },
 "Charity": {
   "title": "Dance For A Cause",
@@ -1044,5 +1059,26 @@
     { "name": "Kaloyan Iliev Dimitrov", "details": "BG36STSA93000031216952", "link": "" },
     { "name": "Yoana Georgieva Zafirova", "details": "BG49STSA93000031171225 | BIC STSABGSF", "link": "" }
   ]
+},
+"JackJill": {
+  "heroPre": "Social Dance Contest",
+  "heroTitle1": "Jack &",
+  "heroTitle2": "Jill",
+  "heroDesc": "Step onto the dance floor, adapt to the music, and connect with a random partner! Show off your true social dancing skills in our exciting Jack & Jill competition.",
+  "howItWorks": "How it works",
+  "step1Title": "Random Partners",
+  "step1Desc": "Leaders and followers are paired randomly. You won't know who you are dancing with until you step on the floor!",
+  "step2Title": "Surprise Music",
+  "step2Desc": "The DJ chooses the songs. Adaptability, timing, and musicality are key to winning the judges' hearts.",
+  "step3Title": "Pure Connection",
+  "step3Desc": "It's all about lead and follow. No choreographed routines—just pure, spontaneous social dancing.",
+  "rulesTitle": "Rules & Categories",
+  "catNovice": "Novice (Amateur)",
+  "catNoviceDesc": "For dancers with less than 2-3 years of experience who want to test their skills in a fun, pressure-free environment.",
+  "catAdvanced": "Advanced (Pro)",
+  "catAdvancedDesc": "For experienced dancers, instructors, and previous J&J winners ready to showcase top-tier musicality and technique.",
+  "prizesTitle": "Epic Prizes",
+  "prizesDesc": "Win Full Passes for next year's edition, private classes with our star instructors, festival merch, and exclusive sponsor gifts!",
+  "registerBtn": "Register On-Site"
 }
 }
