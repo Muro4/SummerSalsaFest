@@ -35,7 +35,7 @@ export default function Footer() {
             <Link href="/tickets" className="hover:text-salsa-pink transition">{t('navPrices')}</Link>
             <Link href="/info" className="hover:text-salsa-pink transition">{t('navInfo')}</Link>
             <Link href="/gallery" className="hover:text-salsa-pink transition">{t('navGallery')}</Link>
-            <Link href="/about" className="hover:text-salsa-pink transition">{t('navAbout')}</Link>
+            <Link href="/charity" className="hover:text-salsa-pink transition">{t('navCharity')}</Link>
             <Link href="/contact" className="hover:text-salsa-pink transition">{t('navContact')}</Link>
           </div>
         </div>

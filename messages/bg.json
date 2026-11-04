@@ -32,23 +32,7 @@
   "Common": {
     "scroll": "Скрол"
   },
-  "Navbar": {
-    "home": "Начало",
-    "prices": "Пасове",
-    "info": "Информация",
-    "artists": "Артисти",
-    "gallery": "Галерия",
-    "about": "За Нас",
-    "contact": "Контакти",
-    "login": "Вход",
-    "signOut": "Изход",
-    "menu": "Меню",
-    "myAccount": "Моят Профил",
-    "dashboard": "Табло",
-    "ticketsDb": "База с пасове",
-    "gateScanner": "Скенер Вход",
-    "adminPanel": "Админ Панел"
-  },
+  
   "Tickets": {
     "salesClosedMsg": "Продажбите започват през ноември",
 "salesPausedMsg": "Продажбите са временно спрени",
@@ -768,23 +752,23 @@
     "ariaClose": "Затвори"
   },
   "Footer": {
-    "logoAlt": "Лого на Summer Salsa Fest",
-    "navHeading": "Навигация",
-    "navHome": "Начало",
-    "navPrices": "Цени",
-    "navInfo": "Инфо",
-    "navGallery": "Галерия",
-    "navAbout": "За Нас",
-    "navContact": "Контакти",
-    "legalHeading": "Правни",
-    "legalPrivacy": "Поверителност",
-    "legalTerms": "Условия за ползване",
-    "legalCookies": "Бисквитки",
-    "contactHeading": "Контакти",
-    "contactLocation": "Варна, БГ",
-    "socialsHeading": "Мрежи",
-    "copyright": "© {year} Summer Salsa Fest Варна. Всички права запазени."
-  },
+  "logoAlt": "Лого на Summer Salsa Fest",
+  "navHeading": "Навигация",
+  "navHome": "Начало",
+  "navPrices": "Цени",
+  "navInfo": "Информация",
+  "navGallery": "Галерия",
+  "navCharity": "Кауза",
+  "navContact": "Контакти",
+  "legalHeading": "Условия и правила",
+  "legalPrivacy": "Поверителност",
+  "legalTerms": "Общи условия",
+  "legalCookies": "Бисквитки",
+  "contactHeading": "Контакти",
+  "contactLocation": "Варна, България",
+  "socialsHeading": "Последвайте ни",
+  "copyright": "© {year} Summer Salsa Fest Varna. Всички права запазени."
+},
   "Popup": {
     "defaultOk": "ОК",
     "defaultCancel": "Отказ"
@@ -1115,5 +1099,50 @@
       "fullBoard": "Пълен пансион",
       "allInclusive": "Ол инклузив"
     }
-  }
+  },
+  "Navbar": {
+  "home": "Начало",
+  "prices": "Цени",
+  "info": "Информация",
+  "artists": "Артисти",
+  "gallery": "Галерия",
+  "charity": "Кауза", 
+  "about": "За нас",
+  "contact": "Контакти",
+  "myAccount": "Моят профил",
+  "dashboard": "Табло",
+  "ticketsDb": "Билети",
+  "gateScanner": "Скенер",
+  "adminPanel": "Админ панел",
+  "login": "Вход",
+  "signOut": "Изход",
+  "menu": "Меню"
+  },
+"Charity": {
+  "title": "Танцуваме за кауза",
+  "subtitle": "Да протегнем ръка заедно!",
+  "p1": "Танците ни обединяват, но могат да направят и нещо много по-голямо – да променят човешки съдби!",
+  "p2": "След всяко издание на Summer Salsa Fest екипът ни отделя част от средствата, събрани от продажбата на фестивални пасове и билети, за да подкрепи хора, които преминават през трудни житейски изпитания.",
+  "p3": "Вече две години организираме и благотворителни плажни фиести – с дансинг, сянка, озвучаване и DJ, където всеки може да се забавлява, да сподели любовта си към танците и едновременно с това да стане част от една добра кауза.",
+  "p4": "По-долу споделяме имената на част от хората, които вече са получили нашата подкрепа. Публикуваме ги, за да дадем гласност на техните каузи и възможност на всеки, който има желание и възможност, да помогне и лично.",
+  "ps": "ПС. Моля, проверявайте валидността на кампаниите. Някои от тях може да са приключили.",
+  "p5": "Всяко дарение има значение. Всяка протегната ръка носи надежда!",
+  "p6": "Нека заедно превърнем енергията на танца в доброта и подкрепа!",
+  "andManyOthers": "И много други.",
+  "viewCampaign": "Виж Кампанията",
+  "causes": [
+    { "name": "Колина Климентинова Вълкова", "details": "Revolut: @kolinakfyb", "link": "" },
+    { "name": "Andrei Bogdan Enache", "details": "Revolut: RO60REVO0000198944410034 / RO56INGB0000999912118986", "link": "" },
+    { "name": "Наталия Антонова /съпругата на Вангел/", "details": "BG86STSA93000027897294", "link": "" },
+    { "name": "Филип - Албертина Сантиаго Риверо – майка", "details": "Revolut: @albertzf2u", "link": "" },
+    { "name": "Бебе Кристин", "details": "", "link": "https://pavelandreev.org/bg/campaign/jivot-za-bebe-kristin" },
+    { "name": "Стоянка Върбанова", "details": "", "link": "https://pavelandreev.org/bg/campaign/da-pomognem-na-tanya-da-prebori-raka" },
+    { "name": "Златина Николова", "details": "", "link": "https://www.haskovo.net/news/572810/uspeshna-transplantatsiia-za-15-godishnata-zlatina" },
+    { "name": "Мартин Михаилов Христов", "details": "", "link": "https://btvnovinite.bg/bulgaria/zov-za-pomosht-17-godishno-momche-se-bori-s-rjadak-vid-tumor-na-grabnachnija-stalb.html" },
+    { "name": "Бебе Йоана", "details": "", "link": "https://btvnovinite.bg/bulgaria/shans-za-joana-dete-s-tezhka-forma-na-epilepsija-se-nuzhdae-ot-sredstva-za-da-zhivee.html" },
+    { "name": "Аз вярвам и помагам", "details": "", "link": "" },
+    { "name": "Калоян Илиев Димитров", "details": "BG36STSA93000031216952", "link": "" },
+    { "name": "Йоана Георгиева Зафирова", "details": "BG49STSA93000031171225 | BIC STSABGSF", "link": "" }
+  ]
+}
 }

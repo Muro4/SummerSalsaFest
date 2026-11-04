@@ -32,23 +32,7 @@
   "Common": {
     "scroll": "Scroll"
   },
-  "Navbar": {
-    "home": "Home",
-    "prices": "Passes",
-    "info": "Info",
-    "artists": "Artists",
-    "gallery": "Gallery",
-    "about": "About Us",
-    "contact": "Contact Us",
-    "login": "Login",
-    "signOut": "Sign Out",
-    "menu": "Menu",
-    "myAccount": "My Account",
-    "dashboard": "Dashboard",
-    "ticketsDb": "Passes Database",
-    "gateScanner": "Gate Scanner",
-    "adminPanel": "Admin Panel"
-  },
+  
   "Tickets": {
     "step1": "Choose Pass",
     "step2": "Attendee Info",
@@ -741,23 +725,23 @@
     "ariaClose": "Close"
   },
   "Footer": {
-    "logoAlt": "Summer Salsa Fest Logo",
-    "navHeading": "Navigation",
-    "navHome": "Home",
-    "navPrices": "Prices",
-    "navInfo": "Info",
-    "navGallery": "Gallery",
-    "navAbout": "About Us",
-    "navContact": "Contact Us",
-    "legalHeading": "Legal",
-    "legalPrivacy": "Privacy Policy",
-    "legalTerms": "User Agreement",
-    "legalCookies": "Cookie Policy",
-    "contactHeading": "Contact",
-    "contactLocation": "Varna, BG",
-    "socialsHeading": "Socials",
-    "copyright": "© {year} Summer Salsa Fest Varna. All rights reserved."
-  },
+  "logoAlt": "Summer Salsa Fest Logo",
+  "navHeading": "Navigation",
+  "navHome": "Home",
+  "navPrices": "Prices",
+  "navInfo": "Info",
+  "navGallery": "Gallery",
+  "navCharity": "Charity",
+  "navContact": "Contact",
+  "legalHeading": "Legal",
+  "legalPrivacy": "Privacy Policy",
+  "legalTerms": "Terms & Conditions",
+  "legalCookies": "Cookie Policy",
+  "contactHeading": "Contact",
+  "contactLocation": "Varna, Bulgaria",
+  "socialsHeading": "Follow Us",
+  "copyright": "© {year} Summer Salsa Fest Varna. All Rights Reserved."
+},
   "Popup": {
     "defaultOk": "OK",
     "defaultCancel": "Cancel"
@@ -1089,5 +1073,50 @@
       "fullBoard": "Full board",
       "allInclusive": "All inclusive"
     }
-  }
+  },
+  "Navbar": {
+  "home": "Home",
+  "prices": "Prices",
+  "info": "Info",
+  "artists": "Artists",
+  "gallery": "Gallery",
+  "charity": "Charity", 
+  "about": "About",
+  "contact": "Contact",
+  "myAccount": "My Account",
+  "dashboard": "Dashboard",
+  "ticketsDb": "Tickets",
+  "gateScanner": "Scanner",
+  "adminPanel": "Admin Panel",
+  "login": "Login",
+  "signOut": "Sign Out",
+  "menu": "Menu"
+},
+"Charity": {
+  "title": "Dance For A Cause",
+  "subtitle": "Let's lend a hand together!",
+  "p1": "Dancing unites us, but it can also do something much bigger – change human destinies!",
+  "p2": "After each edition of Summer Salsa Fest, our team sets aside a portion of the funds collected from the sale of festival passes and tickets to support people going through difficult life trials.",
+  "p3": "For two years now, we have also been organizing charity beach fiestas – with a dance floor, shade, sound system, and a DJ, where everyone can have fun, share their love for dancing, and at the same time become part of a good cause.",
+  "p4": "Below we share the names of some of the people who have already received our support. We publish them to give voice to their causes and an opportunity for anyone who has the desire and ability to help personally.",
+  "ps": "P.S. Please check the validity of the campaigns. Some of them may have ended.",
+  "p5": "Every donation matters. Every outstretched hand brings hope!",
+  "p6": "Let's turn the energy of dance into kindness and support together!",
+  "andManyOthers": "And many others.",
+  "viewCampaign": "View Campaign",
+  "causes": [
+    { "name": "Kolina Klimentinova Valkova", "details": "Revolut: @kolinakfyb", "link": "" },
+    { "name": "Andrei Bogdan Enache", "details": "Revolut: RO60REVO0000198944410034 / RO56INGB0000999912118986", "link": "" },
+    { "name": "Nataliya Antonova /Vangel's wife/", "details": "BG86STSA93000027897294", "link": "" },
+    { "name": "Philip - Albertina Santiago Rivero – mother", "details": "Revolut: @albertzf2u", "link": "" },
+    { "name": "Baby Kristin", "details": "", "link": "https://pavelandreev.org/bg/campaign/jivot-za-bebe-kristin" },
+    { "name": "Stoyanka Varbanova", "details": "", "link": "https://pavelandreev.org/bg/campaign/da-pomognem-na-tanya-da-prebori-raka" },
+    { "name": "Zlatina Nikolova", "details": "", "link": "https://www.haskovo.net/news/572810/uspeshna-transplantatsiia-za-15-godishnata-zlatina" },
+    { "name": "Martin Mihailov Hristov", "details": "", "link": "https://btvnovinite.bg/bulgaria/zov-za-pomosht-17-godishno-momche-se-bori-s-rjadak-vid-tumor-na-grabnachnija-stalb.html" },
+    { "name": "Baby Yoana", "details": "", "link": "https://btvnovinite.bg/bulgaria/shans-za-joana-dete-s-tezhka-forma-na-epilepsija-se-nuzhdae-ot-sredstva-za-da-zhivee.html" },
+    { "name": "I Believe and Help (Az vyarvam i pomagam)", "details": "", "link": "" },
+    { "name": "Kaloyan Iliev Dimitrov", "details": "BG36STSA93000031216952", "link": "" },
+    { "name": "Yoana Georgieva Zafirova", "details": "BG49STSA93000031171225 | BIC STSABGSF", "link": "" }
+  ]
+}
 }
