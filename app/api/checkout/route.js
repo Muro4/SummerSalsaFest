@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { adminDb } from "@/lib/firebase-admin";
 import { ApiError, apiError, authenticate, documentId, requestBody } from "@/lib/room-server";
-import { getPriceAtDate, isSalesOpen } from "@/lib/pricing";
+import { calculateFinalPrice, isSalesOpen } from "@/lib/pricing";
 import { getActiveFestivalYear } from "@/lib/utils";
 
 export async function POST(req) {
@@ -38,20 +38,24 @@ export async function POST(req) {
         if (ticket.status !== "pending" || ticket.roomId || ticket.festivalYear !== getActiveFestivalYear()) throw new ApiError("invalidStatus", 409);
         if (!["Full Pass", "Party Pass", "Day Pass", "Performers Pass"].includes(ticket.passType)) throw new ApiError("invalidInput");
         
-        let currentPrice = getPriceAtDate(ticket.passType);
-        // Re-apply the 5€ markup if the ticket has no ambassador attached (direct purchase)
-        if (!ticket.ambassadorId && currentPrice > 0) {
-          currentPrice += 5;
-        }
-        return { ...ticket, price: currentPrice };
+        // PHASE 2 FIX: Use the single source of truth for pricing
+        const isDirectPurchase = !ticket.ambassadorId;
+        const currentPrice = calculateFinalPrice(ticket.passType, isDirectPurchase);
+        
+        // THE FIX: Explicitly attach snapshot.id so lockedPrices can find it
+        return { ...ticket, id: snapshot.id, price: currentPrice };
       });
 
       const amountTotal = records.reduce((sum, ticket) => sum + Math.round(ticket.price * 100), 0);
       if (amountTotal <= 0) throw new ApiError("invalidInput");
       
+      // PHASE 2 FIX: Save the locked prices into the session document
+      const lockedPrices = records.map(t => ({ id: t.id, price: t.price }));
+
       tx.set(sessionRef, { 
         userId: actor.uid, 
         ticketIds: ids, 
+        lockedPrices, // <-- Storing this so the webhook can apply it
         amountTotal, 
         currency: "eur", 
         status: "pending", 

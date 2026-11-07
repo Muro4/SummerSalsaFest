@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { getPriceAtDate, isSalesOpen } from "@/lib/pricing"; // <-- IMPORT ADDED
+import { calculateFinalPrice, isSalesOpen } from "@/lib/pricing";
 import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
 import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
@@ -41,12 +41,10 @@ export async function POST(req) {
 
     const result = await adminDb.runTransaction(async tx => {
       const settings = await tx.get(adminDb.collection("settings").doc("system"));
-      
-      // PHASE 1 FIX: Server-side sales open enforcement
       if (!registration && (settings.data()?.salesEnabled === false || !isSalesOpen())) {
         throw new ApiError("salesPaused", 403);
       }
-      
+
       const drafts = registration ? await tx.getAll(...prepared.map(item => item.draftRef)) : [];
       const existingTickets = await tx.getAll(...prepared.map(item => item.ticketRef));
       if (existingTickets.every(s => s.exists)) return existingTickets.map(s => ({ ...s.data(), id: s.id }));
@@ -56,7 +54,14 @@ export async function POST(req) {
       if (!staff) {
         guard = adminDb.collection("ticket_purchase_guards").doc(`${actor.uid}_${year}`);
         await tx.get(guard);
-        const owned = await tx.get(adminDb.collection("tickets").where("userId", "==", actor.uid).where("festivalYear", "==", year));
+
+        // Only count finalized active/used tickets toward the limit so abandoned pending carts do not lock users out
+        const owned = await tx.get(
+          adminDb.collection("tickets")
+            .where("userId", "==", actor.uid)
+            .where("festivalYear", "==", year)
+            .where("status", "in", ["active", "used"])
+        );
         if (owned.size + tickets.length > 5) throw new ApiError("purchaseLimit", 403);
       }
 
@@ -87,6 +92,7 @@ export async function POST(req) {
       const now = Date.now();
       const timestamp = new Date(now).toISOString();
       for (const entry of states.values()) entry.state = roomState(entry.room, now);
+
       const documents = prepared.map((item, index) => {
         const input = item.input;
         const draft = drafts[index]?.data();
@@ -100,29 +106,53 @@ export async function POST(req) {
         } else if (draft?.state === "held") {
           throw new ApiError("assignmentMismatch", 409);
         }
-        let price = input.passType === "Free Full Pass" ? 0 : getPriceAtDate(input.passType);
-        if (!registration && price > 0) {
-          price += 5;
-        }
+
+        // Centralized pricing calculation
+        const price = calculateFinalPrice(input.passType, !registration);
         const status = price === 0 || registration ? "active" : "pending";
+
+        // Commission rules: 10€ for Full Pass, 5€ for Performers Pass
+        const commission = registration
+          ? (input.passType === "Full Pass" ? 10 : (input.passType === "Performers Pass" ? 5 : 0))
+          : 0;
+
         const ticket = {
-          userId: actor.uid, userName: input.userName.trim().toUpperCase(),
+          userId: actor.uid,
+          userName: input.userName.trim().toUpperCase(),
           guestEmail: registration ? (input.attendeeEmail || "").trim().toLowerCase() : (actor.email || ""),
-          isGuest: false, passType: input.passType, price,
-          commission: registration && input.passType === "Full Pass" ? 10 : 0,
-          accommodation: entry?.room.hotelId || "None", roomId: item.roomId,
+          isGuest: false,
+          passType: input.passType,
+          price,
+          commission,
+          accommodation: entry?.room.hotelId || "None",
+          roomId: item.roomId,
           accommodationPrice: entry ? 3 * (entry.room.pricePerPersonPerNight || 0) : 0,
-          days: entry ? 3 : 0, gender: input.gender || "unspecified",
-          ambassadorId: registration ? actor.uid : null, ambassadorName: registration ? actor.name : null,
-          draftId: item.draftId, status, festivalYear: year,
-          purchaseDate: timestamp, paymentConfirmedAt: status === "active" ? timestamp : null,
-          emailSentCount: 0, ticketID: item.code,
+          days: entry ? 3 : 0,
+          gender: input.gender || "unspecified",
+          ambassadorId: registration ? actor.uid : null,
+          ambassadorName: registration ? actor.name : null,
+          draftId: item.draftId,
+          status,
+          festivalYear: year,
+          purchaseDate: timestamp,
+          paymentConfirmedAt: status === "active" ? timestamp : null,
+          emailSentCount: 0,
+          ticketID: item.code,
         };
-        if (entry) entry.state.occupants.push({
-          id: item.ticketRef.id, ticketId: item.ticketRef.id, ticketID: item.code,
-          name: ticket.userName, gender: ticket.gender, passType: ticket.passType,
-          ambassadorId: actor.uid, ambassadorName: actor.name, days: 3,
-        });
+
+        if (entry) {
+          entry.state.occupants.push({
+            id: item.ticketRef.id,
+            ticketId: item.ticketRef.id,
+            ticketID: item.code,
+            name: ticket.userName,
+            gender: ticket.gender,
+            passType: ticket.passType,
+            ambassadorId: actor.uid,
+            ambassadorName: actor.name,
+            days: 3,
+          });
+        }
         return ticket;
       });
 
@@ -130,11 +160,24 @@ export async function POST(req) {
       prepared.forEach((item, index) => {
         tx.create(item.ticketRef, documents[index]);
         tx.create(item.codeRef, { ticketId: item.ticketRef.id });
-        if (item.draftRef) tx.set(item.draftRef, { ownerId: actor.uid, draftId: item.draftId, state: "finalized", roomId: item.roomId, ticketId: item.ticketRef.id, expiresAt: null, updatedAt: now });
+        if (item.draftRef) {
+          tx.set(item.draftRef, {
+            ownerId: actor.uid,
+            draftId: item.draftId,
+            state: "finalized",
+            roomId: item.roomId,
+            ticketId: item.ticketRef.id,
+            expiresAt: null,
+            updatedAt: now,
+          });
+        }
       });
       if (guard) tx.set(guard, { updatedAt: now });
       return prepared.map((item, index) => ({ ...documents[index], id: item.ticketRef.id }));
     });
+
     return NextResponse.json({ success: true, tickets: result });
-  } catch (error) { return apiError(error); }
+  } catch (error) {
+    return apiError(error);
+  }
 }

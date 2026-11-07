@@ -80,8 +80,13 @@ export async function POST(req) {
           const timestamp = new Date().toISOString();
           for (const ticket of tickets) {
             if (ticket.data().status === "pending") {
+              // PHASE 2 FIX: Find the locked price from the checkout session
+              const lockedPriceData = checkout.lockedPrices?.find(p => p.id === ticket.id);
+              const finalPrice = lockedPriceData ? lockedPriceData.price : ticket.data().price;
+
               tx.update(ticket.ref, { 
                 status: "active", 
+                price: finalPrice, // Apply the exact price charged
                 paymentConfirmedAt: timestamp,
                 checkoutSessionId: id
               });
