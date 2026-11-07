@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
@@ -11,6 +11,7 @@ import { usePopup } from "@/components/PopupProvider";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { getPriceAtDate, pricingTable, isSalesOpen } from "@/lib/pricing";
+import { getActiveFestivalYear } from "@/lib/utils";
 
 export default function TicketPage() {
   const t = useTranslations('Tickets');
@@ -20,20 +21,20 @@ export default function TicketPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [realName, setRealName] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [salesEnabled, setSalesEnabled] = useState(true);
   
-  // NEW: State to hold the dynamically calculated price for hydration safety
+  // State to hold the dynamically calculated price for hydration safety
   const [fullPassPrice, setFullPassPrice] = useState("...");
 
   const router = useRouter();
   const { showPopup } = usePopup();
 
-  /* Input validation criteria */
-  const isValidNameChars = /^[a-zA-Z\u00C0-\u024F\s\-']+$/.test(realName);
+  /* Input validation criteria - PHASE 3 FIX: Cyrillic Support & Length matching server */
+  const isValidNameChars = /^[\p{L}\s\-']+$/u.test(realName);
   const isWithinWordLimit = realName.trim().split(/\s+/).length <= 5;
-  const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit);
+  const isWithinLengthLimit = realName.length <= 150;
+  const isNameInvalid = realName.length > 0 && (!isValidNameChars || !isWithinWordLimit || !isWithinLengthLimit);
 
   /* Track Firebase Auth Initialization */
   useEffect(() => {
@@ -48,17 +49,6 @@ export default function TicketPage() {
     // Add 5€ markup for direct website purchases
     setFullPassPrice(getPriceAtDate('Full Pass') + 5);
   }, []);
-
-  /* User profile data synchronization */
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (auth.currentUser) {
-        const d = await getDoc(doc(db, "users", auth.currentUser.uid));
-        if (d.exists()) setUserData(d.data());
-      }
-    };
-    fetchUser();
-  }, [auth.currentUser]);
 
   /* System sales configuration listener */
   useEffect(() => {
@@ -83,26 +73,27 @@ export default function TicketPage() {
     try {
       // 1. Check purchase limits for authenticated users
       if (auth.currentUser) {
-        if (userData?.role !== 'ambassador' && userData?.role !== 'superadmin') {
-          const q = query(
-            collection(db, "tickets"),
-            where("userId", "==", auth.currentUser.uid),
-            where("festivalYear", "==", 2026)
-          );
-          const snap = await getDocs(q);
+        // PHASE 3 FIX: Removed hardcoded year. Also removed ambassador bypass logic.
+        // We only count 'active' or 'used' tickets towards the limit.
+        const q = query(
+          collection(db, "tickets"),
+          where("userId", "==", auth.currentUser.uid),
+          where("festivalYear", "==", getActiveFestivalYear()),
+          where("status", "in", ["active", "used"]) 
+        );
+        const snap = await getDocs(q);
 
-          if (snap.size >= 5) {
-            setLoading(false);
-            showPopup({
-              type: "info",
-              title: t('limitTitle'),
-              message: t('limitMsgUser'),
-              confirmText: t('applyBtn'),
-              cancelText: t('cancelBtn'),
-              onConfirm: () => router.push("/apply")
-            });
-            return;
-          }
+        if (snap.size >= 5) {
+          setLoading(false);
+          showPopup({
+            type: "info",
+            title: t('limitTitle'),
+            message: t('limitMsgUser'),
+            confirmText: t('applyBtn'),
+            cancelText: t('cancelBtn'),
+            onConfirm: () => router.push("/apply")
+          });
+          return;
         }
       }
 
@@ -162,7 +153,6 @@ export default function TicketPage() {
             {t('buyPassTitle')}
           </h1>
 
-          
           <div className="w-full max-w-2xl mx-auto mb-12 text-center">
             <h3 className="font-bebas text-2xl text-slate-400 mb-4 uppercase tracking-widest">{t('pricingScheduleHeading')}</h3>
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md">
@@ -230,7 +220,7 @@ export default function TicketPage() {
                     type="text"
                     placeholder={t('namePlaceholder')}
                     required
-                    maxLength={50}
+                    maxLength={150} // PHASE 3 FIX: Matched to server limit
                     className={`w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:bg-white font-bold uppercase text-sm transition-all text-slate-900 ${isNameInvalid ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-slate-900'}`}
                     onChange={e => setRealName(e.target.value)}
                   />

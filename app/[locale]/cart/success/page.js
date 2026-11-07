@@ -75,8 +75,9 @@ function SuccessContent() {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
       if (fallbackTimeout) clearTimeout(fallbackTimeout);
       
+      // PHASE 3 FIX: Protect success page from logged-out visitors
       if (!currentUser || currentUser.isAnonymous) {
-        setLoading(false);
+        router.replace('/login');
         return;
       }
 
