@@ -172,18 +172,18 @@ export default function InfoPage() {
         
         {/* ACCOMMODATION NOTICE */}
         <section className="mb-14">
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-sm text-center max-w-3xl mx-auto">
-            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-2">
-              Important Notice
-            </span>
-            <h2 className="font-bebas text-4xl sm:text-5xl tracking-wide uppercase text-slate-900 leading-none">
-              Accommodation
-            </h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-4 max-w-2xl mx-auto font-medium">
-              Please note that the organizers of Summer Salsa Fest do not hold responsibility for your personal accommodation arrangements during the event. The festival takes place during a high-demand holiday season, and local capacity fills up rapidly. We strongly advise booking your lodging as early as possible to secure your stay.
-            </p>
-          </div>
-        </section>
+  <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-sm text-center max-w-3xl mx-auto">
+    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-2">
+      {t('noticeBadge')}
+    </span>
+    <h2 className="font-bebas text-4xl sm:text-5xl tracking-wide uppercase text-slate-900 leading-none">
+      {t('noticeTitle')}
+    </h2>
+    <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-4 max-w-2xl mx-auto font-medium">
+      {t('noticeDesc')}
+    </p>
+  </div>
+</section>
 
         {/* FESTIVAL SCHEDULE */}
         <section className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-sm">
