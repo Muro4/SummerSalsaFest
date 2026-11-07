@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { getPriceAtDate } from "@/lib/pricing";
+import { getPriceAtDate, isSalesOpen } from "@/lib/pricing"; // <-- IMPORT ADDED
 import { getActiveFestivalYear, generateTicketID } from "@/lib/utils";
 import { ApiError, apiError, authenticate, documentId, draftKey, requireRoom, requestBody } from "@/lib/room-server";
 import { GENDERS, roomState, roomUpdate } from "@/lib/rooms";
@@ -40,9 +40,13 @@ export async function POST(req) {
     });
 
     const result = await adminDb.runTransaction(async tx => {
-      // All reads precede all writes, including ID collision checks and room reads.
       const settings = await tx.get(adminDb.collection("settings").doc("system"));
-      if (!registration && settings.data()?.salesEnabled === false) throw new ApiError("salesPaused", 403);
+      
+      // PHASE 1 FIX: Server-side sales open enforcement
+      if (!registration && (settings.data()?.salesEnabled === false || !isSalesOpen())) {
+        throw new ApiError("salesPaused", 403);
+      }
+      
       const drafts = registration ? await tx.getAll(...prepared.map(item => item.draftRef)) : [];
       const existingTickets = await tx.getAll(...prepared.map(item => item.ticketRef));
       if (existingTickets.every(s => s.exists)) return existingTickets.map(s => ({ ...s.data(), id: s.id }));
@@ -65,7 +69,6 @@ export async function POST(req) {
 
       const codes = new Set();
       for (const item of prepared) {
-        // Reserve the display ID as well as checking pre-migration tickets.
         let code;
         let unique = false;
         for (let attempt = 0; attempt < 20 && !unique; attempt++) {
@@ -98,10 +101,9 @@ export async function POST(req) {
           throw new ApiError("assignmentMismatch", 409);
         }
         let price = input.passType === "Free Full Pass" ? 0 : getPriceAtDate(input.passType);
-// Apply the 5€ markup for direct website purchases (not ambassador registrations)
-if (!registration && price > 0) {
-  price += 5;
-}
+        if (!registration && price > 0) {
+          price += 5;
+        }
         const status = price === 0 || registration ? "active" : "pending";
         const ticket = {
           userId: actor.uid, userName: input.userName.trim().toUpperCase(),

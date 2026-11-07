@@ -1,14 +1,13 @@
 "use client";
-import { getActiveFestivalYear } from "@/lib/utils";
 import { useEffect, useState, Suspense } from "react";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useSearchParams } from "next/navigation"; 
-import { useRouter, Link } from "@/routing";
+import { useRouter } from "@/routing";
 import Navbar from "@/components/Navbar";
 import Button from "@/components/Button";
 import Footer from "@/components/Footer";
-import { CheckCircle, Loader2, Download, ArrowRight } from "lucide-react";
+import { CheckCircle, Loader2, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslations } from 'next-intl';
 
@@ -52,14 +51,13 @@ function SuccessContent() {
   const t = useTranslations('Success');
   const searchParams = useSearchParams();
   
-  /* Component State */
+  // Look specifically for the Firebase checkout ID we just set in the route
+  const checkoutId = searchParams.get("checkout");
+  
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  const isFreePass = searchParams.get("session_id") === "free_pass_bypass";
-
-  /* UI formatting mapping */
   const translatePassDisplay = (type) => {
     const typeLower = (type || '').toLowerCase();
     if (typeLower.includes('full')) return t('passFull');
@@ -69,43 +67,43 @@ function SuccessContent() {
     return type;
   };
 
-  /* Strict real-time sync listener ensuring auth state is initialized and tickets are active */
-  /* Strict real-time sync listener ensuring auth state is initialized and tickets are active */
   useEffect(() => {
     let unsubscribeSnapshot = null;
     let fallbackTimeout = null;
 
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      // FIX 1: Stop loading immediately if the user is somehow not authenticated
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      if (fallbackTimeout) clearTimeout(fallbackTimeout);
+      
       if (!currentUser || currentUser.isAnonymous) {
         setLoading(false);
         return;
       }
 
-      const q = query(
-        collection(db, "tickets"), 
-        where("userId", "==", currentUser.uid),
-        where("status", "==", "active"),
-        where("festivalYear", "==", getActiveFestivalYear())
-      );
+      // STRICT FILTER: Only fetch tickets that were stamped with this exact checkout session ID
+      if (checkoutId) {
+        const q = query(
+          collection(db, "tickets"),
+          where("checkoutSessionId", "==", checkoutId)
+        );
 
-      unsubscribeSnapshot = onSnapshot(q, (snap) => {
-        const fetchedTickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        fetchedTickets.sort((a, b) => new Date(b.paymentConfirmedAt) - new Date(a.paymentConfirmedAt));
-        setTickets(fetchedTickets);
-        
-        // Only turn off loading immediately if tickets are actually found
-        if (!snap.empty) {
-          setLoading(false);
-          if (fallbackTimeout) clearTimeout(fallbackTimeout);
-        }
-      });
+        unsubscribeSnapshot = onSnapshot(q, (snap) => {
+          const fetchedTickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setTickets(fetchedTickets);
+          
+          if (!snap.empty) {
+            setLoading(false);
+            if (fallbackTimeout) clearTimeout(fallbackTimeout);
+          }
+        });
+      } else {
+        // If there's no checkoutId in the URL, don't show old tickets. Just stop loading.
+        setLoading(false);
+      }
 
-      // FIX 2: If the Stripe webhook takes longer than 8 seconds, force the loading screen to end
       fallbackTimeout = setTimeout(() => {
         setLoading(false);
       }, 8000);
-
     });
 
     return () => {
@@ -113,9 +111,8 @@ function SuccessContent() {
       if (fallbackTimeout) clearTimeout(fallbackTimeout);
       unsubscribeAuth();
     };
-  }, []);
+  }, [checkoutId]);
 
-  /* Client-side PDF Generation */
   const handleDownloadPDF = async (ticket) => {
     if (ticket.status !== 'active') return;
 
@@ -223,7 +220,7 @@ function SuccessContent() {
                <div className="w-full flex flex-col items-center animate-in fade-in duration-500">
                   <CheckCircle className="text-emerald-500 mb-6" size={80} />
                   <h1 className="font-bebas tracking-wide text-6xl md:text-7xl text-gray-900 mb-4 uppercase leading-none text-center">
-                    {isFreePass ? t('activatedTitle') : t('successTitle')}
+                    {t('successTitle')}
                   </h1>
                   
                   <p className="font-bold text-slate-500 text-sm text-center mb-12">
@@ -234,7 +231,7 @@ function SuccessContent() {
                     {tickets.map(ticket => (
                       <div key={ticket.id} className="flex flex-col items-center w-full">
                         
-                        {/* VISIBLE UI: Mirrored exactly from TicketModal.js */}
+                        {/* VISIBLE UI */}
                         <div className="w-full max-w-[340px] md:max-w-none md:w-[850px] mx-auto bg-white rounded-[2rem] md:rounded-[2.5rem] flex flex-col md:flex-row shadow-2xl relative overflow-hidden shrink-0 h-[520px] md:h-[400px]" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
                           
                           <div className="p-4 md:p-12 flex items-center justify-center bg-salsa-mint/5 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-gray-200 relative shrink-0 min-h-[210px] md:h-full w-full md:w-auto">
