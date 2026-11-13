@@ -171,19 +171,87 @@ export default function InfoPage() {
       <div className="pt-32 pb-16 px-4 sm:px-6 max-w-5xl mx-auto">
         
         {/* ACCOMMODATION NOTICE */}
+        <section className="mb-8">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-sm text-center max-w-3xl mx-auto">
+            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-2">
+              {t('noticeBadge')}
+            </span>
+            <h2 className="font-bebas text-4xl sm:text-5xl tracking-wide uppercase text-slate-900 leading-none">
+              {t('noticeTitle')}
+            </h2>
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-4 max-w-2xl mx-auto font-medium">
+              {t('noticeDesc')}
+            </p>
+          </div>
+        </section>
+
+        {/* INFODESKS SCHEDULE */}
         <section className="mb-14">
-  <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-sm text-center max-w-3xl mx-auto">
-    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-2">
-      {t('noticeBadge')}
-    </span>
-    <h2 className="font-bebas text-4xl sm:text-5xl tracking-wide uppercase text-slate-900 leading-none">
-      {t('noticeTitle')}
-    </h2>
-    <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-4 max-w-2xl mx-auto font-medium">
-      {t('noticeDesc')}
-    </p>
-  </div>
-</section>
+          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-8 max-w-5xl mx-auto">
+            
+            {/* Left Column: VFU Infodesk Schedule */}
+            <div className="flex-1">
+              <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-1">
+                {t('workingTime')}
+              </span>
+              <h2 className="font-bebas text-4xl sm:text-5xl tracking-wide uppercase text-slate-900 leading-none mb-2">
+                {t('mainInfodeskTitle')}
+              </h2>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-6">
+                <MapPin size={14} className="shrink-0 text-slate-400" />
+                <span>{t('mainInfodeskLocation')}</span>
+              </div>
+              
+              <ul className="space-y-4">
+                <li className="flex justify-between items-center border-b border-slate-100 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('friday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('mainInfodeskFridayTime')}</span>
+                </li>
+                <li className="flex justify-between items-center border-b border-slate-100 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('saturday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('mainInfodeskSatSunTime')}</span>
+                </li>
+                <li className="flex justify-between items-center border-b border-slate-100 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('sunday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('mainInfodeskSatSunTime')}</span>
+                </li>
+              </ul>
+              <p className="text-xs text-slate-500 mt-4 font-medium italic">
+                {t('mainInfodeskBreaks')}
+              </p>
+            </div>
+
+            {/* Right Column: Beach Fiesta Infodesk */}
+            <div className="flex-1 bg-slate-50 rounded-2xl p-6 sm:p-8 border border-slate-100 flex flex-col justify-center">
+              <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 block mb-1">
+                {t('workingTime')}
+              </span>
+              <h2 className="font-bebas text-3xl sm:text-4xl tracking-wide uppercase text-slate-900 leading-none mb-2">
+                {t('beachInfodeskTitle')}
+              </h2>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mb-6">
+                <MapPin size={14} className="shrink-0 text-slate-400" />
+                <span>{t('beachInfodeskLocation')}</span>
+              </div>
+              
+              <ul className="space-y-4 w-full">
+                <li className="flex justify-between items-center border-b border-slate-200/75 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('friday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('beachInfodeskTime')}</span>
+                </li>
+                <li className="flex justify-between items-center border-b border-slate-200/75 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('saturday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('beachInfodeskTime')}</span>
+                </li>
+                <li className="flex justify-between items-center border-b border-slate-200/75 pb-3">
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">{t('sunday')}</span>
+                  <span className="text-slate-600 font-medium text-sm sm:text-base">{t('beachInfodeskTime')}</span>
+                </li>
+              </ul>
+            </div>
+            
+          </div>
+        </section>
 
         {/* FESTIVAL SCHEDULE */}
         <section className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-sm">

@@ -150,6 +150,18 @@
   "s5Text": "Ако имате въпроси относно използването на бисквитки от наша страна, моля, свържете се с нас на:"
 },
   "Info": {
+    "workingTime": "Работно Време",
+    "mainInfodeskTitle": "Главен Инфодеск",
+    "mainInfodeskLocation": "@ ВСУ - мястото на събитието",
+    "friday": "Петък",
+    "saturday": "Събота",
+    "sunday": "Неделя",
+    "mainInfodeskFridayTime": "14:00 - 03:00",
+    "mainInfodeskSatSunTime": "09:30 - 02:00",
+    "mainInfodeskBreaks": "* Почивка в събота и неделя от 14:00 - 17:00",
+    "beachInfodeskTitle": "Инфодеск Beach Fiesta",
+    "beachInfodeskLocation": "@ Ash Beach Bar",
+    "beachInfodeskTime": "14:00 - 18:00",
     "heroPre": "Всичко, което трябва да знаете",
     "heroTitle1": "Информация за",
     "heroTitle2": "Фестивала",
@@ -751,7 +763,7 @@
     "catStars": "Звезди",
   "catArtists": "Артисти",
   "catDjs": "Диджеи",
-  "catMedia": "Медия и Фото",
+  "catMedia": "Медия",
   "empty": "Очаквайте скоро!"
   },
   "AdminArtistsTab": {
