@@ -437,7 +437,7 @@
     "alreadyHaveAcc": "Already have an account?",
     "deskLoginTitle": "Welcome Back!",
     "deskLoginDesc": "Don't have an account yet? Sign up!",
-    "deskSignupTitle": "Welcome, Dancer!",
+    "deskSignupTitle": "Welcome",
     "deskSignupDesc": "Already registered? Login!",
     "btnHome": "Home"
   },
@@ -1037,6 +1037,7 @@
   "navJackJill": "Jack & Jill"
 },
 "Charity": {
+  "beachFiestaBanner": "Join our Charity Beach Fiesta!",
   "title": "Dance For A Cause",
   "subtitle": "Let's lend a hand together!",
   "p1": "Dancing unites us, but it can also do something much bigger – change human destinies!",

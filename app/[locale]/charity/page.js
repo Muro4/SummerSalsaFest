@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useTranslations } from 'next-intl';
-import { Heart, ExternalLink, CreditCard, Info } from "lucide-react";
+import { Heart, ExternalLink, CreditCard, Info, PartyPopper } from "lucide-react";
 
 export default function CharityPage() {
   const t = useTranslations('Charity');
@@ -13,6 +13,27 @@ export default function CharityPage() {
       
       <div className="flex-grow max-w-7xl mx-auto px-4 md:px-6 w-full pt-32 md:pt-40 pb-24">
         
+        {/* Featured Event Banner */}
+        {/* Featured Event Banner */}
+<div className="flex justify-center mb-16 animate-in zoom-in duration-700">
+  <a 
+    href="https://fb.me/e/a1P1mLeae" 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="group relative overflow-hidden flex items-center gap-3 bg-slate-900 text-white px-8 py-4 md:px-10 md:py-5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.15)] hover:shadow-[0_0_40px_rgba(244,114,182,0.4)] hover:-translate-y-1 transition-all duration-300 border-2 border-transparent hover:border-salsa-pink/50"
+  >
+    <div className="absolute inset-0 bg-gradient-to-r from-salsa-pink via-violet-500 to-salsa-pink opacity-20 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+    
+    <div className="relative z-10 flex items-center gap-3">
+      <PartyPopper size={24} className="text-salsa-pink group-hover:animate-bounce" />
+      <span className="font-bebas text-xl md:text-2xl tracking-widest uppercase mt-1">
+        {t('beachFiestaBanner')}
+      </span>
+      <ExternalLink size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+    </div>
+  </a>
+</div>
+
         {/* Header Area */}
         <div className="flex flex-col items-center text-center mb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="bg-salsa-pink/10 p-4 rounded-full mb-6 text-salsa-pink">
